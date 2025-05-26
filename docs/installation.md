@@ -110,6 +110,22 @@ wget http://www.mgc.ac.cn/VFs/Down/VFDB_setB_pro.fas
 diamond makedb --in nucleotide_fasta_protein_homolog_model.fasta --db pathogen_db
 ```
 
+### Database Setup Flowchart
+
+```txt
+Start
+│
+├─ Check Kraken DB files → If missing → Download MiniKraken
+│
+├─ Check CARD DB → If missing → Download & extract
+│
+├─ Check VFDB → If missing → Download
+│
+└─ Check DIAMOND index → If missing → Create from CARD
+│
+End
+```
+
 ## Wrapper Script Creation
 
 To make MetaQuest easily accessible from the command line, create a wrapper script:
