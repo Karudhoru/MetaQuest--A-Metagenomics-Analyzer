@@ -1,0 +1,6 @@
+*.pyc
+__pycache__/
+.DS_Store
+results/
+databases/*
+!databases/clean.sh

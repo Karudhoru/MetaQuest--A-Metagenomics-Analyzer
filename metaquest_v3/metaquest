@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# metaquest wrapper to invoke the installed package
+
+python -m metagenomics.cli "$@"
