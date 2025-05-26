@@ -1,0 +1,291 @@
+# MetaQuest
+
+A comprehensive metagenomics analysis pipeline for taxonomic classification, pathogen detection, and functional annotation of microbial communities.
+
+## Overview
+
+MetaQuest is an integrated bioinformatics pipeline that addresses the complex challenges of metagenomic data analysis. By combining state-of-the-art tools and databases, MetaQuest provides researchers with a streamlined workflow for understanding microbial community composition, identifying potential pathogens, and assessing antimicrobial resistance profiles from sequencing data.
+
+## ⚠️ Development Status
+
+**MetaQuest is currently under active development.** While the core functionality is operational, please note the following limitations:
+
+### Known Issues with FASTA Input Files
+- **Taxonomic Classification**: FASTA file processing for taxonomic profiling is currently inaccurate and requires optimization
+- **Pathogenicity Assessment**: Pathogen detection workflows for FASTA inputs are not functioning correctly
+- **Virulence Factor Analysis**: Virulence factor identification from FASTA files is unreliable
+
+**Current Recommendation**: For most reliable results, use FASTQ input files. FASTA support improvements are prioritized for the next release.
+
+### Development Timeline
+- **FASTA Processing Fixes**: Target completion Q3 2025
+- **Enhanced Validation**: Comprehensive testing across file formats ongoing
+- **Documentation Updates**: User guides being updated to reflect current capabilities
+
+We appreciate your patience as we continue to improve MetaQuest. Please report any issues or unexpected behavior through our GitHub repository.
+
+### Key Features
+
+- **Taxonomic Profiling**: Species-level identification and abundance estimation *(FASTQ recommended)*
+- **Pathogen Screening**: Detection of bacterial, viral, and fungal pathogens *(FASTQ recommended)*
+- **Antimicrobial Resistance (AMR) Analysis**: Comprehensive resistance gene detection
+- **Virulence Factor Assessment**: Identification of pathogenicity determinants *(FASTQ recommended)*
+- **Functional Annotation**: Gene prediction and functional characterization
+- **Quality Assessment**: Statistical analysis and quality metrics
+- **Interactive Visualization**: Rich HTML reports with dynamic plots
+
+## Theoretical Background
+
+### Metagenomics Workflow
+
+MetaQuest implements a comprehensive metagenomics analysis workflow based on established computational biology principles:
+
+#### 1. **Sequence Quality Assessment**
+- Statistical analysis of read length distribution
+- GC content profiling for contamination detection
+- Base quality scoring and filtering
+- Assembly quality metrics (N50, coverage, contiguity)
+
+#### 2. **Taxonomic Classification**
+The pipeline employs a k-mer based classification approach:
+- **K-mer Analysis**: Uses Kraken2's exact k-mer matching against a curated database
+- **Lowest Common Ancestor (LCA) Algorithm**: Resolves taxonomic assignments when k-mers match multiple taxa
+- **Abundance Estimation**: Bracken's Bayesian approach redistributes reads to species level
+- **Confidence Scoring**: Statistical confidence assessment for each taxonomic assignment
+
+#### 3. **Pathogen Detection Strategy**
+Multi-layered approach for pathogen identification:
+- **Primary Screening**: Taxonomic classification against known pathogen databases
+- **Sequence Similarity**: DIAMOND/BLAST alignment for validation
+- **Risk Assessment**: Integration of pathogenicity databases (CARD, VFDB)
+- **Clinical Relevance**: Priority scoring based on medical significance
+
+#### 4. **Antimicrobial Resistance Analysis**
+Comprehensive AMR profiling methodology:
+- **Gene Homology**: Sequence similarity search against CARD database
+- **Resistance Mechanisms**: Classification by mechanism (efflux, modification, target alteration)
+- **Drug Classes**: Mapping to specific antimicrobial categories
+- **Clinical Context**: Integration with resistance breakpoints and clinical guidelines
+
+#### 5. **Functional Annotation Framework**
+Multi-step functional characterization:
+- **Gene Prediction**: Open reading frame identification using Prokka
+- **Homology Search**: Sequence similarity against SwissProt database
+- **Functional Classification**: GO terms, KEGG pathways, and enzyme classification
+- **Metabolic Reconstruction**: Pathway completeness assessment
+
+## Tools and Technologies
+
+### Core Bioinformatics Tools
+
+#### **Kraken2** - Taxonomic Classification Engine
+- **Algorithm**: Exact k-mer matching with minimizer-based indexing
+- **Database**: Pre-built taxonomic database with bacterial, archaeal, viral genomes
+- **Performance**: Ultra-fast classification (~1M reads/minute)
+- **Accuracy**: High precision taxonomic assignment with confidence scoring
+
+#### **Bracken** - Abundance Estimation
+- **Method**: Bayesian re-estimation of taxonomic abundances
+- **Input**: Kraken2 classification results
+- **Output**: Species-level abundance profiles with statistical confidence
+- **Application**: Corrects for database composition bias
+
+#### **DIAMOND** - High-Performance Sequence Aligner
+- **Algorithm**: Double Index Alignment of Next-generation sequencing Data
+- **Speed**: 100-20,000x faster than BLASTX
+- **Sensitivity**: Comparable to BLAST with optimized scoring matrices
+- **Use Case**: Pathogen detection and functional annotation
+
+#### **Prokka** - Rapid Prokaryotic Genome Annotation
+- **Pipeline**: Integrates multiple annotation tools (Prodigal, HMMER, BLAST)
+- **Features**: Gene prediction, tRNA/rRNA detection, functional annotation
+- **Output**: Standard formats (GFF3, GenBank, FASTA)
+- **Speed**: Complete bacterial genome annotation in <10 minutes
+
+### Specialized Databases
+
+#### **CARD** - Comprehensive Antibiotic Resistance Database
+- **Content**: >6,000 reference sequences across all major AMR gene families
+- **Organization**: Hierarchical classification by mechanism and drug class
+- **Curation**: Expert-curated with regular updates
+- **Integration**: Direct mapping to clinical resistance phenotypes
+
+#### **VFDB** - Virulence Factor Database
+- **Scope**: Comprehensive collection of bacterial virulence factors
+- **Classification**: Organized by pathogenesis mechanism
+- **Validation**: Experimentally verified virulence associations
+- **Coverage**: >2,500 virulence factor genes from >70 bacterial genera
+
+#### **MiniKraken2** - Optimized Taxonomic Database
+- **Size**: ~8GB compressed database for efficient processing
+- **Content**: Representative genomes from bacteria, archaea, viruses
+- **Performance**: Balanced between speed and taxonomic resolution
+- **Maintenance**: Regular updates with new reference genomes
+
+### Visualization and Reporting
+
+#### **Krona** - Interactive Taxonomic Visualization
+- **Format**: HTML5-based hierarchical pie charts
+- **Interactivity**: Zoom, filter, and explore taxonomic distributions
+- **Integration**: Direct import from Kraken2 results
+- **Customization**: Multiple visualization modes and color schemes
+
+#### **Plotly** - Interactive Scientific Plotting
+- **Technology**: JavaScript-based interactive plotting library
+- **Features**: Zoom, pan, hover tooltips, data export
+- **Chart Types**: Bar plots, heatmaps, scatter plots, treemaps
+- **Output**: Self-contained HTML files for easy sharing
+
+## Scientific Applications
+
+### Clinical Metagenomics
+- **Infectious Disease Diagnosis**: Rapid pathogen identification from clinical samples
+- **AMR Surveillance**: Population-level resistance monitoring
+- **Outbreak Investigation**: Source tracking and transmission analysis
+- **Personalized Medicine**: Treatment selection based on resistance profiles
+
+### Environmental Microbiology
+- **Microbiome Studies**: Community structure and function analysis
+- **Contamination Assessment**: Pathogen detection in water/food samples
+- **Biodegradation Studies**: Functional potential assessment
+- **Ecosystem Monitoring**: Microbial community health indicators
+
+### Agricultural Applications
+- **Plant Microbiome**: Beneficial and pathogenic microorganism detection
+- **Soil Health**: Microbial diversity and functional assessment
+- **Food Safety**: Pathogen screening in agricultural products
+- **Livestock Health**: Gut microbiome and pathogen monitoring
+
+## Installation
+
+MetaQuest requires a Linux/macOS environment with conda package manager. The installation process includes:
+
+1. Environment setup with conda
+2. Database downloads (~8GB total)
+3. Tool integration and testing
+
+**📖 For detailed installation instructions, see [Installation Guide](docs/installation.md)**
+
+## Usage
+
+The tool provides a simple command-line interface for various analysis workflows:
+
+```bash
+# Basic usage (FASTQ recommended)
+metaquest sample.fastq.gz --type fastq --output results/
+
+# Check dependencies
+metaquest sample.fastq.gz --type fastq --output results/ --check-only
+
+# FASTA input (limited functionality - see development status above)
+metaquest sample.fasta --type fasta --output results/
+```
+
+**📖 For comprehensive usage examples and options, see [Usage Guide](docs/usage.md)**
+
+## Future Directions
+
+### Short-term Enhancements (v3.1-3.2)
+
+#### **FASTA Processing Improvements** *(High Priority)*
+- **Taxonomic Classification**: Fix k-mer based classification for assembled sequences
+- **Pathogen Detection**: Implement assembly-aware pathogen screening
+- **Virulence Analysis**: Optimize virulence factor detection for longer sequences
+- **Input Validation**: Enhanced format checking and error reporting
+
+#### **Performance Optimization**
+- **GPU Acceleration**: CUDA-enabled alignment for DIAMOND searches
+- **Memory Management**: Streaming algorithms for large dataset processing
+- **Parallel Processing**: Multi-sample batch processing with job queuing
+- **Database Compression**: Advanced indexing for reduced memory footprint
+
+#### **Extended Analysis Capabilities**
+- **Plasmid Detection**: Identification and characterization of mobile genetic elements
+- **Prophage Analysis**: Integrated viral sequence detection and annotation
+- **Metabolic Profiling**: KEGG pathway reconstruction and completeness scoring
+- **Strain-level Resolution**: Sub-species identification using marker genes
+
+#### **Enhanced Visualization**
+- **3D Network Graphs**: Interactive microbial interaction networks
+- **Time-series Analysis**: Longitudinal microbiome dynamics visualization
+- **Comparative Analysis**: Multi-sample comparison dashboards
+- **Publication-ready Figures**: Export to vector formats (SVG, PDF)
+
+### Medium-term Developments (v4.0-4.5)
+
+#### **Machine Learning Integration**
+- **Pathogenicity Prediction**: ML models for novel pathogen risk assessment
+- **Resistance Prediction**: Phenotype prediction from genotype data
+- **Community Classification**: Microbiome state classification and clustering
+- **Anomaly Detection**: Automated identification of unusual microbial signatures
+
+#### **Advanced Genomics Features**
+- **Pangenome Analysis**: Core and accessory genome characterization
+- **Horizontal Gene Transfer**: Detection and visualization of HGT events
+- **Evolutionary Analysis**: Phylogenetic reconstruction and molecular evolution
+- **Functional Redundancy**: Assessment of metabolic pathway robustness
+
+#### **Clinical Decision Support**
+- **Treatment Recommendations**: Evidence-based therapy suggestions
+- **Resistance Prediction**: Clinical breakpoint integration
+- **Risk Stratification**: Patient-specific pathogen risk assessment
+- **Outbreak Detection**: Automated surveillance and alerting systems
+
+### Long-term Vision (v5.0+)
+
+#### **Real-time Analysis Platform**
+- **Streaming Analysis**: Live analysis of MinION/GridION sequencing data
+- **Cloud Integration**: Scalable cloud-based processing infrastructure
+- **Mobile Interface**: Tablet/smartphone access for field applications
+- **API Development**: RESTful API for integration with LIMS systems
+
+#### **Multi-omics Integration**
+- **Proteomics**: Integration with metaproteomic analysis pipelines
+- **Metabolomics**: Correlation with metabolic profiling data
+- **Transcriptomics**: RNA-seq integration for activity assessment
+- **Host-Microbe Interactions**: Integrated host genomics analysis
+
+#### **Artificial Intelligence**
+- **Natural Language Processing**: Automated literature mining for pathogen information
+- **Computer Vision**: Integration of microscopy and imaging data
+- **Predictive Modeling**: Population-level outbreak prediction
+- **Knowledge Graphs**: Semantic integration of multi-source biological data
+
+#### **Global Health Applications**
+- **Surveillance Networks**: International pathogen monitoring platforms
+- **Rapid Diagnostics**: Point-of-care sequencing integration
+- **Antimicrobial Stewardship**: Population-level resistance management
+- **One Health Integration**: Environmental-clinical-veterinary data fusion
+
+## Contributing
+
+We welcome contributions from the scientific community. Areas of particular interest include:
+
+- **Algorithm Development**: New methods for metagenomic analysis
+- **Database Curation**: Expansion and validation of reference databases
+- **Visualization Tools**: Novel approaches for data presentation
+- **Clinical Validation**: Real-world testing and benchmarking studies
+- **Documentation**: User guides, tutorials, and best practices
+- **FASTA Processing**: Help improve assembly-based analysis workflows
+
+## Reporting Issues
+
+If you encounter problems, especially with FASTA file processing, please report them with:
+- Input file format and size
+- Error messages or unexpected output
+- System specifications
+- MetaQuest version information
+
+## Contact and Support
+
+- **Documentation**: [Installation Guide](docs/installation.md) | [Usage Guide](docs/usage.md)
+- **Issues**: Report bugs and feature requests via GitHub issues
+- **Community**: Join our discussion forum for questions and collaboration
+
+---
+
+**MetaQuest Development Team**  
+*Advancing metagenomics through integrated computational solutions*
+
+---
+*Last updated: May 2025 - Development version with ongoing FASTA processing improvements*
