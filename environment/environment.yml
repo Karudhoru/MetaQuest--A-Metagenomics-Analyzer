@@ -1,0 +1,29 @@
+name: metagenomics_app
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
+dependencies:
+  - python=3.8
+  - diamond
+  - kraken2
+  - seqtk
+  - krona
+  - prokka
+  - bracken
+  - taxonkit
+  - matplotlib
+  - pandas
+  - seaborn
+  - plotly
+  - parallel
+  - hmmer
+  - blast
+  - prodigal
+  - tbl2asn
+  - ncbi-datasets-cli
+  - biopython
+  - numpy
+prefix: /root/miniconda3/envs/metagenomics_app
