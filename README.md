@@ -102,6 +102,12 @@ Multi-step functional characterization:
 - **Output**: Standard formats (GFF3, GenBank, FASTA)
 - **Speed**: Complete bacterial genome annotation in <10 minutes
 
+#### **Seqkit** - Fast Sequence Processing Toolkit
+- **Purpose**: High-performance FASTQ/FASTA file manipulation
+- **Features**: Format conversion, quality filtering, sequence splitting
+- **Application**: Interleaved FASTQ splitting and preprocessing
+- **Speed**: Optimized for large-scale sequence processing
+
 ### Specialized Databases
 
 #### **CARD** - Comprehensive Antibiotic Resistance Database
@@ -168,20 +174,58 @@ MetaQuest requires a Linux/macOS environment with conda package manager. The ins
 
 ## Usage
 
-The tool provides a simple command-line interface for various analysis workflows:
+### Enhanced FASTQ Input Support
 
-```bash
-# Basic usage (FASTQ recommended)
-metaquest sample.fastq.gz --type fastq --output results/
+MetaQuest now supports multiple FASTQ input modes for improved flexibility:
 
-# Check dependencies
-metaquest sample.fastq.gz --type fastq --output results/ --check-only
+**📖 For detailed installation instructions, see [Usage Guide](docs/usage.md)**
 
-# FASTA input (limited functionality - see development status above)
-metaquest sample.fasta --type fasta --output results/
-```
+
+### Command-line Options
+
+#### Required Arguments
+- `--type` (`-t`): Input file type (`fastq` or `fasta`)
+- `--output` (`-o`): Output directory path
+
+#### FASTQ Input Options (Mutually Exclusive)
+- `--reads` (`-r`): Single-end FASTQ file
+- `--reads1` (`-1`) + `--reads2` (`-2`): Paired-end FASTQ files
+- `--interleaved` (`-i`): Interleaved paired-end FASTQ file
+
+#### FASTA Input Options
+- Input file specified as positional argument
+
+### Input Validation and Processing
+
+MetaQuest automatically:
+- Validates file existence and format
+- Detects interleaved FASTQ files and splits them using seqkit
+- Configures analysis parameters based on input type
+- Provides informative error messages for invalid inputs
 
 **📖 For comprehensive usage examples and options, see [Usage Guide](docs/usage.md)**
+
+## Recent Updates
+
+### CLI & Pipeline Enhancements (v3.1.1)
+
+#### Enhanced FASTQ Input Support
+- **Mutually Exclusive Input Groups**: Added support for single-end, paired-end, and interleaved FASTQ inputs
+- **Automatic Interleaved Processing**: Seamless detection and splitting of interleaved FASTQ files
+- **Improved Validation**: Enhanced file existence checking and format validation
+- **Flexible Command Interface**: Multiple input options with clear usage patterns
+
+#### Technical Improvements
+- **Seqkit Integration**: Added seqkit for efficient interleaved FASTQ splitting
+- **Enhanced Logging**: Improved progress reporting and paired-end detection
+- **Streamlined Processing**: Optimized workflow for different input formats
+- **Error Handling**: Better error messages and validation feedback
+
+#### Backend Updates
+- **CLI Module**: Restructured argument parsing with mutually exclusive groups
+- **Analysis Pipeline**: Enhanced to handle list-based input file processing
+- **Taxonomic Classification**: Improved Kraken2 integration for paired-end reads
+- **Utility Functions**: New helper functions for format conversion and file splitting
 
 ## Future Directions
 
@@ -288,4 +332,4 @@ If you encounter problems, especially with FASTA file processing, please report 
 *Advancing metagenomics through integrated computational solutions*
 
 ---
-*Last updated: May 2025 - Development version with ongoing FASTA processing improvements*
+*Last updated: May 2025 - Development version with enhanced FASTQ input support and ongoing FASTA processing improvements*
