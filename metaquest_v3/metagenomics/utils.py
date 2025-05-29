@@ -143,7 +143,13 @@ def convert_fastq_to_fasta(fastq_path, output_dir):
     
     # Method 1: Use seqtk with deduplication by adding sequence counter
     temp_fasta = output_dir/"temp_converted.fasta"
-    cmd = f"seqtk seq -a {fastq_path} > {temp_fasta}"
+    # fastq_path may be str or list of two strings
+    if isinstance(fastq_path, (list,tuple)):
+        # merge both reads
+        fastq_str = " ".join(fastq_path)
+    else:
+        fastq_str = fastq_path
+    cmd = f"seqtk seq -a {fastq_str} > {temp_fasta}"
     print(f"Running: {cmd}")
     subprocess.run(cmd, shell=True, check=True)
     
@@ -174,6 +180,23 @@ def convert_fastq_to_fasta(fastq_path, output_dir):
     
     print(f"✓ Converted FASTQ to FASTA with unique IDs: {fasta_path}")
     return fasta_path
+
+
+def split_interleaved(interleaved_fastq: str, output_dir: Path) -> list:
+    """
+    Split a single interleaved FASTQ into two files (R1, R2) using seqkit.
+    Requires seqkit in your PATH.
+    """
+    r1 = output_dir / "split_R1.fastq"
+    r2 = output_dir / "split_R2.fastq"
+    cmd = (
+        f"seqkit split2 -1 {r1} -2 {r2} "
+        f"--by-pair {interleaved_fastq}"
+    )
+    print(f"Running: {cmd}")
+    subprocess.run(cmd, shell=True, check=True)
+    return [str(r1), str(r2)]
+
 
 def compute_sequence_statistics(fasta_path, output_dir):
     """Compute comprehensive statistics for FASTA sequences"""

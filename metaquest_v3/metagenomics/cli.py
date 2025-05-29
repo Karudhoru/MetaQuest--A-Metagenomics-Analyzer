@@ -6,9 +6,18 @@ from .utils import check_dependencies, check_database_status
 
 def main():
     parser = argparse.ArgumentParser(description="Metagenomics Analysis Pipeline")
-    parser.add_argument('input', help="Input file path (FASTA or FASTQ)")
+    # For FASTA we still take a single input; for FASTQ allow single- or paired-end
     parser.add_argument('-t', '--type', required=True, choices=['fasta', 'fastq'],
-                       help="Input file type")
+                        help="Input file type")
+    fq_group = parser.add_mutually_exclusive_group()
+    fq_group.add_argument('-r','--reads', nargs=1, metavar=('R1.fastq',),
+                          help="Single-end FASTQ file")
+    fq_group.add_argument('-1','--reads1', nargs=1, metavar=('R1.fastq',),
+                          help="Paired-end FASTQ: R1 file") 
+    parser.add_argument('-2','--reads2', nargs=1, metavar=('R2.fastq',),
+                            help="Paired-end FASTQ: R2 file (with --reads1)")
+    fq_group.add_argument('-i','--interleaved', nargs=1, metavar=('reads.interleaved.fastq',),
+                          help="Interleaved paired-end FASTQ in one file")
     parser.add_argument('-o', '--output', default='results', help="Output directory")
     parser.add_argument('--check-only', action='store_true', 
                        help="Only check dependencies and databases")
@@ -25,11 +34,30 @@ def main():
             print("\n✓ All checks passed!")
             exit(0)
         
-        if not Path(args.input).exists():
-            raise FileNotFoundError(f"Input file not found: {args.input}")
-        
-        print(f"\nStarting analysis of {args.input}")
-        run_analysis(args.input, args.type, args.output)
+        if args.type == 'fastq':
+            # verify single or paired
+            if args.reads:
+                r1 = args.reads[0]
+                if not Path(r1).exists(): raise FileNotFoundError(r1)
+                reads = [r1]
+            elif args.interleaved:
+                # mark for de-interleaving
+                reads = args.interleaved
+            else:
+                r1 = args.reads1 and args.reads1[0]
+                r2 = args.reads2 and args.reads2[0]
+                if not (r1 and r2):
+                    raise ValueError("Must provide both --reads1 and --reads2 for paired-end")
+                for f in (r1,r2):
+                    if not Path(f).exists(): raise FileNotFoundError(f)
+                reads = [r1, r2]
+            print(f"\nStarting FASTQ analysis of {reads}")
+            run_analysis(reads, 'fastq', args.output)
+        else:
+            if not Path(args.input).exists():
+                raise FileNotFoundError(f"Input file not found: {args.input}")
+            print(f"\nStarting FASTA analysis of {args.input}")
+            run_analysis([args.input], 'fasta', args.output)
         
         print(f"\n🎉 Analysis complete! Results saved to {args.output}")
         

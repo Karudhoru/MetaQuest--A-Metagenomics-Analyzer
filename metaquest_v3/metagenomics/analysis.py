@@ -5,7 +5,7 @@ from pathlib import Path
 from Bio import SeqIO
 import numpy as np
 from .config import *  # Import all config constants
-from .utils import check_dependencies, convert_fastq_to_fasta, compute_sequence_statistics, create_pathogenic_taxids
+from .utils import check_dependencies, convert_fastq_to_fasta, compute_sequence_statistics, create_pathogenic_taxids, split_interleaved
 from .reporting import generate_final_report
 from .taxonomic_analysis import run_kraken, run_bracken, run_fasta_kraken, generate_taxonomy_report
 from .pathogen_analysis import *
@@ -24,22 +24,29 @@ def run_analysis(input_file, file_type, output_dir):
     print(f"Output directory: {output_dir}")
     
     if file_type == 'fastq':
+        # input_file now is a list: [R1] or [R1, R2]
         analyze_fastq(input_file, output_dir)
     else:
-        analyze_fasta(input_file, output_dir)
+        # still a single-element list
+        analyze_fasta(input_file[0], output_dir)
 
     # Generate final outputs
     generate_final_report(output_dir)
     print(f"\n🎉 Analysis complete! Open {output_dir}/analysis_dashboard.html to explore results")
 
-def analyze_fastq(fastq_path, output_dir):
+def analyze_fastq(reads, output_dir):
     """Process FASTQ files"""
     print("\n=== FASTQ Analysis Pipeline ===")
     
     # Taxonomy
-    print("1. Running taxonomic classification...")
-    kraken_report = run_kraken(fastq_path, output_dir)
-    
+    # if we got a single interleaved file, split it first
+    if len(reads)==1 and reads[0].endswith(('.fq','.fastq')):
+        print("Detected interleaved FASTQ → de-interleaving…")
+        reads = split_interleaved(reads[0], output_dir)  # returns [R1, R2]
+
+    print("1. Running taxonomic classification (paired=%s)..." % (len(reads)==2))
+    kraken_report = run_kraken(reads, output_dir) 
+
     print("2. Running Bracken abundance estimation...")
     bracken_report = run_bracken(kraken_report, output_dir)
     
@@ -48,7 +55,8 @@ def analyze_fastq(fastq_path, output_dir):
     
     # Convert FASTQ to FASTA for functional annotation
     print("4. Converting FASTQ to FASTA...")
-    fasta_path = convert_fastq_to_fasta(fastq_path, output_dir)
+    # collapse paired or single into one fasta
+    fasta_path = convert_fastq_to_fasta(reads if len(reads)>1 else reads[0], output_dir)
     
     # Functional annotation
     print("5. Running gene prediction (Prokka)...")

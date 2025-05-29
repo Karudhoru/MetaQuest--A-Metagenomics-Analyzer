@@ -6,11 +6,17 @@ from collections import Counter
 from .config import *
 from .utils import check_dependencies
 
-def run_kraken(input_file, output_dir):
+def run_kraken(input_files, output_dir):
     """Run Kraken2 classification"""
     report = output_dir/"kraken_report.txt"
     classified = output_dir/"kraken_classified.txt"
-    cmd = f"kraken2 --db {KRAKEN_DB} --threads 8 --report {report} --output {classified} {input_file}"
+    # input_files might be a list of one (single-end) or two paths (paired-end)
+    if isinstance(input_files, (list,tuple)) and len(input_files)==2:
+        reads_flags = f"--paired {input_files[0]} {input_files[1]}"
+    else:
+        reads_flags = input_files[0] if isinstance(input_files,(list,tuple)) else input_files
+    cmd = f"kraken2 --db {KRAKEN_DB} --threads 8 --report {report} --output {classified} {reads_flags}"
+
     print(f"Running: {cmd}")
     subprocess.run(cmd, shell=True, check=True)
     return report
