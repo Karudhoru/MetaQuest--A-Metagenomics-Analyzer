@@ -12,6 +12,7 @@ dependencies:
   - seqtk
   - krona
   - prokka
+  - firefox
   - bracken
   - taxonkit
   - matplotlib
