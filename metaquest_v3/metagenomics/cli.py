@@ -6,6 +6,10 @@ from .utils import check_dependencies, check_database_status
 
 def main():
     parser = argparse.ArgumentParser(description="Metagenomics Analysis Pipeline")
+    
+    # Add the input file argument for FASTA
+    parser.add_argument('input', nargs='?', help="Input FASTA file")
+    
     # For FASTA we still take a single input; for FASTQ allow single- or paired-end
     parser.add_argument('-t', '--type', required=True, choices=['fasta', 'fastq'],
                         help="Input file type")
@@ -53,7 +57,9 @@ def main():
                 reads = [r1, r2]
             print(f"\nStarting FASTQ analysis of {reads}")
             run_analysis(reads, 'fastq', args.output)
-        else:
+        else:  # FASTA type
+            if not args.input:
+                raise ValueError("Input FASTA file is required for FASTA analysis")
             if not Path(args.input).exists():
                 raise FileNotFoundError(f"Input file not found: {args.input}")
             print(f"\nStarting FASTA analysis of {args.input}")
