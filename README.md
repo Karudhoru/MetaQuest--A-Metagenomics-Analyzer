@@ -8,29 +8,31 @@ MetaQuest is an integrated bioinformatics pipeline that addresses the complex ch
 
 ## ⚠️ Development Status
 
-**MetaQuest is currently under active development.** While the core functionality is operational, please note the following limitations:
+**MetaQuest is currently under active development.** The core functionality is operational with significant improvements in FASTA processing capabilities:
 
-### Known Issues with FASTA Input Files
-- **Taxonomic Classification**: FASTA file processing for taxonomic profiling is currently inaccurate and requires optimization
-- **Pathogenicity Assessment**: Pathogen detection workflows for FASTA inputs are not functioning correctly
-- **Virulence Factor Analysis**: Virulence factor identification from FASTA files is unreliable
+### Current FASTA Processing Status
+- **Taxonomic Classification**: ✅ **COMPLETED** - FASTA taxonomic profiling is now accurate and fully functional
+- **Pathogenicity Assessment**: 🔄 **IN DEVELOPMENT** - Pathogen detection workflows for FASTA inputs require optimization
+- **Virulence Factor Analysis**: 🔄 **IN DEVELOPMENT** - Virulence factor identification from FASTA files needs refinement
+- **AMR Analysis**: 🔄 **IN DEVELOPMENT** - Antimicrobial resistance detection for FASTA inputs under active development
 
-**Current Recommendation**: For most reliable results, use FASTQ input files. FASTA support improvements are prioritized for the next release.
+**Current Status**: FASTA files now provide reliable taxonomic classification. Pathogen screening, AMR analysis, and virulence factor detection are functional but undergoing optimization for improved accuracy.
 
 ### Development Timeline
-- **FASTA Processing Fixes**: Target completion Q3 2025
-- **Enhanced Validation**: Comprehensive testing across file formats ongoing
-- **Documentation Updates**: User guides being updated to reflect current capabilities
+- **FASTA Taxonomic Classification**: ✅ **COMPLETED** (v3.1.2)
+- **Enhanced Pathogen Detection**: Target completion Q3 2025
+- **AMR & Virulence Optimization**: Target completion Q4 2025
+- **Comprehensive Validation**: Ongoing testing across file formats
 
-We appreciate your patience as we continue to improve MetaQuest. Please report any issues or unexpected behavior through our GitHub repository.
+**Recommendation**: Both FASTQ and FASTA inputs are now viable, with FASTA providing excellent taxonomic results. For pathogen detection and AMR analysis, FASTQ inputs remain more reliable until optimization is complete.
 
 ### Key Features
 
-- **Taxonomic Profiling**: Species-level identification and abundance estimation *(FASTQ recommended)*
-- **Pathogen Screening**: Detection of bacterial, viral, and fungal pathogens *(FASTQ recommended)*
-- **Antimicrobial Resistance (AMR) Analysis**: Comprehensive resistance gene detection
-- **Virulence Factor Assessment**: Identification of pathogenicity determinants *(FASTQ recommended)*
-- **Functional Annotation**: Gene prediction and functional characterization
+- **Taxonomic Profiling**: Species-level identification and abundance estimation *(Fully supported for both FASTQ and FASTA)*
+- **Pathogen Screening**: Detection of bacterial, viral, and fungal pathogens *(FASTQ recommended, FASTA under optimization)*
+- **Antimicrobial Resistance (AMR) Analysis**: Comprehensive resistance gene detection *(FASTQ recommended, FASTA under optimization)*
+- **Virulence Factor Assessment**: Identification of pathogenicity determinants *(FASTQ recommended, FASTA under optimization)*
+- **Functional Annotation**: Gene prediction and functional characterization *(Fully supported for both formats)*
 - **Quality Assessment**: Statistical analysis and quality metrics
 - **Interactive Visualization**: Rich HTML reports with dynamic plots
 
@@ -207,6 +209,20 @@ MetaQuest automatically:
 
 ## Recent Updates
 
+### FASTA Processing Improvements (v3.1.2)
+
+#### Enhanced Taxonomic Classification
+- **Complete FASTA Support**: Taxonomic profiling for FASTA files is now fully functional and accurate
+- **Improved k-mer Classification**: Optimized Kraken2 integration for assembled sequences
+- **Enhanced Visualization**: Accurate taxonomic visualizations (Krona, pie charts, treemaps)
+- **Quality Metrics**: Comprehensive assembly quality assessment and reporting
+
+#### Ongoing Developments
+- **Pathogen Detection**: Active optimization of pathogen screening workflows for FASTA inputs
+- **AMR Analysis**: Enhanced antimicrobial resistance detection algorithms under development
+- **Virulence Factors**: Improved virulence factor identification accuracy in progress
+- **Performance Tuning**: Continued optimization for large FASTA datasets
+
 ### CLI & Pipeline Enhancements (v3.1.1)
 
 #### Enhanced FASTQ Input Support
@@ -229,13 +245,13 @@ MetaQuest automatically:
 
 ## Future Directions
 
-### Short-term Enhancements (v3.1-3.2)
+### Short-term Enhancements (v3.2-3.3)
 
-#### **FASTA Processing Improvements** *(High Priority)*
-- **Taxonomic Classification**: Fix k-mer based classification for assembled sequences
-- **Pathogen Detection**: Implement assembly-aware pathogen screening
-- **Virulence Analysis**: Optimize virulence factor detection for longer sequences
-- **Input Validation**: Enhanced format checking and error reporting
+#### **FASTA Processing Optimization** *(High Priority)*
+- **Pathogen Detection**: Complete optimization of assembly-aware pathogen screening
+- **AMR Analysis**: Enhanced antimicrobial resistance detection for longer sequences
+- **Virulence Analysis**: Improved virulence factor detection accuracy
+- **Clinical Validation**: Comprehensive benchmarking against known datasets
 
 #### **Performance Optimization**
 - **GPU Acceleration**: CUDA-enabled alignment for DIAMOND searches
@@ -310,15 +326,17 @@ We welcome contributions from the scientific community. Areas of particular inte
 - **Visualization Tools**: Novel approaches for data presentation
 - **Clinical Validation**: Real-world testing and benchmarking studies
 - **Documentation**: User guides, tutorials, and best practices
-- **FASTA Processing**: Help improve assembly-based analysis workflows
+- **FASTA Processing**: Help optimize pathogen detection and AMR analysis workflows
 
 ## Reporting Issues
 
-If you encounter problems, especially with FASTA file processing, please report them with:
+If you encounter problems, please report them with:
 - Input file format and size
 - Error messages or unexpected output
 - System specifications
 - MetaQuest version information
+
+**Note**: For FASTA files, taxonomic classification is now fully reliable. If you experience issues with pathogen detection, AMR analysis, or virulence factor identification, please note that these features are under active optimization.
 
 ## Contact and Support
 
@@ -332,4 +350,4 @@ If you encounter problems, especially with FASTA file processing, please report 
 *Advancing metagenomics through integrated computational solutions*
 
 ---
-*Last updated: May 2025 - Development version with enhanced FASTQ input support and ongoing FASTA processing improvements*
+*Last updated: June 2025 - Development version with enhanced FASTA taxonomic classification and ongoing pathogen detection optimization*
