@@ -9,9 +9,6 @@ This guide covers how to use MetaQuest for metagenomics analysis after installat
 - [Command Line Options](#command-line-options)
 - [Input File Formats](#input-file-formats)
 - [Output Files](#output-files)
-- [Advanced Usage](#advanced-usage)
-- [Performance Optimization](#performance-optimization)
-- [Troubleshooting](#troubleshooting)
 
 ## Quick Start
 
@@ -184,28 +181,11 @@ MetaQuest generates a comprehensive set of output files:
 #### FASTQ Input Results
 ```
 results/
-├── 3d_annotation.html                    # 3D visualization of annotations
-├── amr_classes_distribution.html         # AMR class distribution plots
-├── amr_hits.txt                         # Antimicrobial resistance hits
-├── amr_identity_distribution.html        # AMR identity distribution plots
-├── analysis_dashboard.html              # Analysis dashboard with key metrics
-├── antimicrobial_resistance_report.json # AMR analysis results (JSON)
-├── assembly_quality_report.html         # Assembly quality metrics (HTML)
-├── assembly_quality_report.json         # Assembly quality metrics (JSON)
 ├── bracken_report.tsv                   # Bracken abundance estimation (TSV)
 ├── bracken_report.txt                   # Bracken abundance estimation (TXT)
 ├── converted.fasta                      # Converted/processed FASTA
-├── fasta_kraken_classified.txt          # Kraken2 classified sequences
-├── fasta_kraken_report.txt              # Kraken2 classification report
-├── final_report.html                    # Main comprehensive report
-├── gc_distribution.html                 # GC content distribution plots
 ├── kraken_classified.txt                # Kraken2 classified reads
 ├── kraken_report.txt                    # Kraken2 report for reads
-├── krona_input.txt                      # Krona visualization input
-├── length_distribution.html             # Sequence length distribution
-├── length_summary.html                  # Length statistics summary
-├── pathogen_blast_results.txt           # Pathogen BLAST search results
-├── pathogen_summary.txt                 # Pathogen identification summary
 ├── prokka_annotation/                   # Prokka gene annotation results
 │   ├── sample.err                       # Error log
 │   ├── sample.faa                       # Protein sequences (FASTA)
@@ -219,34 +199,25 @@ results/
 │   ├── sample.tbl                       # Feature table
 │   ├── sample.tsv                       # Tab-separated annotations
 │   └── sample.txt                       # Text summary
-├── sequence_statistics.json             # Sequence statistics (JSON)
 ├── swissprot_annotation.tsv             # SwissProt functional annotations
-├── swissprot_identity.html              # SwissProt identity distribution
-├── taxonomy_krona.html                  # Krona taxonomic visualization
-├── taxonomy_pie.html                    # Taxonomic pie chart
-├── taxonomy_treemap.html                # Taxonomic treemap visualization
-└── virulence_hits.txt                   # Virulence factor hits
+└── taxonomy_overview.html               # Krona taxonomic visualization
 ```
 
 #### FASTA Input Results
 ```
 results/
-├── 3d_annotation.html                    # 3D visualization of annotations
-├── amr_classes_distribution.html         # AMR class distribution plots
-├── amr_hits.txt                         # Antimicrobial resistance hits
-├── amr_identity_distribution.html        # AMR identity distribution plots
-├── antimicrobial_resistance_report.json # AMR analysis results (JSON)
-├── assembly_quality_report.html         # Assembly quality metrics (HTML)
-├── assembly_quality_report.json         # Assembly quality metrics (JSON)
-├── fasta_kraken_classified.txt          # Kraken2 classified sequences
-├── fasta_kraken_report.txt              # Kraken2 classification report
-├── final_report.html                    # Main comprehensive report
-├── gc_distribution.html                 # GC content distribution plots
+├── amr_hits.txt                         # AMR hits (under development)
+├── annotation_quality.html             # Annotation quality metrics
+├── annotation_summary.txt               # Annotation summary
+├── blast_cache/                         # BLAST cache directory
+│   └── blast_cache.json                 # Cached BLAST results
+├── blast_report.txt                     # BLAST analysis report
+├── blast_taxonomy_results.json          # BLAST taxonomy results (JSON)
+├── blast_taxonomy_summary.txt           # BLAST taxonomy summary
 ├── krona_input.txt                      # Krona visualization input
-├── length_distribution.html             # Sequence length distribution
-├── length_summary.html                  # Length statistics summary
-├── pathogen_blast_results.txt           # Pathogen BLAST search results
-├── pathogen_summary.txt                 # Pathogen identification summary
+├── organism_comparison_data.csv          # Organism comparison (CSV)
+├── organism_comparison_data.json         # Organism comparison (JSON)
+├── pathogen_blast_results.txt           # Pathogen BLAST results (under development)
 ├── prokka_annotation/                   # Prokka gene annotation results
 │   ├── sample.err                       # Error log
 │   ├── sample.faa                       # Protein sequences (FASTA)
@@ -260,121 +231,138 @@ results/
 │   ├── sample.tbl                       # Feature table
 │   ├── sample.tsv                       # Tab-separated annotations
 │   └── sample.txt                       # Text summary
-├── sequence_statistics.json             # Sequence statistics (JSON)
 ├── swissprot_annotation.tsv             # SwissProt functional annotations
-├── swissprot_identity.html              # SwissProt identity distribution
 ├── taxonomy_krona.html                  # Krona taxonomic visualization
-├── taxonomy_pie.html                    # Taxonomic pie chart
-├── taxonomy_treemap.html                # Taxonomic treemap visualization
-└── virulence_hits.txt                   # Virulence factor hits
+└── virulence_hits.txt                   # Virulence hits (under development)
 ```
 
 ### Key Output Files
 
 #### Main Reports
-- **final_report.html**: Comprehensive interactive HTML report with all results
-- **analysis_dashboard.html**: Analysis dashboard with key metrics (FASTQ only)
+- **taxonomy_krona.html**: Interactive Krona taxonomic visualization (FASTA)
+- **taxonomy_overview.html**: Krona taxonomic visualization (FASTQ)
 
 #### Taxonomic Results
-- **kraken_report.txt** / **fasta_kraken_report.txt**: Kraken2 classification reports
-- **kraken_classified.txt** / **fasta_kraken_classified.txt**: Classified sequences
-- **bracken_report.tsv** / **bracken_report.txt**: Bracken abundance estimation (FASTQ only)
-- **taxonomy_krona.html**: Interactive Krona taxonomic visualization
-- **taxonomy_pie.html**: Taxonomic composition pie chart
-- **taxonomy_treemap.html**: Taxonomic treemap visualization
+- **blast_report.txt**: BLAST-based taxonomic classification report (FASTA)
+- **blast_taxonomy_summary.txt**: Detailed BLAST taxonomic analysis summary (FASTA)
+- **blast_taxonomy_results.json**: BLAST taxonomy results in JSON format (FASTA)
+- **kraken_report.txt**: Kraken2 classification report (FASTQ)
+- **kraken_classified.txt**: Kraken2 classified sequences (FASTQ)
+- **bracken_report.tsv**: Bracken abundance estimation in TSV format (FASTQ)
+- **bracken_report.txt**: Bracken abundance estimation in text format (FASTQ)
+- **organism_comparison_data.csv**: Organism comparison data in CSV format (FASTA)
+- **organism_comparison_data.json**: Organism comparison data in JSON format (FASTA)
 
-#### Pathogen & Resistance Analysis
-- **pathogen_summary.txt**: Summary of pathogenic organism findings
-- **pathogen_blast_results.txt**: Detailed pathogen BLAST search results
-- **amr_hits.txt**: Antimicrobial resistance gene hits
-- **virulence_hits.txt**: Virulence factor identifications
-- **antimicrobial_resistance_report.json**: Structured AMR analysis results
-- **amr_classes_distribution.html**: AMR class distribution visualization
-- **amr_identity_distribution.html**: AMR identity distribution plots
+#### Pathogen & Resistance Analysis (Under Development)
+- **pathogen_blast_results.txt**: Pathogen BLAST search results (FASTA)
+- **amr_hits.txt**: Antimicrobial resistance gene hits (FASTA)
+- **virulence_hits.txt**: Virulence factor identifications (FASTA)
 
 #### Functional Annotation
-- **prokka_annotation/**: Complete Prokka gene annotation results
-  - **sample.tsv**: Tab-separated gene annotations
+- **prokka_annotation/**: Complete Prokka gene annotation results (Available for both FASTA and FASTQ inputs)
+  - **sample.txt**: Annotation summary with organism info and statistics
+  - **sample.tsv**: Tab-separated gene annotations with detailed functional information
   - **sample.gff**: Gene feature format file
   - **sample.faa**: Protein sequences
   - **sample.ffn**: Gene sequences
   - **sample.gbk**: GenBank format annotation
 - **swissprot_annotation.tsv**: SwissProt functional annotations
-- **swissprot_identity.html**: SwissProt identity distribution
-- **3d_annotation.html**: 3D visualization of annotations
+- **annotation_quality.html**: Annotation quality metrics (FASTA)
+- **annotation_summary.txt**: Annotation summary report (FASTA)
 
 #### Quality & Statistics
-- **assembly_quality_report.html** / **assembly_quality_report.json**: Assembly quality metrics
-- **sequence_statistics.json**: Comprehensive sequence statistics
-- **gc_distribution.html**: GC content distribution analysis
-- **length_distribution.html**: Sequence length distribution
-- **length_summary.html**: Length statistics summary
+- **converted.fasta**: Converted/processed FASTA sequences (FASTQ)
+- **krona_input.txt**: Input file for Krona visualization (FASTA)
+
+#### Cache and Support Files
+- **blast_cache/**: BLAST results caching directory (FASTA)
+  - **blast_cache.json**: Cached BLAST results for faster re-analysis
 
 ### Output Format Details
 
-#### Taxonomic Classification Results
+#### BLAST Taxonomic Classification (FASTA Input)
 ```txt
-# kraken_report.txt format
- 15.23  1234    1234    S    562      Escherichia coli
-  8.45   678     678    S    1280     Staphylococcus aureus
+# blast_report.txt format
+0.00	0	0	U	0	unclassified
+50.00	10	1	S	0	Salmonella enterica
+30.00	6	1	S	0	Escherichia coli
+10.00	2	1	S	0	Klebsiella pneumoniae
+10.00	2	1	S	0	Cloning vector
 ```
 
-#### Pathogen Summary Format
+#### BLAST Taxonomy Summary (FASTA Input)
 ```txt
-# pathogen_summary.txt
-Organism: Salmonella enterica
-Confidence: High
-Number of hits: 234
-Risk assessment: Pathogenic
-Classification: Bacterial pathogen
+# blast_taxonomy_summary.txt format
+BLAST TAXONOMIC CLASSIFICATION SUMMARY
+==================================================
+
+Total sequences analyzed: 1
+Sequences with hits: 1
+Total BLAST hits: 20
+Unique organisms identified: 4
+
+TOP ORGANISMS BY TOTAL HITS:
+----------------------------------------
+Organism                       Total Hits Sequences  Avg Hits/Seq
+----------------------------------------
+Salmonella enterica            10         1          10.0        
+Escherichia coli               6          1          6.0         
+Klebsiella pneumoniae          2          1          2.0         
+Cloning vector                 2          1          2.0
 ```
 
-#### AMR Hits Format
-```txt
-# amr_hits.txt
-Gene: blaTEM-1
-Class: Beta-lactamase
-Mechanism: Hydrolysis
-Identity: 98.5%
-Coverage: 100%
-Organism: E. coli
+#### Organism Comparison Data (FASTA Input)
+```csv
+# organism_comparison_data.csv format
+organism,total_hits,sequences_with_hits,avg_hits_per_sequence
+Salmonella enterica,10,1,10.0
+Escherichia coli,6,1,6.0
+Klebsiella pneumoniae,2,1,2.0
+Cloning vector,2,1,2.0
 ```
 
-#### Virulence Factors Format
-```txt
-# virulence_hits.txt
-Factor: Shiga toxin
-Type: Cytotoxin
-Organism: E. coli O157:H7
-Identity: 97.2%
-Function: Cell damage
+#### Bracken Abundance Report (FASTQ Input)
+```tsv
+# bracken_report.tsv format
+name	taxonomy_id	taxonomy_lvl	kraken_assigned_reads	added_reads	new_est_reads	fraction_total_reads
+Marinilactibacillus sp. 15R	1911586	S	120	4406	4526	0.24906
+Paucilactobacillus nenjiangensis	1296540	S	41	573	614	0.03379
+Amylolactobacillus amylophilus	1603	S	37	4840	4877	0.26838
+Aerococcus urinae	1376	S	48	345	393	0.02163
+Suicoccus acidiformans	2036206	S	10	283	293	0.01612
+Tetragenococcus osmophilus	526944	S	11	596	607	0.03340
+Peribacillus psychrosaccharolyticus	1407	S	69	308	377	0.02075
+Peribacillus butanolivorans	421767	S	17	65	82	0.00451
+Bacillus thuringiensis	1428	S	12	70	82	0.00451
+Bacillus velezensis	492670	S	10	464	474	0.02608
+Jeotgalicoccus saudimassiliensis	1461582	S	11	25	36	0.00198
+Finegoldia magna	1260	S	3884	639	4523	0.24890
+Anaerococcus mediterraneensis	1870984	S	28	8	36	0.00198
+Gudongella oleilytica	1582259	S	707	18	725	0.03990
+Mycoplasma sp. (ex Biomphalaria glabrata)	1749074	S	499	21	520	0.02862
 ```
 
+#### Prokka Annotation Results (Both FASTA and FASTQ Input)
+```tsv
+# sample.tsv format (Prokka functional annotations)
+locus_tag	ftype	length_bp	gene	EC_number	COG	product
+KIEHJLIC_00001	CDS	555	rdmC	3.1.1.95		Aclacinomycin methylesterase RdmC
+KIEHJLIC_00002	CDS	285				hypothetical protein
+KIEHJLIC_00003	CDS	2130	mobA			Mobilization protein A
+KIEHJLIC_00004	CDS	213				hypothetical protein
+KIEHJLIC_00005	CDS	207				hypothetical protein
+KIEHJLIC_00006	CDS	840	repA			Regulatory protein RepA
+KIEHJLIC_00007	CDS	852				hypothetical protein
+```
 
-## Development Status and Future Directions
-
-### Current Limitations
-
-- **Paired-end reads**: Full analysis pipeline is implemented but may need optimization
-- **Pathogenicity reports**: The reports for pathogenicity and virulence are still not refined and may fetch inaccurate results
-- **Taxonomic Classification**: For FASTA analysis, the taxonomic report is inaccurate and is being improved
-- **Integration with other tools**: Future versions will include integration with FastQC and Trimmomatic
-
-### Planned Improvements
-
-- Enhanced pathogen detection accuracy
-- Improved taxonomic classification for FASTA inputs
-- Better quality control integration
-- Performance optimizations for large datasets
-- Support for additional file formats
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Memory errors**: Reduce thread count or process smaller file chunks
-2. **Incomplete results**: Check input file format and ensure sufficient disk space
-3. **Slow performance**: Increase thread count and ensure adequate RAM
+#### Prokka Annotation Summary
+```txt
+# sample.txt format
+organism: Genus species strain 
+contigs: 19643
+bases: 8479628
+CDS: 44150
+```
 
 ### Getting Help
 
