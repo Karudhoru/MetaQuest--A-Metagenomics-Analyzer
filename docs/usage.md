@@ -321,39 +321,39 @@ Cloning vector                 2          1          2.0
 | Cloning vector         | 2          | 1                    | 2.0                    |
 
 
-#### Bracken Abundance Report (FASTQ Input)
-```tsv
-# bracken_report.tsv format
-name	taxonomy_id	taxonomy_lvl	kraken_assigned_reads	added_reads	new_est_reads	fraction_total_reads
-Marinilactibacillus sp. 15R	1911586	S	120	4406	4526	0.24906
-Paucilactobacillus nenjiangensis	1296540	S	41	573	614	0.03379
-Amylolactobacillus amylophilus	1603	S	37	4840	4877	0.26838
-Aerococcus urinae	1376	S	48	345	393	0.02163
-Suicoccus acidiformans	2036206	S	10	283	293	0.01612
-Tetragenococcus osmophilus	526944	S	11	596	607	0.03340
-Peribacillus psychrosaccharolyticus	1407	S	69	308	377	0.02075
-Peribacillus butanolivorans	421767	S	17	65	82	0.00451
-Bacillus thuringiensis	1428	S	12	70	82	0.00451
-Bacillus velezensis	492670	S	10	464	474	0.02608
-Jeotgalicoccus saudimassiliensis	1461582	S	11	25	36	0.00198
-Finegoldia magna	1260	S	3884	639	4523	0.24890
-Anaerococcus mediterraneensis	1870984	S	28	8	36	0.00198
-Gudongella oleilytica	1582259	S	707	18	725	0.03990
-Mycoplasma sp. (ex Biomphalaria glabrata)	1749074	S	499	21	520	0.02862
-```
+#### Bracken Report (Top Organisms)
 
-#### Prokka Annotation Results (Both FASTA and FASTQ Input)
-```tsv
-# sample.tsv format (Prokka functional annotations)
-locus_tag	ftype	length_bp	gene	EC_number	COG	product
-KIEHJLIC_00001	CDS	555	rdmC	3.1.1.95		Aclacinomycin methylesterase RdmC
-KIEHJLIC_00002	CDS	285				hypothetical protein
-KIEHJLIC_00003	CDS	2130	mobA			Mobilization protein A
-KIEHJLIC_00004	CDS	213				hypothetical protein
-KIEHJLIC_00005	CDS	207				hypothetical protein
-KIEHJLIC_00006	CDS	840	repA			Regulatory protein RepA
-KIEHJLIC_00007	CDS	852				hypothetical protein
-```
+| Name                                         | Taxonomy ID | Level | Kraken Assigned Reads | Added Reads | New Est. Reads | Fraction Total Reads |
+|----------------------------------------------|-------------|--------|------------------------|-------------|----------------|-----------------------|
+| Marinilactibacillus sp. 15R                  | 1911586     | S      | 120                    | 4406        | 4526           | 0.24906               |
+| Paucilactobacillus nenjiangensis            | 1296540     | S      | 41                     | 573         | 614            | 0.03379               |
+| Amylolactobacillus amylophilus              | 1603        | S      | 37                     | 4840        | 4877           | 0.26838               |
+| Aerococcus urinae                           | 1376        | S      | 48                     | 345         | 393            | 0.02163               |
+| Suicoccus acidiformans                      | 2036206     | S      | 10                     | 283         | 293            | 0.01612               |
+| Tetragenococcus osmophilus                  | 526944      | S      | 11                     | 596         | 607            | 0.03340               |
+| Peribacillus psychrosaccharolyticus         | 1407        | S      | 69                     | 308         | 377            | 0.02075               |
+| Peribacillus butanolivorans                 | 421767      | S      | 17                     | 65          | 82             | 0.00451               |
+| Bacillus thuringiensis                      | 1428        | S      | 12                     | 70          | 82             | 0.00451               |
+| Bacillus velezensis                         | 492670      | S      | 10                     | 464         | 474            | 0.02608               |
+| Jeotgalicoccus saudimassiliensis            | 1461582     | S      | 11                     | 25          | 36             | 0.00198               |
+| Finegoldia magna                            | 1260        | S      | 3884                   | 639         | 4523           | 0.24890               |
+| Anaerococcus mediterraneensis               | 1870984     | S      | 28                     | 8           | 36             | 0.00198               |
+| Gudongella oleilytica                       | 1582259     | S      | 707                    | 18          | 725            | 0.03990               |
+| Mycoplasma sp. (ex Biomphalaria glabrata)   | 1749074     | S      | 499                    | 21          | 520            | 0.02862               |
+
+
+#### Prokka Annotation Results
+
+| Locus Tag        | Feature | Length (bp) | Gene  | EC Number | COG | Product                                |
+|------------------|---------|-------------|-------|-----------|-----|----------------------------------------|
+| KIEHJLIC_00001   | CDS     | 555         | rdmC  | 3.1.1.95  |     | Aclacinomycin methylesterase RdmC      |
+| KIEHJLIC_00002   | CDS     | 285         |       |           |     | hypothetical protein                   |
+| KIEHJLIC_00003   | CDS     | 2130        | mobA  |           |     | Mobilization protein A                 |
+| KIEHJLIC_00004   | CDS     | 213         |       |           |     | hypothetical protein                   |
+| KIEHJLIC_00005   | CDS     | 207         |       |           |     | hypothetical protein                   |
+| KIEHJLIC_00006   | CDS     | 840         | repA  |           |     | Regulatory protein RepA                |
+| KIEHJLIC_00007   | CDS     | 852         |       |           |     | hypothetical protein                   |
+
 
 #### Prokka Annotation Summary
 ```txt
