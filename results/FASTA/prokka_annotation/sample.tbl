@@ -1,0 +1,36 @@
+>Feature NZ_CP162098.1
+1	555	CDS
+			EC_number	3.1.1.95
+			gene	rdmC
+			inference	ab initio prediction:Prodigal:002006
+			inference	similar to AA sequence:UniProtKB:Q54528
+			locus_tag	KIEHJLIC_00001
+			product	Aclacinomycin methylesterase RdmC
+1509	1225	CDS
+			inference	ab initio prediction:Prodigal:002006
+			locus_tag	KIEHJLIC_00002
+			product	hypothetical protein
+1709	3838	CDS
+			gene	mobA
+			inference	ab initio prediction:Prodigal:002006
+			inference	similar to AA sequence:UniProtKB:P07112
+			locus_tag	KIEHJLIC_00003
+			product	Mobilization protein A
+3899	4111	CDS
+			inference	ab initio prediction:Prodigal:002006
+			locus_tag	KIEHJLIC_00004
+			product	hypothetical protein
+4113	4319	CDS
+			inference	ab initio prediction:Prodigal:002006
+			locus_tag	KIEHJLIC_00005
+			product	hypothetical protein
+4349	5188	CDS
+			gene	repA
+			inference	ab initio prediction:Prodigal:002006
+			inference	similar to AA sequence:UniProtKB:P20356
+			locus_tag	KIEHJLIC_00006
+			product	Regulatory protein RepA
+5175	6026	CDS
+			inference	ab initio prediction:Prodigal:002006
+			locus_tag	KIEHJLIC_00007
+			product	hypothetical protein

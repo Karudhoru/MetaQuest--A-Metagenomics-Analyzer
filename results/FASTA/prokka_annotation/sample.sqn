@@ -1,0 +1,634 @@
+Seq-entry ::= set {
+  class genbank ,
+  seq-set {
+    set {
+      class nuc-prot ,
+      descr {
+        source {
+          org {
+            taxname "Genus species" ,
+            orgname {
+              mod {
+                {
+                  subtype strain ,
+                  subname "strain" } } ,
+              gcode 11 } } } ,
+        comment "Annotated using prokka 1.14.6 from
+ https://github.com/tseemann/prokka" ,
+        user {
+          type
+            str "NcbiCleanup" ,
+          data {
+            {
+              label
+                str "method" ,
+              data
+                str "SeriousSeqEntryCleanup" } ,
+            {
+              label
+                str "version" ,
+              data
+                int 8 } ,
+            {
+              label
+                str "month" ,
+              data
+                int 6 } ,
+            {
+              label
+                str "day" ,
+              data
+                int 3 } ,
+            {
+              label
+                str "year" ,
+              data
+                int 2025 } } } ,
+        create-date
+          std {
+            year 2025 ,
+            month 6 ,
+            day 3 } } ,
+      seq-set {
+        seq {
+          id {
+            local
+              str "NZ_CP162098.1" } ,
+          descr {
+            molinfo {
+              biomol genomic } } ,
+          inst {
+            repr raw ,
+            mol dna ,
+            length 6477 ,
+            seq-data
+              iupacna "ATGTCTTTGGGGGGATTTCTTTCCCAGCTTGTAGCTCTCAAGTATCCGAAACGTG
+TGAAGAGCTTGACGCTGATTGCTTCAGAACGGCTTGCAGATGCAGATCCTGATATGCCCGCTTTTGATCCTGCCATCA
+TTGAGTATCACCAACGGGCGGAATCGCTGGATTGGTCTGATAGAGATGCTGTCGTCGCGTATCAGGTCGGAGCGTGGC
+GAATCATCTCAGGTACTGCGCATGCTTTTGACGCTGAGAAGATACAAAATATCGCTGAGTTAGATTTTGATCGCACTC
+CGAATATCCTGACAACATTCAACCACACTACTTCAGGTGGTGGCGAGAGATCGCTCGAGAGATGGCTCGGGAGATTAA
+ATGAGATAGCTGTACCAACTTTGATCATTCACGGCACGGAGGATCCTGTACTTCCTTATGTGCATGGGTTGGCACTGA
+AAGATGCGATTCGTGGTTCAAAAATGCTGACACTCGAAGGCACGGGACATGAGTTGCATCATGAAGACTGGCCGAGGA
+TTATCCAGGCGATTAAGGGGCAAACGTCATAGCTATCGGTTGCACCGTACAACAAGTTGCTGCACCGTAAAAATTACT
+CGCTGCGCTCGCAATTTTCCGGTGAGCAAGGCGTTAAACATCATGAGGGAAGCGGTGATCGCTGAGGCATGTTCCGCG
+TCCTTGCAATACTGTGTTTACATACAGTCTATCGCTTAGCGGAAAGTTCTTTTACCCTCAGCCGAAATGCCTGCCGTT
+GCTAGACATTGCCAGCCAGTGCCCGTCACTCCCGTACTAACTGTCACGAACCCCTGCAATAACTGTCACGCCCCCCTG
+CAATAACTGTCACGAACCCCTGCAATAACTGTCACGCCCCCAAACCTGCAAACCCAGCAGGGGCGGGGGCTGGCGGGG
+TGTTGGAAAAATCCATCCATGATTATCTAAGAATAATCCACTAGGCGCGGTTATCAGCGCCCTTGTGGGGCGCTGCTG
+CCCTTGCCCAATATGCCCGGCCAGAGGCCGGATAGCTGGTCTATTCGCTGCGCTAGGCTACACACCGCCCCACCGCTG
+CGCGGCAGGGGGAAAGGCGGGCAAAGCCCGCTAAACCCCACACCAAACCCCGCAGAAATACGCTGGAGCGCTTTTAGC
+CGCTTTAGCGGCCTTTCCCCCTACCCGAAGGGTGGGGGCGCGTGTGCAGCCCCGCAGGGCCTGTCTCGGTCGATCATT
+CAGCCCGGCTCATCCTTCTGGCGTGGCGGCAGACCGAACAAGGCGCGGTCGTGGTCGCGTTCAAGGTACGCATCCATT
+GCCGCCATGAGCCGATCCTCCGGCCACTCGCTGCTGTTCACCTTGGCCAAAATCATGGCCCCCACCAGCACCTTGCGC
+CTTGTTTCGTTCTTGCGCTCTTGCTGCTGTTCCCTTGCCCGCACCCGCTGAATTTCGGCATTGATTCGCGCTCGTTGT
+TCTTCGAGCTTGGCCAGCCGATCCGCCGCCTTGTTGCTCCCCTTAACCATCTTGACACCCCATTGTTAATGTGCTGTC
+TCGTAGGCTATCATGGAGGCACAGCGGCGGCAATCCCGACCCTACTTTGTAGGGGGAGGGCGCACTTACCGGTTTCTC
+TTCGAGAAACTGGCCTAACGGCCACCCTTCGGGCGGTGCGCTCTCCGAGGGCCATTGCATGGAGCCGAAAAGCAAAAG
+CAACAGCGAGGCAGCATGGCGATTTATCACCTTACGGCGAAAACCGGCAGCAGGTCGGGCGGCCAATCGGCCAGGGCC
+AAGGCCGACTACATCCAGCGCGAAGGCAAGTATGCCCGCGACATGGATGAAGTCTTGCACGCCGAATCCGGGCACATG
+CCGGAGTTCGTCGAGCGGCCCGCCGACTACTGGGATGCTGCCGACCTGTATGAACGCGCCAATGGGCGGCTGTTCAAG
+GAGGTCGAATTTGCCCTGCCGGTCGAGCTGACCCTCGACCAGCAGAAGGCGCTGGCGTCCGAGTTCGCCCAGCACCTG
+ACTGGTGCCGAGCGCCTGCCGTATACGCTGGCCATCCATGCCGGTGGCGGCGAGAACCCGCACTGCCACCTGATGATC
+TCCGAGCGGATCAATGACGGCATCGAGCGGCCCGCCGCTCAGTGGTTCAAGCGGTACAACGGCAAGACCCCGGAGAAG
+GGCGGGGCACAGAAGACCGAAGCGCTCAAGCCCAAGGCATGGCTTGAGCAGACCCGCGAGGCATGGGCCGACCATGCC
+AACCGGGCATTAGAGCGGGCTGGCCACGACGCCCGCATTGACCACAGAACACTTGAGGCGCAGGGCATCGAGCGCCTG
+CCCGGTGTTCACCTGGGGCCGAACGTGGTGGAGATGGAAGGCCGGGGCATCCGCACCGACCGGGCAGACGTGGCCCTG
+AACATCGACACCGCCAACGCCCAGATCATCGACTTACAGGAATACCGGGAGGCAATAGACCATGAACGCAATCGACAG
+AGTGAAGAAATCCAGAGGCATCAACGAGTTAGCGGAGCAGATCGAACCGCTGGCCCAGAGCATGGCGACACTGGCCGA
+CGAAGCCCGGCAGGTCATGAGCCAGACCCAGCAGGCCAGCGAGGCGCAGGCGGCGGAGTGGCTGAAAGCCCAGCGCCA
+GACAGGGGCGGCATGGGTGGAGCTGGCCAAAGAGTTGCGGGAGGTAGCCGCCGAGGTGAGCAGCGCCGCGCAGAGCGC
+CCGGAGCGCGTCGCGGGGGTGGCACTGGAAGCTATGGCTAACCGTGATGCTGGCTTCCATGATGCCTACGGTGGTGCT
+GCTGATCGCATCGTTGCTCTTGCTCGACCTGACGCCACTGACAACCGAGGACGGCTCGATCTGGCTGCGCTTGGTGGC
+CCGATGAAGAACGACAGGACTTTGCAGGCCATAGGCCGACAGCTCAAGGCCATGGGCTGTGAGCGCTTCGATATCGGC
+GTCAGGGACGCCACCACCGGCCAGATGATGAACCGGGAATGGTCAGCCGCCGAAGTGCTCCAGAACACGCCATGGCTC
+AAGCGGATGAATGCCCAGGGCAATGACGTGTATATCAGGCCCGCCGAGCAGGAGCGGCATGGTCTGGTGCTGGTGGAC
+GACCTCAGCGAGTTTGACCTGGATGACATGAAAGCCGAGGGCCGGGAGCCTGCCCTGGTAGTGGAAACCAGCCCGAAG
+AACTATCAGGCATGGGTCAAGGTGGCCGACGCCGCAGGCGGTGAACTTCGGGGGCAGATTGCCCGGACGCTGGCCAGC
+GAGTACGACGCCGACCCGGCCAGCGCCGACAGCCGCCACTATGGCCGCTTGGCGGGCTTCACCAACCGCAAGGACAAG
+CACACCACCCGCGCCGGTTATCAGCCGTGGGTGCTGCTGCGTGAATCCAAGGGCAAGACCGCCACCGCTGGCCCGGCG
+CTGGTGCAGCAGGCTGGCCAGCAGATCGAGCAGGCCCAGCGGCAGCAGGAGAAGGCCCGCAGGCTGGCCAGCCTCGAA
+CTGCCCGAGCGGCAGCTTAGCCGCCACCGGCGCACGGCGCTGGACGAGTACCGCAGCGAGATGGCCGGGCTGGTCAAG
+CGCTTCGGTGATGACCTCAGCAAGTGCGACTTTATCGCCGCGCAGAAGCTGGCCAGCCGGGGCCGCAGTGCCGAGGAA
+ATCGGCAAGGCCATGGCCGAGGCCAGCCCAGCGCTGGCAGAGCGCAAGCCCGGCCACGAAGCGGATTACATCGAGCGC
+ACCGTCAGCAAGGTCATGGGTCTGCCCAGCGTCCAGCTTGCGCGGGCCGAGCTGGCACGGGCACCGGCACCCCGCCAG
+CGAGGCATGGACAGGGGCGGGCCAGATTTCAGCATGTAGTGCTTGCGTTGGTACTCACGCCTGTTATACTATGAGTAC
+TCACGCACAGAAGGGGGTTTTATGGAATACGAAAAAAGCGCTTCAGGGTCGGTCTACCTGATCAAAAGTGACAAGGGC
+TATTGGTTGCCCGGTGGCTTTGGTTATACGTCAAACAAGGCCGAGGCTGGCCGCTTTTCAGTCGCTGATATGGCCAGC
+CTTAACCTTGACGGCTGCACCTTGTCCTTGTTCCGCGAAGACAAGCCTTTCGGCCCCGGCAAGTTTCTCGGTGACTGA
+TATGAAAGACCAAAAGGACAAGCAGACCGGCGACCTGCTGGCCAGCCCTGACGCTGTACGCCAAGCGCGATATGCCGA
+GCGCATGAAGGCCAAAGGGATGCGTCAGCGCAAGTTCTGGCTGACCGACGACGAATACGAGGCGCTGCGCGAGTGCCT
+GGAAGAACTCAGAGCGGCGCAGGGCGGGGGTAGTGACCCCGCCAGCGCCTAACCACCAACTGCCTGCAAAGGAGGCAA
+TCAATGGCTACCCATAAGCCTATCAATATTCTGGAGGCGTTCGCAGCAGCGCCGCCACCGCTGGACTACGTTTTGCCC
+AACATGGTGGCCGGTACGGTCGGGGCGCTGGTGTCGCCCGGTGGTGCCGGTAAATCCATGCTGGCCCTGCAACTGGCC
+GCACAGATTGCAGGCGGGCCGGATCTGCTGGAGGTGGGCGAACTGCCCACCGGCCCGGTGATCTACCTGCCCGCCGAA
+GACCCGCCCACCGCCATTCATCACCGCCTGCACGCCCTTGGGGCGCACCTCAGCGCCGAGGAACGGCAAGCCGTGGCT
+GACGGCCTGCTGATCCAGCCGCTGATCGGCAGCCTGCCCAACATCATGGCCCCGGAGTGGTTCGACGGCCTCAAGCGC
+GCCGCCGAGGGCCGCCGCCTGATGGTGCTGGACACGCTGCGCCGGTTCCACATCGAGGAAGAAAACGCCAGCGGCCCC
+ATGGCCCAGGTCATCGGTCGCATGGAGGCCATCGCCGCCGATACCGGGTGCTCTATCGTGTTCCTGCACCATGCCAGC
+AAGGGCGCGGCCATGATGGGCGCAGGCGACCAGCAGCAGGCCAGCCGGGGCAGCTCGGTACTGGTCGATAACATCCGC
+TGGCAGTCCTACCTGTCGAGCATGACCAGCGCCGAGGCCGAGGAATGGGGTGTGGACGACGACCAGCGCCGGTTCTTC
+GTCCGCTTCGGTGTGAGCAAGGCCAACTATGGCGCACCGTTCGCTGATCGGTGGTTCAGGCGGCATGACGGCGGGGTG
+CTCAAGCCCGCCGTGCTGGAGAGGCAGCGCAAGAGCAAGGGGGTGCCCCGTGGTGAAGCCTAAGAACAAGCACAGCCT
+CAGCCACGTCCGGCACGACCCGGCGCACTGTCTGGCCCCCGGCCTGTTCCGTGCCCTCAAGCGGGGCGAGCGCAAGCG
+CAGCAAGCTGGACGTGACGTATGACTACGGCGACGGCAAGCGGATCGAGTTCAGCGGCCCGGAGCCGCTGGGCGCTGA
+TGATCTGCGCATCCTGCAAGGGCTGGTGGCCATGGCTGGGCCTAATGGCCTAGTGCTTGGCCCGGAACCCAAGACCGA
+AGGCGGACGGCAGCTCCGGCTGTTCCTGGAACCCAAGTGGGAGGCCGTCACCGCTGATGCCATGGTGGTCAAAGGTAG
+CTATCGGGCGCTGGCAAAGGAAATCGGGGCAGAGGTCGATAGTGGTGGGGCGCTCAAGCACATACAGGACTGCATCGA
+GCGCCTTTGGAAGGTATCCATCATCGCCCAGAATGGCCGCAAGCGGCAGGGGTTTCGGCTGCTGTCGGAGTACGCCAG
+CGACGAGGCGGACGGGCGCCTGTACGTGGCCCTGAACCCCTTGATCGCGCAGGCCGTCATGGGTGGCGGCCAGCATGT
+GCGCATCAGCATGGACGAGGTGCGGGCGCTGGACAGCGAAACCGCCCGCCTGCTGCACCAGCGGCTGTGTGGCTGGAT
+CGACCCCGGCAAAACCGGCAAGGCTTCCATAGATACCTTGTGCGGCTATGTCTGGCCGTCAGAGGCCAGTGGTTCGAC
+CATGCGCAAGCGCCGCCAGCGGGTGCGCGAGGCGTTGCCGGAGCTGGTCGCGCTGGGCTGGACGGTAACCGAGTTCGC
+GGCGGGCAAGTACGACATCACCCGGCCCAAGGCGGCAGGCTGACCCCCCCCACTCTATTGTAAACAAGACATTTTTAT
+CTTTATAAAACAATTGGTTGGGGATGTTTGAGCGCAATTAACAGGCAGCCAAAACTGGCAAAATGAGCATGCCTATGA
+ATAAAATGTTGTACGTAAAACTCGAAGGCAATTTTAGTATGAAAGAAAAGGTAGTTGTTGATAAAGCGATTTCACTCC
+ATACCGAATCATTCGGCGACCCGGCCCATGAACCCATTATCCTGATCATGGGGGCAATGGCGTCTGCGGTGTGGTGGC
+CTGATGAGTTTTGCTCCCAACTAGCCAAAATGGGTCGCTATGTGATCCGGTACGACCACCGTGATACCGGGAAATCAA
+CAAGCTATGAGCCAGGTCAAGCTCCATATTCCGTTGAAGAATTAGCAGATGATGTGGTTCGCGTCATTGATGGTTATG
+GTCTGGAAGCTGCTCATTTAGTCGGC" } } ,
+        seq {
+          id {
+            local
+              str "NZ_CP162098.1_1" } ,
+          descr {
+            title "Aclacinomycin methylesterase RdmC [Genus species]" ,
+            molinfo {
+              biomol peptide ,
+              tech concept-trans } } ,
+          inst {
+            repr raw ,
+            mol aa ,
+            length 184 ,
+            seq-data
+              ncbieaa "MSLGGFLSQLVALKYPKRVKSLTLIASERLADADPDMPAFDPAIIEYHQRAESLD
+WSDRDAVVAYQVGAWRIISGTAHAFDAEKIQNIAELDFDRTPNILTTFNHTTSGGGERSLERWLGRLNEIAVPTLIIH
+GTEDPVLPYVHGLALKDAIRGSKMLTLEGTGHELHHEDWPRIIQAIKGQTS" } ,
+          annot {
+            {
+              data
+                ftable {
+                  {
+                    id
+                      local
+                        id 8 ,
+                    data
+                      prot {
+                        name {
+                          "Aclacinomycin methylesterase RdmC" } ,
+                        ec {
+                          "3.1.1.95" } } ,
+                    location
+                      int {
+                        from 0 ,
+                        to 183 ,
+                        id
+                          local
+                            str "NZ_CP162098.1_1" } } } } } } ,
+        seq {
+          id {
+            local
+              str "NZ_CP162098.1_2" } ,
+          descr {
+            title "hypothetical protein KIEHJLIC_00002 [Genus species]" ,
+            molinfo {
+              biomol peptide ,
+              tech concept-trans } } ,
+          inst {
+            repr raw ,
+            mol aa ,
+            length 94 ,
+            seq-data
+              ncbieaa "MVKGSNKAADRLAKLEEQRARINAEIQRVRAREQQQERKNETRRKVLVGAMILAK
+VNSSEWPEDRLMAAMDAYLERDHDRALFGLPPRQKDEPG" } ,
+          annot {
+            {
+              data
+                ftable {
+                  {
+                    id
+                      local
+                        id 9 ,
+                    data
+                      prot {
+                        name {
+                          "hypothetical protein" } } ,
+                    location
+                      int {
+                        from 0 ,
+                        to 93 ,
+                        id
+                          local
+                            str "NZ_CP162098.1_2" } } } } } } ,
+        seq {
+          id {
+            local
+              str "NZ_CP162098.1_3" } ,
+          descr {
+            title "Mobilization protein A [Genus species]" ,
+            molinfo {
+              biomol peptide ,
+              tech concept-trans } } ,
+          inst {
+            repr raw ,
+            mol aa ,
+            length 709 ,
+            seq-data
+              ncbieaa "MAIYHLTAKTGSRSGGQSARAKADYIQREGKYARDMDEVLHAESGHMPEFVERPA
+DYWDAADLYERANGRLFKEVEFALPVELTLDQQKALASEFAQHLTGAERLPYTLAIHAGGGENPHCHLMISERINDGI
+ERPAAQWFKRYNGKTPEKGGAQKTEALKPKAWLEQTREAWADHANRALERAGHDARIDHRTLEAQGIERLPGVHLGPN
+VVEMEGRGIRTDRADVALNIDTANAQIIDLQEYREAIDHERNRQSEEIQRHQRVSGADRTAGPEHGDTGRRSPAGHEP
+DPAGQRGAGGGVAESPAPDRGGMGGAGQRVAGGSRRGEQRRAERPERVAGVALEAMANRDAGFHDAYGGAADRIVALA
+RPDATDNRGRLDLAALGGPMKNDRTLQAIGRQLKAMGCERFDIGVRDATTGQMMNREWSAAEVLQNTPWLKRMNAQGN
+DVYIRPAEQERHGLVLVDDLSEFDLDDMKAEGREPALVVETSPKNYQAWVKVADAAGGELRGQIARTLASEYDADPAS
+ADSRHYGRLAGFTNRKDKHTTRAGYQPWVLLRESKGKTATAGPALVQQAGQQIEQAQRQQEKARRLASLELPERQLSR
+HRRTALDEYRSEMAGLVKRFGDDLSKCDFIAAQKLASRGRSAEEIGKAMAEASPALAERKPGHEADYIERTVSKVMGL
+PSVQLARAELARAPAPRQRGMDRGGPDFSM" } ,
+          annot {
+            {
+              data
+                ftable {
+                  {
+                    id
+                      local
+                        id 10 ,
+                    data
+                      prot {
+                        name {
+                          "Mobilization protein A" } } ,
+                    location
+                      int {
+                        from 0 ,
+                        to 708 ,
+                        id
+                          local
+                            str "NZ_CP162098.1_3" } } } } } } ,
+        seq {
+          id {
+            local
+              str "NZ_CP162098.1_4" } ,
+          descr {
+            title "hypothetical protein KIEHJLIC_00004 [Genus species]" ,
+            molinfo {
+              biomol peptide ,
+              tech concept-trans } } ,
+          inst {
+            repr raw ,
+            mol aa ,
+            length 70 ,
+            seq-data
+              ncbieaa "MEYEKSASGSVYLIKSDKGYWLPGGFGYTSNKAEAGRFSVADMASLNLDGCTLSL
+FREDKPFGPGKFLGD" } ,
+          annot {
+            {
+              data
+                ftable {
+                  {
+                    id
+                      local
+                        id 11 ,
+                    data
+                      prot {
+                        name {
+                          "hypothetical protein" } } ,
+                    location
+                      int {
+                        from 0 ,
+                        to 69 ,
+                        id
+                          local
+                            str "NZ_CP162098.1_4" } } } } } } ,
+        seq {
+          id {
+            local
+              str "NZ_CP162098.1_5" } ,
+          descr {
+            title "hypothetical protein KIEHJLIC_00005 [Genus species]" ,
+            molinfo {
+              biomol peptide ,
+              tech concept-trans } } ,
+          inst {
+            repr raw ,
+            mol aa ,
+            length 68 ,
+            seq-data
+              ncbieaa "MKDQKDKQTGDLLASPDAVRQARYAERMKAKGMRQRKFWLTDDEYEALRECLEEL
+RAAQGGGSDPASA" } ,
+          annot {
+            {
+              data
+                ftable {
+                  {
+                    id
+                      local
+                        id 12 ,
+                    data
+                      prot {
+                        name {
+                          "hypothetical protein" } } ,
+                    location
+                      int {
+                        from 0 ,
+                        to 67 ,
+                        id
+                          local
+                            str "NZ_CP162098.1_5" } } } } } } ,
+        seq {
+          id {
+            local
+              str "NZ_CP162098.1_6" } ,
+          descr {
+            title "Regulatory protein RepA [Genus species]" ,
+            molinfo {
+              biomol peptide ,
+              tech concept-trans } } ,
+          inst {
+            repr raw ,
+            mol aa ,
+            length 279 ,
+            seq-data
+              ncbieaa "MATHKPINILEAFAAAPPPLDYVLPNMVAGTVGALVSPGGAGKSMLALQLAAQIA
+GGPDLLEVGELPTGPVIYLPAEDPPTAIHHRLHALGAHLSAEERQAVADGLLIQPLIGSLPNIMAPEWFDGLKRAAEG
+RRLMVLDTLRRFHIEEENASGPMAQVIGRMEAIAADTGCSIVFLHHASKGAAMMGAGDQQQASRGSSVLVDNIRWQSY
+LSSMTSAEAEEWGVDDDQRRFFVRFGVSKANYGAPFADRWFRRHDGGVLKPAVLERQRKSKGVPRGEA" } ,
+          annot {
+            {
+              data
+                ftable {
+                  {
+                    id
+                      local
+                        id 13 ,
+                    data
+                      prot {
+                        name {
+                          "Regulatory protein RepA" } } ,
+                    location
+                      int {
+                        from 0 ,
+                        to 278 ,
+                        id
+                          local
+                            str "NZ_CP162098.1_6" } } } } } } ,
+        seq {
+          id {
+            local
+              str "NZ_CP162098.1_7" } ,
+          descr {
+            title "hypothetical protein KIEHJLIC_00007 [Genus species]" ,
+            molinfo {
+              biomol peptide ,
+              tech concept-trans } } ,
+          inst {
+            repr raw ,
+            mol aa ,
+            length 283 ,
+            seq-data
+              ncbieaa "MVKPKNKHSLSHVRHDPAHCLAPGLFRALKRGERKRSKLDVTYDYGDGKRIEFSG
+PEPLGADDLRILQGLVAMAGPNGLVLGPEPKTEGGRQLRLFLEPKWEAVTADAMVVKGSYRALAKEIGAEVDSGGALK
+HIQDCIERLWKVSIIAQNGRKRQGFRLLSEYASDEADGRLYVALNPLIAQAVMGGGQHVRISMDEVRALDSETARLLH
+QRLCGWIDPGKTGKASIDTLCGYVWPSEASGSTMRKRRQRVREALPELVALGWTVTEFAAGKYDITRPKAAG" } ,
+          annot {
+            {
+              data
+                ftable {
+                  {
+                    id
+                      local
+                        id 14 ,
+                    data
+                      prot {
+                        name {
+                          "hypothetical protein" } } ,
+                    location
+                      int {
+                        from 0 ,
+                        to 282 ,
+                        id
+                          local
+                            str "NZ_CP162098.1_7" } } } } } } } ,
+      annot {
+        {
+          data
+            ftable {
+              {
+                id
+                  local
+                    id 1 ,
+                data
+                  cdregion {
+                    frame one ,
+                    code {
+                      id 11 } } ,
+                product
+                  whole
+                    local
+                      str "NZ_CP162098.1_1" ,
+                location
+                  int {
+                    from 0 ,
+                    to 554 ,
+                    strand plus ,
+                    id
+                      local
+                        str "NZ_CP162098.1" } ,
+                qual {
+                  {
+                    qual "inference" ,
+                    val "ab initio prediction:Prodigal:002006" } ,
+                  {
+                    qual "inference" ,
+                    val "similar to AA sequence:UniProtKB:Q54528" } } ,
+                xref {
+                  {
+                    data
+                      gene {
+                        locus "rdmC" ,
+                        locus-tag "KIEHJLIC_00001" } } } } ,
+              {
+                id
+                  local
+                    id 2 ,
+                data
+                  cdregion {
+                    frame one ,
+                    code {
+                      id 11 } } ,
+                product
+                  whole
+                    local
+                      str "NZ_CP162098.1_2" ,
+                location
+                  int {
+                    from 1224 ,
+                    to 1508 ,
+                    strand minus ,
+                    id
+                      local
+                        str "NZ_CP162098.1" } ,
+                qual {
+                  {
+                    qual "inference" ,
+                    val "ab initio prediction:Prodigal:002006" } } ,
+                xref {
+                  {
+                    data
+                      gene {
+                        locus-tag "KIEHJLIC_00002" } } } } ,
+              {
+                id
+                  local
+                    id 3 ,
+                data
+                  cdregion {
+                    frame one ,
+                    code {
+                      id 11 } } ,
+                product
+                  whole
+                    local
+                      str "NZ_CP162098.1_3" ,
+                location
+                  int {
+                    from 1708 ,
+                    to 3837 ,
+                    strand plus ,
+                    id
+                      local
+                        str "NZ_CP162098.1" } ,
+                qual {
+                  {
+                    qual "inference" ,
+                    val "ab initio prediction:Prodigal:002006" } ,
+                  {
+                    qual "inference" ,
+                    val "similar to AA sequence:UniProtKB:P07112" } } ,
+                xref {
+                  {
+                    data
+                      gene {
+                        locus "mobA" ,
+                        locus-tag "KIEHJLIC_00003" } } } } ,
+              {
+                id
+                  local
+                    id 4 ,
+                data
+                  cdregion {
+                    frame one ,
+                    code {
+                      id 11 } } ,
+                product
+                  whole
+                    local
+                      str "NZ_CP162098.1_4" ,
+                location
+                  int {
+                    from 3898 ,
+                    to 4110 ,
+                    strand plus ,
+                    id
+                      local
+                        str "NZ_CP162098.1" } ,
+                qual {
+                  {
+                    qual "inference" ,
+                    val "ab initio prediction:Prodigal:002006" } } ,
+                xref {
+                  {
+                    data
+                      gene {
+                        locus-tag "KIEHJLIC_00004" } } } } ,
+              {
+                id
+                  local
+                    id 5 ,
+                data
+                  cdregion {
+                    frame one ,
+                    code {
+                      id 11 } } ,
+                product
+                  whole
+                    local
+                      str "NZ_CP162098.1_5" ,
+                location
+                  int {
+                    from 4112 ,
+                    to 4318 ,
+                    strand plus ,
+                    id
+                      local
+                        str "NZ_CP162098.1" } ,
+                qual {
+                  {
+                    qual "inference" ,
+                    val "ab initio prediction:Prodigal:002006" } } ,
+                xref {
+                  {
+                    data
+                      gene {
+                        locus-tag "KIEHJLIC_00005" } } } } ,
+              {
+                id
+                  local
+                    id 6 ,
+                data
+                  cdregion {
+                    frame one ,
+                    code {
+                      id 11 } } ,
+                product
+                  whole
+                    local
+                      str "NZ_CP162098.1_6" ,
+                location
+                  int {
+                    from 4348 ,
+                    to 5187 ,
+                    strand plus ,
+                    id
+                      local
+                        str "NZ_CP162098.1" } ,
+                qual {
+                  {
+                    qual "inference" ,
+                    val "ab initio prediction:Prodigal:002006" } ,
+                  {
+                    qual "inference" ,
+                    val "similar to AA sequence:UniProtKB:P20356" } } ,
+                xref {
+                  {
+                    data
+                      gene {
+                        locus "repA" ,
+                        locus-tag "KIEHJLIC_00006" } } } } ,
+              {
+                id
+                  local
+                    id 7 ,
+                data
+                  cdregion {
+                    frame one ,
+                    code {
+                      id 11 } } ,
+                product
+                  whole
+                    local
+                      str "NZ_CP162098.1_7" ,
+                location
+                  int {
+                    from 5174 ,
+                    to 6025 ,
+                    strand plus ,
+                    id
+                      local
+                        str "NZ_CP162098.1" } ,
+                qual {
+                  {
+                    qual "inference" ,
+                    val "ab initio prediction:Prodigal:002006" } } ,
+                xref {
+                  {
+                    data
+                      gene {
+                        locus-tag "KIEHJLIC_00007" } } } } } } } } } }

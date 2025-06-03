@@ -1,0 +1,5 @@
+0.00	0	0	U	0	unclassified
+50.00	10	1	S	0	Salmonella enterica
+30.00	6	1	S	0	Escherichia coli
+10.00	2	1	S	0	Klebsiella pneumoniae
+10.00	2	1	S	0	Cloning vector

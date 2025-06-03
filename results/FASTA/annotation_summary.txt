@@ -1,0 +1,6 @@
+Functional Annotation Summary
+==============================
+Total Annotations: 3
+Mean Identity %: 100.00
+High Quality Hits (>70%): 3
+Excellent Hits (>90%): 3

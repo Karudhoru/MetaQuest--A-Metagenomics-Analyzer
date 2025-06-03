@@ -1,0 +1,4 @@
+10	Salmonella enterica
+6	Escherichia coli
+2	Klebsiella pneumoniae
+2	Cloning vector

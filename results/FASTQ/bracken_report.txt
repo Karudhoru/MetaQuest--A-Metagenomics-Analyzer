@@ -1,0 +1,55 @@
+100.00	18172	0	R	1	root
+100.00	18172	0	R1	131567	  cellular organisms
+100.00	18172	0	D	2	    Bacteria
+100.00	18172	0	D1	1783272	      Terrabacteria group
+97.14	17652	0	P	1239	        Firmicutes
+68.06	12368	0	C	91061	          Bacilli
+62.26	11313	0	O	186826	            Lactobacillales
+30.22	5492	0	F	33958	              Lactobacillaceae
+26.84	4877	0	G	2767876	                Amylolactobacillus
+26.84	4877	4877	S	1603	                  Amylolactobacillus amylophilus
+3.38	614	0	G	2767890	                Paucilactobacillus
+3.38	614	614	S	1296540	                  Paucilactobacillus nenjiangensis
+24.91	4526	0	F	186828	              Carnobacteriaceae
+24.91	4526	0	G	191769	                Marinilactibacillus
+24.91	4526	0	G1	2632303	                  unclassified Marinilactibacillus
+24.91	4526	4526	S	1911586	                    Marinilactibacillus sp. 15R
+3.78	686	0	F	186827	              Aerococcaceae
+2.16	393	0	G	1375	                Aerococcus
+2.16	393	393	S	1376	                  Aerococcus urinae
+1.61	293	0	G	2689587	                Suicoccus
+1.61	293	293	S	2036206	                  Suicoccus acidiformans
+3.34	607	0	F	81852	              Enterococcaceae
+3.34	607	0	G	51668	                Tetragenococcus
+3.34	607	607	S	526944	                  Tetragenococcus osmophilus
+5.80	1054	0	O	1385	            Bacillales
+5.60	1017	0	F	186817	              Bacillaceae
+3.06	556	0	G	1386	                Bacillus
+2.61	474	0	G1	653685	                  Bacillus subtilis group
+2.61	474	0	G2	1938374	                    Bacillus amyloliquefaciens group
+2.61	474	474	S	492670	                      Bacillus velezensis
+0.45	82	0	G1	86661	                  Bacillus cereus group
+0.45	82	82	S	1428	                    Bacillus thuringiensis
+2.53	460	0	G	2675229	                Peribacillus
+2.08	377	377	S	1407	                  Peribacillus psychrosaccharolyticus
+0.45	82	82	S	421767	                  Peribacillus butanolivorans
+0.20	36	0	F	90964	              Staphylococcaceae
+0.20	36	0	G	227979	                Jeotgalicoccus
+0.20	36	36	S	1461582	                  Jeotgalicoccus saudimassiliensis
+29.08	5284	0	C	1737404	          Tissierellia
+29.08	5284	0	O	1737405	            Tissierellales
+25.09	4559	0	F	1570339	              Peptoniphilaceae
+24.89	4523	0	G	150022	                Finegoldia
+24.89	4523	4523	S	1260	                  Finegoldia magna
+0.20	36	0	G	165779	                Anaerococcus
+0.20	36	36	S	1870984	                  Anaerococcus mediterraneensis
+3.99	725	0	F	1737406	              Tissierellaceae
+3.99	725	0	G	2692382	                Gudongella
+3.99	725	725	S	1582259	                  Gudongella oleilytica
+2.86	520	0	P	544448	        Tenericutes
+2.86	520	0	C	31969	          Mollicutes
+2.86	520	0	O	2085	            Mycoplasmatales
+2.86	520	0	F	2092	              Mycoplasmataceae
+2.86	520	0	G	2093	                Mycoplasma
+2.86	520	0	G1	2683645	                  unclassified Mycoplasma
+2.86	520	520	S	1749074	                    Mycoplasma sp. (ex Biomphalaria glabrata)

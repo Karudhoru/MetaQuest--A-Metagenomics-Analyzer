@@ -1,0 +1,21 @@
+BLAST TAXONOMIC CLASSIFICATION SUMMARY
+==================================================
+
+Total sequences analyzed: 1
+Sequences with hits: 1
+Total BLAST hits: 20
+Unique organisms identified: 4
+
+TOP ORGANISMS BY TOTAL HITS:
+----------------------------------------
+Organism                       Total Hits Sequences  Avg Hits/Seq
+----------------------------------------
+Salmonella enterica            10         1          10.0        
+Escherichia coli               6          1          6.0         
+Klebsiella pneumoniae          2          1          2.0         
+Cloning vector                 2          1          2.0         
+
+QUALITY METRICS:
+--------------------
+Classification rate: 100.0%
+Average hits per classified sequence: 20.0

@@ -1,0 +1,8 @@
+locus_tag	ftype	length_bp	gene	EC_number	COG	product
+KIEHJLIC_00001	CDS	555	rdmC	3.1.1.95		Aclacinomycin methylesterase RdmC
+KIEHJLIC_00002	CDS	285				hypothetical protein
+KIEHJLIC_00003	CDS	2130	mobA			Mobilization protein A
+KIEHJLIC_00004	CDS	213				hypothetical protein
+KIEHJLIC_00005	CDS	207				hypothetical protein
+KIEHJLIC_00006	CDS	840	repA			Regulatory protein RepA
+KIEHJLIC_00007	CDS	852				hypothetical protein

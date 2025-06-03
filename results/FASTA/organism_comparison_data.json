@@ -1,0 +1,26 @@
+[
+  {
+    "organism": "Salmonella enterica",
+    "total_hits": 10,
+    "sequences_with_hits": 1,
+    "avg_hits_per_sequence": 10.0
+  },
+  {
+    "organism": "Escherichia coli",
+    "total_hits": 6,
+    "sequences_with_hits": 1,
+    "avg_hits_per_sequence": 6.0
+  },
+  {
+    "organism": "Klebsiella pneumoniae",
+    "total_hits": 2,
+    "sequences_with_hits": 1,
+    "avg_hits_per_sequence": 2.0
+  },
+  {
+    "organism": "Cloning vector",
+    "total_hits": 2,
+    "sequences_with_hits": 1,
+    "avg_hits_per_sequence": 2.0
+  }
+]
