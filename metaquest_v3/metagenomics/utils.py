@@ -6,6 +6,118 @@ from Bio import SeqIO
 import pandas as pd
 from collections import Counter
 from .config import *
+import requests
+import time
+from datetime import datetime, timedelta
+
+def check_blast_dependencies():
+    """Check if required Python packages for BLAST API are available"""
+    required_packages = ['Bio', 'requests']
+    missing = []
+    
+    for package in required_packages:
+        try:
+            __import__(package)
+            print(f"✓ {package} found")
+        except ImportError:
+            missing.append(package)
+            print(f"✗ {package} not found")
+    
+    if missing:
+        print(f"\nMissing Python packages: {', '.join(missing)}")
+        print("Install with:")
+        if 'Bio' in missing:
+            print("conda install -c bioconda biopython")
+        if 'requests' in missing:
+            print("pip install requests")
+        return False
+    return True
+
+def check_ncbi_api_status():
+    """Check if NCBI BLAST API is accessible"""
+    try:
+        print("Checking NCBI BLAST API status...")
+        response = requests.get('https://blast.ncbi.nlm.nih.gov/Blast.cgi', timeout=10)
+        if response.status_code == 200:
+            print("✓ NCBI BLAST API is accessible")
+            return True
+        else:
+            print(f"⚠️ NCBI BLAST API returned status code: {response.status_code}")
+            return False
+    except requests.RequestException as e:
+        print(f"✗ Cannot access NCBI BLAST API: {e}")
+        return False
+
+def cleanup_blast_cache(cache_dir, max_age_days=30):
+    """Clean up old cache entries"""
+    if not cache_dir.exists():
+        return
+    
+    cache_file = cache_dir / "blast_cache.json"
+    if not cache_file.exists():
+        return
+    
+    try:
+        with open(cache_file, 'r') as f:
+            cache = json.load(f)
+        
+        current_time = time.time()
+        cutoff_time = current_time - (max_age_days * 24 * 60 * 60)
+        
+        # Remove old entries
+        cleaned_cache = {}
+        removed_count = 0
+        
+        for key, value in cache.items():
+            if isinstance(value, dict) and 'timestamp' in value:
+                if value['timestamp'] > cutoff_time:
+                    cleaned_cache[key] = value
+                else:
+                    removed_count += 1
+            else:
+                # Keep entries without timestamp (backwards compatibility)
+                cleaned_cache[key] = value
+        
+        if removed_count > 0:
+            with open(cache_file, 'w') as f:
+                json.dump(cleaned_cache, f, indent=2)
+            print(f"✓ Cleaned {removed_count} old cache entries")
+        
+    except Exception as e:
+        print(f"Warning: Could not clean cache: {e}")
+
+def estimate_blast_time(num_sequences, avg_length=1000):
+    """Estimate how long BLAST analysis will take"""
+    # Rough estimates based on API rate limits and processing time
+    seconds_per_sequence = 2  # Conservative estimate including rate limiting
+    total_seconds = num_sequences * seconds_per_sequence
+    
+    if total_seconds < 60:
+        return f"~{total_seconds} seconds"
+    elif total_seconds < 3600:
+        return f"~{total_seconds/60:.1f} minutes"
+    else:
+        return f"~{total_seconds/3600:.1f} hours"
+
+def validate_fasta_for_blast(fasta_path, min_length=50, max_sequences=1000):
+    """Validate FASTA file for BLAST analysis"""
+    if not fasta_path.exists():
+        return False, "FASTA file does not exist"
+    
+    sequences = list(SeqIO.parse(fasta_path, "fasta"))
+    
+    if not sequences:
+        return False, "No sequences found in FASTA file"
+    
+    valid_sequences = [seq for seq in sequences if len(seq.seq) >= min_length]
+    
+    if not valid_sequences:
+        return False, f"No sequences longer than {min_length} bp found"
+    
+    if len(sequences) > max_sequences:
+        return True, f"Warning: {len(sequences)} sequences found, will process first {max_sequences}"
+    
+    return True, f"Ready to process {len(valid_sequences)} sequences"
 
 def check_dependencies():
     """Verify required tools are installed"""
@@ -33,6 +145,10 @@ def check_dependencies():
             missing.append(cmd)
             print(f"✗ {cmd} not found")
     
+    # Check BLAST API dependencies
+    blast_ready = check_blast_dependencies()
+    api_accessible = check_ncbi_api_status()
+    
     if missing:
         print(f"\nMissing tools: {', '.join(missing)}")
         print("Install with conda:")
@@ -40,6 +156,14 @@ def check_dependencies():
         print("\nOr with mamba (faster):")
         print(f"mamba install -c bioconda {' '.join(missing)}")
         raise SystemExit("Please install missing dependencies")
+    
+    if not blast_ready:
+        print("\nBLAST API dependencies missing - FASTA analysis will be limited")
+    
+    if not api_accessible:
+        print("\nWarning: NCBI API not accessible - FASTA taxonomic analysis may fail")
+    
+    return True
 
 def check_database_status():
     """Check the status of all required databases"""
@@ -49,8 +173,8 @@ def check_database_status():
     required_files = {
         'Kraken DB': KRAKEN_DB / "hash.k2d",
         'SwissProt DB': SWISSPROT_DB,
-        'Pathogen FASTA': PATHOGEN_FASTA_SOURCE,
-        'Current Pathogen DB': PATHOGEN_DB,
+        'Pathogen FASTA': CAT_FASTA_SOURCE,
+        'Current Pathogen DB': CAT_DB,
         'Taxonomy Nodes': TAXDUMP_NODES,
         'Taxonomy Names': TAXDUMP_NAMES,
     }
@@ -61,7 +185,7 @@ def check_database_status():
         'Protein Accession2TaxID': PROT_ACCESSION2TAXID,
         'SeqID2TaxID Map': SEQID2TAXID_MAP,
         'Pathogenic TaxIDs': PATHOGEN_TAXIDS,
-        'CARD DB': CARD_DB,
+        'CARD DB': CARD_PROTEIN_DB,
         'VFDB DB': VFDB_DB,
     }
     
@@ -92,50 +216,6 @@ def check_database_status():
         print("Run the database rebuild command to fix this.")
     
     return len(missing_required) == 0
-        
-def create_pathogenic_taxids():
-    """Create or update pathogenic taxids file"""
-    # Use the pathogen_db directory location
-    pathogen_taxids_path = DB_DIR / "pathogen_db" / "pathogenic_taxids.txt"
-    
-    if not pathogen_taxids_path.exists():
-        print(f"Creating pathogenic taxids file: {pathogen_taxids_path}")
-        
-        # Ensure directory exists
-        pathogen_taxids_path.parent.mkdir(exist_ok=True)
-        
-        # Common pathogenic bacteria and viruses with more complete list
-        pathogenic_data = [
-            ("1280", "Staphylococcus aureus"),
-            ("1392", "Bacillus anthracis"),
-            ("620", "Shigella dysenteriae"),
-            ("590", "Salmonella enterica"),
-            ("287", "Pseudomonas aeruginosa"),
-            ("1313", "Streptococcus pneumoniae"),
-            ("1350", "Enterococcus faecalis"),
-            ("573", "Klebsiella pneumoniae"),
-            ("562", "Escherichia coli"),
-            ("1763", "Mycobacterium tuberculosis"),
-            ("11234", "Human immunodeficiency virus 1"),
-            ("11103", "Hepatitis C virus"),
-            ("10376", "Epstein-Barr virus"),
-            ("10298", "Human herpesvirus 1"),
-            ("1747", "Cutibacterium acnes"),
-            ("1351", "Enterococcus faecium"),
-            ("1423", "Bacillus subtilis"),
-            ("1491", "Clostridium botulinum"),
-            ("1496", "Clostridioides difficile"),
-        ]
-        
-        with open(pathogen_taxids_path, 'w') as f:
-            f.write("TaxID\tPathogen_Name\n")
-            for taxid, name in pathogenic_data:
-                f.write(f"{taxid}\t{name}\n")
-        
-        print(f"✓ Created pathogenic taxids file with {len(pathogenic_data)} entries")
-    
-    # Update global variable
-    globals()['PATHOGEN_TAXIDS'] = pathogen_taxids_path
 
 def convert_fastq_to_fasta(fastq_path, output_dir):
     """Convert FASTQ to FASTA for downstream analysis, handling duplicate IDs"""
@@ -196,69 +276,6 @@ def split_interleaved(interleaved_fastq: str, output_dir: Path) -> list:
     print(f"Running: {cmd}")
     subprocess.run(cmd, shell=True, check=True)
     return [str(r1), str(r2)]
-
-
-def compute_sequence_statistics(fasta_path, output_dir):
-    """Compute comprehensive statistics for FASTA sequences"""
-    from Bio import SeqIO
-    import json
-    
-    stats = {
-        'total_sequences': 0,
-        'total_length': 0,
-        'lengths': [],
-        'gc_contents': [],
-        'n_contents': []
-    }
-    
-    sequences = list(SeqIO.parse(fasta_path, "fasta"))
-    
-    for seq in sequences:
-        seq_str = str(seq.seq).upper()
-        length = len(seq_str)
-        
-        stats['total_sequences'] += 1
-        stats['total_length'] += length
-        stats['lengths'].append(length)
-        
-        # GC content
-        gc_count = seq_str.count('G') + seq_str.count('C')
-        gc_content = (gc_count / length * 100) if length > 0 else 0
-        stats['gc_contents'].append(gc_content)
-        
-        # N content
-        n_count = seq_str.count('N')
-        n_content = (n_count / length * 100) if length > 0 else 0
-        stats['n_contents'].append(n_content)
-    
-    # Calculate summary statistics
-    stats['mean_length'] = stats['total_length'] / stats['total_sequences'] if stats['total_sequences'] > 0 else 0
-    stats['mean_gc_content'] = sum(stats['gc_contents']) / len(stats['gc_contents']) if stats['gc_contents'] else 0
-    stats['mean_n_content'] = sum(stats['n_contents']) / len(stats['n_contents']) if stats['n_contents'] else 0
-    
-    # N50 calculation
-    sorted_lengths = sorted(stats['lengths'], reverse=True)
-    total_len = sum(sorted_lengths)
-    cumulative = 0
-    stats['n50'] = 0
-    
-    for length in sorted_lengths:
-        cumulative += length
-        if cumulative >= total_len * 0.5:
-            stats['n50'] = length
-            break
-    
-    # Save statistics
-    stats_file = output_dir / "sequence_statistics.json"
-    with open(stats_file, 'w') as f:
-        json.dump(stats, f, indent=2)
-    
-    print(f"✓ Computed statistics for {stats['total_sequences']} sequences")
-    print(f"  - Total length: {stats['total_length']:,} bp")
-    print(f"  - N50: {stats['n50']:,} bp")
-    print(f"  - Mean GC content: {stats['mean_gc_content']:.1f}%")
-    
-    return stats
 
 def parse_prokka_gff(gff_file):
     """Parse Prokka GFF file to count features"""

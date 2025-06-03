@@ -1,18 +1,13 @@
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
+import subprocess
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import plotly.figure_factory as ff
 import numpy as np
 from pathlib import Path
-from .taxonomic_analysis import create_krona_plot
-from .reporting import *
 from .config import *
 
 def create_visualizations(bracken_report, output_dir):
-    """Create interactive taxonomy plots with enhanced visuals"""
+    """Create essential taxonomy visualizations - focusing on actionable insights"""
     try:
         # Try reading as Bracken format first
         try:
@@ -37,76 +32,105 @@ def create_visualizations(bracken_report, output_dir):
             # Clean up names
             significant_taxa[name_col] = significant_taxa[name_col].str.strip()
             
-            # Enhanced pie chart
-            fig = px.pie(
-                significant_taxa.head(15),
-                values=abundance_col,
-                names=name_col,
-                title='Top 15 Taxa by Abundance',
-                color_discrete_sequence=TAXONOMIC_COLORS,
-                hole=0.3
+            # Single comprehensive taxonomy plot - bar chart (easier to read than pie)
+            fig = px.bar(
+                significant_taxa.head(10),  # Top 10 is sufficient
+                x=abundance_col,
+                y=name_col,
+                orientation='h',
+                title='Top 10 Taxa by Abundance',
+                color=abundance_col,
+                color_continuous_scale='viridis',
+                labels={abundance_col: 'Relative Abundance', name_col: 'Taxon'}
+            )
+            fig.update_layout(
+                height=500,
+                yaxis={'categoryorder': 'total ascending'},
+                template="plotly_white",
+                showlegend=False
             )
             fig.update_traces(
-                textposition='inside', 
-                textinfo='percent+label',
-                hovertemplate='<b>%{label}</b><br>Abundance: %{percent}<br>Count: %{value:.6f}<extra></extra>'
+                hovertemplate='<b>%{y}</b><br>Abundance: %{x:.3%}<extra></extra>'
             )
-            fig.write_html(output_dir/"taxonomy_pie.html")
-            
-            # Treemap visualization
-            fig2 = px.treemap(
-                significant_taxa.head(25),
-                path=[name_col],
-                values=abundance_col,
-                title='Taxonomic Abundance (Treemap)',
-                color=abundance_col,
-                color_continuous_scale='RdYlBu'
-            )
-            fig2.update_layout(template="plotly_white")
-            fig2.write_html(output_dir/"taxonomy_treemap.html")
+            fig.write_html(output_dir/"taxonomy_overview.html")
         
-        # Create Krona plot
+        # Keep Krona plot as it's uniquely informative for hierarchical data
         create_krona_plot(df, abundance_col, name_col, output_dir)
         
-        # Create analysis dashboard
-        create_analysis_dashboard(output_dir)
-
     except Exception as e:
         print(f"Visualization error: {e}")
 
+def create_krona_plot(output_dir):
+    """Create Krona hierarchical plot directly from blast_report.txt to ensure consistency"""
+    try:
+        blast_report_file = output_dir / "blast_report.txt"
+        
+        if not blast_report_file.exists():
+            print("Warning: blast_report.txt not found, cannot create Krona plot")
+            return
+        
+        krona_input = output_dir / "krona_input.txt"
+        
+        with open(blast_report_file, 'r') as infile, open(krona_input, 'w') as outfile:
+            for line in infile:
+                parts = line.strip().split('\t')
+                if len(parts) >= 6:
+                    percentage = float(parts[0])
+                    hit_count = int(parts[1])
+                    organism = parts[5]
+                    
+                    # Skip unclassified and very low abundance
+                    if organism != "unclassified" and percentage > 0.1:
+                        outfile.write(f"{hit_count}\t{organism}\n")
+        
+        krona_output = output_dir / "taxonomy_krona.html"
+        cmd = f"ktImportText {krona_input} -o {krona_output}"
+        subprocess.run(cmd, shell=True, check=True)
+        print(f"✓ Krona plot created: {krona_output}")
+        print(f"  Krona input file: {krona_input}")
+        
+    except Exception as e:
+        print(f"Krona plot error: {e}")
+
 def create_pathogen_visualization(blast_report, output_dir):
-    """Create interactive pathogen summary visual"""
+    """Create focused pathogen detection summary"""
     try:
         if not Path(blast_report).exists() or Path(blast_report).stat().st_size == 0:
-            fig = go.Figure()
-            fig.add_annotation(
-                text='No pathogen hits detected',
-                xref="paper", yref="paper",
-                x=0.5, y=0.5,
-                showarrow=False,
-                font=dict(size=20))
-            fig.update_layout(title_text="Pathogen Detection Summary")
-            fig.write_html(output_dir/"pathogen_summary.html")
+            # Simple message for no pathogens - no need for complex visualization
+            with open(output_dir/"pathogen_summary.txt", 'w') as f:
+                f.write("No pathogen hits detected in this sample.\n")
             return
             
         df = pd.read_csv(blast_report, sep='\t')
         
-        # Sunburst chart for pathogen relationships
-        fig = px.sunburst(
-            df, 
-            path=['Pathogenic', 'staxids'], 
-            values='bitscore',
-            color='pident',
-            color_continuous_scale='RdBu',
-            title='Pathogen Hit Hierarchy'
-        )
-        fig.write_html(output_dir/"pathogen_sunburst.html")
+        # Simple pathogen count by category - more actionable than sunburst
+        if 'Pathogenic' in df.columns:
+            pathogen_counts = df['Pathogenic'].value_counts()
+            
+            fig = px.bar(
+                x=pathogen_counts.index,
+                y=pathogen_counts.values,
+                title='Pathogen Detection Summary',
+                labels={'x': 'Pathogen Category', 'y': 'Number of Hits'},
+                color=pathogen_counts.values,
+                color_continuous_scale='reds'
+            )
+            fig.update_layout(
+                template="plotly_white",
+                showlegend=False
+            )
+            fig.write_html(output_dir/"pathogen_summary.html")
+        
+        # If there are actual pathogen hits, create a simple table
+        if len(df) > 0:
+            pathogen_table = df[['staxids', 'pident', 'bitscore']].head(20)
+            pathogen_table.to_csv(output_dir/"top_pathogen_hits.csv", index=False)
 
     except Exception as e:
         print(f"Pathogen visualization error: {e}")
 
 def create_functional_plots(prokka_dir, swissprot_results, output_dir):
-    """Create interactive functional annotation visualizations"""
+    """Create essential functional annotation insights"""
     try:
         # SwissProt annotation results
         if swissprot_results and Path(swissprot_results).exists():
@@ -118,149 +142,76 @@ def create_functional_plots(prokka_dir, swissprot_results, output_dir):
             if len(df) == 0:
                 return
 
-            # Identity distribution
-            fig = px.histogram(
-                df, x='pident', nbins=30,
-                title='Protein Identity Distribution',
-                color_discrete_sequence=['#4ECDC4']
+            # Focus on annotation quality - most important metric
+            # Bin identity scores into quality categories
+            df['quality_category'] = pd.cut(df['pident'], 
+                                          bins=[0, 30, 50, 70, 90, 100], 
+                                          labels=['Poor (<30%)', 'Low (30-50%)', 
+                                                'Moderate (50-70%)', 'Good (70-90%)', 
+                                                'Excellent (>90%)'])
+            
+            quality_counts = df['quality_category'].value_counts()
+            
+            fig = px.pie(
+                values=quality_counts.values,
+                names=quality_counts.index,
+                title='Annotation Quality Distribution',
+                color_discrete_sequence=['#ff6b6b', '#feca57', '#48dbfb', '#0abde3', '#00d2d3']
             )
-            fig.update_layout(
-                xaxis_title="Percent Identity",
-                yaxis_title="Number of Hits",
-                template="plotly_white"
+            fig.update_traces(
+                textposition='inside', 
+                textinfo='percent+label',
+                hovertemplate='<b>%{label}</b><br>Count: %{value}<br>Percentage: %{percent}<extra></extra>'
             )
-            fig.write_html(output_dir/"swissprot_identity.html")
-
-            # Interactive 3D scatter plot
-            fig2 = px.scatter_3d(
-                df.head(500),
-                x='pident', y='evalue', z='bitscore',
-                color='bitscore',
-                title='3D Annotation Overview',
-                labels={'pident': 'Identity %', 'evalue': 'E-value', 'bitscore': 'Bit Score'}
-            )
-            fig2.update_traces(marker_size=3)
-            fig2.write_html(output_dir/"3d_annotation.html")
+            fig.update_layout(template="plotly_white")
+            fig.write_html(output_dir/"annotation_quality.html")
+            
+            # Summary statistics table instead of complex 3D plot
+            summary_stats = {
+                'Total Annotations': len(df),
+                'Mean Identity %': df['pident'].mean(),
+                'High Quality Hits (>70%)': len(df[df['pident'] > 70]),
+                'Excellent Hits (>90%)': len(df[df['pident'] > 90])
+            }
+            
+            with open(output_dir/"annotation_summary.txt", 'w') as f:
+                f.write("Functional Annotation Summary\n")
+                f.write("="*30 + "\n")
+                for key, value in summary_stats.items():
+                    if isinstance(value, float):
+                        f.write(f"{key}: {value:.2f}\n")
+                    else:
+                        f.write(f"{key}: {value}\n")
 
     except Exception as e:
         print(f"Functional plot error: {e}")
 
-def create_swissprot_plots(swissprot_file, output_dir):
-    """Create plots from SwissProt annotation results"""
-    df = pd.read_csv(swissprot_file, sep='\t', header=None,
-                    names=['qseqid', 'sseqid', 'pident', 'length', 'mismatch', 
-                          'gapopen', 'qstart', 'qend', 'sstart', 'send', 
-                          'evalue', 'bitscore', 'stitle'])
-    
-    if len(df) == 0:
-        print("No SwissProt hits found")
-        return
-    
-    # Identity distribution
-    plt.figure(figsize=(10, 6))
-    plt.hist(df['pident'], bins=30, edgecolor='black', alpha=0.7, color='skyblue')
-    plt.xlabel('Percent Identity')
-    plt.ylabel('Number of Hits')
-    plt.title('SwissProt BLAST Hit Identity Distribution')
-    plt.tight_layout()
-    plt.savefig(output_dir/"swissprot_identity.png", dpi=300, bbox_inches='tight')
-    plt.close()
-    print("✓ Created swissprot_identity.png")
-    
-    # Top functional categories (simplified from protein descriptions)
-    df['function'] = df['stitle'].str.extract(r'([A-Z][a-z]+(?:\s+[a-z]+){0,2})')
-    top_functions = df['function'].value_counts().head(15)
-    
-    if len(top_functions) > 0:
-        plt.figure(figsize=(12, 8))
-        top_functions.plot(kind='barh', color='coral')
-        plt.xlabel('Number of Proteins')
-        plt.title('Top 15 Protein Functions (SwissProt)')
-        plt.tight_layout()
-        plt.savefig(output_dir/"swissprot_functions.png", dpi=300, bbox_inches='tight')
-        plt.close()
-        print("✓ Created swissprot_functions.png")
-
-def create_pathogen_visualization(blast_report, output_dir):
-    """Create interactive pathogen summary visual"""
+def generate_analysis_summary(output_dir):
+    """Generate a single consolidated summary of key findings"""
     try:
-        if not Path(blast_report).exists() or Path(blast_report).stat().st_size == 0:
-            fig = go.Figure()
-            fig.add_annotation(
-                text='No pathogen hits detected',
-                xref="paper", yref="paper",
-                x=0.5, y=0.5,
-                showarrow=False,
-                font=dict(size=20))
-            fig.update_layout(title_text="Pathogen Detection Summary")
-            fig.write_html(output_dir/"pathogen_summary.html")
-            return
-            
-        df = pd.read_csv(blast_report, sep='\t')
+        summary = {
+            'files_generated': [],
+            'key_findings': []
+        }
         
-        # Sunburst chart for pathogen relationships
-        fig = px.sunburst(
-            df, 
-            path=['Pathogenic', 'staxids'], 
-            values='bitscore',
-            color='pident',
-            color_continuous_scale='RdBu',
-            title='Pathogen Hit Hierarchy'
-        )
-        fig.write_html(output_dir/"pathogen_sunburst.html")
-
+        # Check what files were generated
+        viz_files = ['taxonomy_overview.html', 'pathogen_summary.html', 
+                    'annotation_quality.html', 'krona.html']
+        
+        for file in viz_files:
+            if (output_dir / file).exists():
+                summary['files_generated'].append(file)
+        
+        # Write simple summary
+        with open(output_dir / "analysis_summary.txt", 'w') as f:
+            f.write("Microbiome Analysis Summary\n")
+            f.write("="*30 + "\n\n")
+            f.write("Generated Visualizations:\n")
+            for file in summary['files_generated']:
+                f.write(f"  - {file}\n")
+            f.write(f"\nTotal files: {len(summary['files_generated'])}\n")
+            
+        print(f"Analysis complete. Generated {len(summary['files_generated'])} visualization files.")
+        
     except Exception as e:
-        print(f"Pathogen visualization error: {e}")
-
-def create_sequence_quality_plots(seq_stats, output_dir):
-    """Create quality and statistics plots for FASTA sequences"""
-    import plotly.express as px
-    import plotly.graph_objects as go
-    
-    # Length distribution
-    fig1 = px.histogram(
-        x=seq_stats['lengths'],
-        nbins=50,
-        title='Sequence Length Distribution',
-        labels={'x': 'Sequence Length (bp)', 'y': 'Count'},
-        color_discrete_sequence=['#FF6B6B']
-    )
-    fig1.update_layout(template="plotly_white")
-    fig1.write_html(output_dir / "length_distribution.html")
-    
-    # GC content distribution
-    fig2 = px.histogram(
-        x=seq_stats['gc_contents'],
-        nbins=30,
-        title='GC Content Distribution',
-        labels={'x': 'GC Content (%)', 'y': 'Count'},
-        color_discrete_sequence=['#4ECDC4']
-    )
-    fig2.update_layout(template="plotly_white")
-    fig2.write_html(output_dir / "gc_distribution.html")
-    
-    # Summary statistics
-    fig3 = go.Figure()
-    
-    stats_data = [
-        ['Total Sequences', seq_stats['total_sequences']],
-        ['Total Length (bp)', f"{seq_stats['total_length']:,}"],
-        ['Mean Length (bp)', f"{seq_stats['mean_length']:.0f}"],
-        ['N50 (bp)', f"{seq_stats['n50']:,}"],
-        ['Mean GC Content (%)', f"{seq_stats['mean_gc_content']:.1f}"],
-        ['Mean N Content (%)', f"{seq_stats['mean_n_content']:.2f}"]
-    ]
-    
-    fig3.add_trace(go.Table(
-        header=dict(values=['Statistic', 'Value'],
-                   fill_color='lightblue',
-                   align='left'),
-        cells=dict(values=list(zip(*stats_data)),
-                  fill_color='lavender',
-                  align='left')
-    ))
-    
-    fig3.update_layout(title="Sequence Statistics Summary")
-    fig3.write_html(output_dir / "length_summary.html")
-    
-    print("✓ Created sequence quality plots")
+        print(f"Summary generation error: {e}")

@@ -1,15 +1,15 @@
 import subprocess
 import os
+import json
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 from pathlib import Path
 from .config import *
 from .utils import check_dependencies
 
 def generate_amr_report(amr_results, output_dir):
     """Generate antimicrobial resistance report from DIAMOND results"""
-    import pandas as pd
-    import plotly.express as px
-    import plotly.graph_objects as go
     
     if not amr_results or not amr_results.exists():
         print("No AMR results to process")
@@ -22,7 +22,6 @@ def generate_amr_report(amr_results, output_dir):
         }
         
         with open(output_dir / "antimicrobial_resistance_report.json", 'w') as f:
-            import json
             json.dump(empty_report, f, indent=2)
         return
     
@@ -87,7 +86,6 @@ def generate_amr_report(amr_results, output_dir):
         
         # Save JSON report
         with open(output_dir / "antimicrobial_resistance_report.json", 'w') as f:
-            import json
             json.dump(amr_report, f, indent=2)
         
         # Create visualization
@@ -126,9 +124,6 @@ def generate_amr_report(amr_results, output_dir):
 
 def generate_vf_report(vf_results, output_dir):
     """Generate virulence factor report from DIAMOND results"""
-    import pandas as pd
-    import plotly.express as px
-    import plotly.graph_objects as go
     
     if not vf_results or not vf_results.exists():
         print("No virulence factor results to process")
@@ -141,7 +136,6 @@ def generate_vf_report(vf_results, output_dir):
         }
         
         with open(output_dir / "virulence_factors_report.json", 'w') as f:
-            import json
             json.dump(empty_report, f, indent=2)
         return
     
@@ -207,7 +201,6 @@ def generate_vf_report(vf_results, output_dir):
         
         # Save JSON report
         with open(output_dir / "virulence_factors_report.json", 'w') as f:
-            import json
             json.dump(vf_report, f, indent=2)
         
         # Create visualization
@@ -263,11 +256,8 @@ def generate_vf_report(vf_results, output_dir):
 
 def run_antimicrobial_resistance_scan(fasta_path, output_dir):
     """Scan for antimicrobial resistance genes using CARD database"""
-    
-    # Use CARD database files from your pathogen_db directory
-    card_db = output_dir.parent / "databases" / "pathogen_db" / "protein_fasta_protein_homolog_model.fasta"
-    
-    if not card_db.exists():
+
+    if not CARD_PROTEIN_DB.exists():
         print("CARD database not found, skipping AMR scan")
         return None
     
@@ -275,7 +265,7 @@ def run_antimicrobial_resistance_scan(fasta_path, output_dir):
     
     # Create temporary DIAMOND database if needed
     temp_dmnd = output_dir / "card_temp.dmnd"
-    makedb_cmd = f"diamond makedb --in {card_db} --db {temp_dmnd.with_suffix('')}"
+    makedb_cmd = f"diamond makedb --in {CARD_PROTEIN_DB} --db {temp_dmnd.with_suffix('')}"
     
     try:
         subprocess.run(makedb_cmd, shell=True, check=True)
@@ -302,10 +292,8 @@ def run_antimicrobial_resistance_scan(fasta_path, output_dir):
 
 def run_virulence_factor_scan(fasta_path, output_dir):
     """Scan for virulence factors using VFDB"""
-    
-    vfdb_file = output_dir.parent / "databases" / "pathogen_db" / "VFDB_setB_pro.fas"
-    
-    if not vfdb_file.exists():
+        
+    if not VFDB_DB.exists():
         print("VFDB database not found, skipping virulence scan")
         return None
     
@@ -313,7 +301,7 @@ def run_virulence_factor_scan(fasta_path, output_dir):
     
     # Create temporary DIAMOND database
     temp_dmnd = output_dir / "vfdb_temp.dmnd"
-    makedb_cmd = f"diamond makedb --in {vfdb_file} --db {temp_dmnd.with_suffix('')}"
+    makedb_cmd = f"diamond makedb --in {VFDB_DB} --db {temp_dmnd.with_suffix('')}"
     
     try:
         subprocess.run(makedb_cmd, shell=True, check=True)
@@ -337,12 +325,9 @@ def run_virulence_factor_scan(fasta_path, output_dir):
 def run_pathogen_scan(fasta_path, output_dir):
     """Screen for pathogens using Diamond BLAST against pathogen database"""
     
-    # Define pathogen database path
-    pathogen_db_path = Path("databases/pathogen_db/pathogen_db.dmnd")
-    
     # Check if database exists
-    if not pathogen_db_path.exists():
-        print(f"Warning: Pathogen database not found at {pathogen_db_path}")
+    if not CAT_DB.exists():
+        print(f"Warning: Pathogen database not found at {CAT_DB}")
         print("Skipping pathogen screening...")
         # Create empty results file
         empty_results = output_dir / "pathogen_blast_results.txt"
@@ -352,10 +337,10 @@ def run_pathogen_scan(fasta_path, output_dir):
     
     blast_out = output_dir / "pathogen_blast_results.txt"
     
-    print(f"Running pathogen screening against: {pathogen_db_path}")
+    print(f"Running pathogen screening against: {CAT_DB}")
     
     # Use simpler output format without taxonomy for now
-    cmd = f"diamond blastx -d {pathogen_db_path.with_suffix('')} -q {fasta_path} -o {blast_out} " \
+    cmd = f"diamond blastx -d {CAT_DB.with_suffix('')} -q {fasta_path} -o {blast_out} " \
           "--outfmt 6 qseqid sseqid pident length evalue bitscore stitle " \
           "--top 3 --evalue 1e-5 --threads 4"
     
