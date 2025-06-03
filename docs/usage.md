@@ -312,14 +312,14 @@ Cloning vector                 2          1          2.0
 ```
 
 #### Organism Comparison Data (FASTA Input)
-```csv
-# organism_comparison_data.csv format
-organism,total_hits,sequences_with_hits,avg_hits_per_sequence
-Salmonella enterica,10,1,10.0
-Escherichia coli,6,1,6.0
-Klebsiella pneumoniae,2,1,2.0
-Cloning vector,2,1,2.0
-```
+
+| Organism               | Total Hits | Sequences with Hits | Avg Hits per Sequence |
+|------------------------|------------|----------------------|------------------------|
+| Salmonella enterica    | 10         | 1                    | 10.0                   |
+| Escherichia coli       | 6          | 1                    | 6.0                    |
+| Klebsiella pneumoniae  | 2          | 1                    | 2.0                    |
+| Cloning vector         | 2          | 1                    | 2.0                    |
+
 
 #### Bracken Abundance Report (FASTQ Input)
 ```tsv
