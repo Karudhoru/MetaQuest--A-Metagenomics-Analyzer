@@ -1,6 +1,8 @@
 import subprocess
 import datetime
 import os
+if not os.getenv('METAQUEST_QUIET'):
+    print("🧬 MetaQuest ML pathogen predictor ready")
 import pandas as pd
 from pathlib import Path
 from Bio import SeqIO

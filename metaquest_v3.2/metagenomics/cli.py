@@ -1,11 +1,35 @@
 import argparse
 import subprocess
+import sys
+import os
 from pathlib import Path
-from .analysis import run_analysis
-from .utils import check_dependencies, check_database_status
+
+# Version information
+__version__ = "3.2.0"
+__app_name__ = "MetaQuest"
 
 def main():
-    parser = argparse.ArgumentParser(description="Metagenomics Analysis Pipeline")
+    # Suppress startup messages for version/help commands
+    if '--version' in sys.argv or '--help' in sys.argv or '-h' in sys.argv:
+        os.environ['METAQUEST_QUIET'] = '1'
+    
+    parser = argparse.ArgumentParser(
+        description="Metagenomics Analysis Pipeline",
+        prog="metaquest"
+    )
+    
+    # Add version argument
+    parser.add_argument('--version', action='version', 
+                       version=f'{__app_name__} v{__version__}')
+    
+    # Quick check for version flag to avoid unnecessary imports
+    if '--version' in sys.argv:
+        parser.parse_args()  # This will print version and exit
+        return
+    
+    # Import modules only when needed (after version check)
+    from .analysis import run_analysis
+    from .utils import check_dependencies, check_database_status
     
     # Add the input file argument for FASTA
     parser.add_argument('input', nargs='?', help="Input FASTA file")
@@ -29,13 +53,13 @@ def main():
     args = parser.parse_args()
     
     try:
-        print("=== Metagenomics Analysis Pipeline ===")
-        print("Checking dependencies and databases...")
+        print(f"🧬 {__app_name__} v{__version__} - Metagenomics Analysis Pipeline")
+        print("🔍 Initializing analysis environment...")
         check_dependencies()
         check_database_status()
         
         if args.check_only:
-            print("\n✓ All checks passed!")
+            print("\n✅ All systems ready!")
             exit(0)
         
         if args.type == 'fastq':
@@ -55,14 +79,14 @@ def main():
                 for f in (r1,r2):
                     if not Path(f).exists(): raise FileNotFoundError(f)
                 reads = [r1, r2]
-            print(f"\nStarting FASTQ analysis of {reads}")
+            print(f"\n🚀 Starting FASTQ analysis of {reads}")
             run_analysis(reads, 'fastq', args.output)
         else:  # FASTA type
             if not args.input:
                 raise ValueError("Input FASTA file is required for FASTA analysis")
             if not Path(args.input).exists():
                 raise FileNotFoundError(f"Input file not found: {args.input}")
-            print(f"\nStarting FASTA analysis of {args.input}")
+            print(f"\n🚀 Starting FASTA analysis of {args.input}")
             run_analysis([args.input], 'fasta', args.output)
         
         print(f"\n🎉 Analysis complete! Results saved to {args.output}")
