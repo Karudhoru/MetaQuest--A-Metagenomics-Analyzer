@@ -13,7 +13,7 @@ This guide covers the complete installation process for MetaQuest, a comprehensi
 ## System Requirements
 
 ### Hardware Requirements
-- **RAM**: Minimum 16GB, recommended 32GB+ for comprehensive pathogen analysis
+- **RAM**: Minimum 8GB, recommended 16GB+ for comprehensive pathogen analysis
 - **Storage**: At least 15GB free space for databases, ML models, and results
 - **CPU**: Multi-core processor recommended (8+ cores for optimal performance)
 - **GPU**: Optional, for enhanced ML pathogen prediction performance
@@ -21,7 +21,7 @@ This guide covers the complete installation process for MetaQuest, a comprehensi
 ### Software Requirements
 - Linux or macOS operating system
 - Conda/Miniconda package manager (version 4.9+ recommended)
-- Python 3.8+ (automatically installed with conda environment)
+- Python 3.10+ (automatically installed with conda environment)
 - Internet connection for database downloads (~10GB total)
 - Bash shell version 4.0+
 
