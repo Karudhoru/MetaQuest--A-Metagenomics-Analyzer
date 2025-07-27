@@ -1,0 +1,57 @@
+FUNCTIONAL ANNOTATION REPORT
+============================
+
+Analysis Type: Functional Annotation
+Generated: 2025-07-27 16:52:40
+MetaQuest Pipeline v3.0
+
+GENE PREDICTION AND ANNOTATION (Prokka)
+------------------------------------------
+
+PROKKA OUTPUT SUMMARY:
+• Analysis directory: prokka_annotation
+• Protein sequences (*.faa): 1 files
+• Gene sequences (*.ffn): 1 files
+• Annotation files (*.gff): 1 files
+
+PROTEIN SEQUENCE ANALYSIS:
+• Total proteins predicted: 13073
+• Source file: sample.faa
+
+LENGTH DISTRIBUTION ANALYSIS:
+• Average length: 38.5 amino acids
+• Median length: 38.0 amino acids
+• Shortest protein: 29 amino acids
+• Longest protein: 89 amino acids
+• Standard deviation: 9.8 amino acids
+
+QUALITY ASSESSMENT:
+• Very short (<50 aa): 12091 (92.5%)
+• Short (50-99 aa): 982 (7.5%)
+• Medium (100-299 aa): 0 (0.0%)
+• Long (≥300 aa): 0 (0.0%)
+
+⚠️ HIGH PROPORTION OF VERY SHORT PROTEINS - May indicate fragmented assembly
+
+Error processing SwissProt results: No columns to parse from file
+
+FUNCTIONAL ANALYSIS INSIGHTS & RECOMMENDATIONS
+------------------------------------------------
+
+COMPLETED ANALYSES:
+• Gene prediction (Prokka) + Protein annotation (SwissProt)
+
+⚠️ Could not calculate annotation coverage: No columns to parse from file
+
+RECOMMENDATIONS FOR FURTHER ANALYSIS:
+• Cross-reference functional categories with sample type expectations
+• Investigate unannotated proteins for novel functions
+• Consider specialized databases for domain-specific annotations
+• Analyze functional diversity for ecosystem characterization
+• Compare functional profiles with reference samples if available
+
+QUALITY CONSIDERATIONS:
+• High-identity matches (>90%) are most reliable for functional assignment
+• Short proteins (<100 aa) may have limited functional annotation
+• Multiple database searches can improve annotation coverage
+• Consider experimental validation for critical findings

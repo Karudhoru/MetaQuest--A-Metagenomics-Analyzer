@@ -1,0 +1,226 @@
+{
+  "analysis_summary": {
+    "total_pathogens_detected": 13,
+    "high_risk_pathogens": 4,
+    "medium_risk_pathogens": 4,
+    "low_risk_pathogens": 5,
+    "overall_risk_assessment": "CRITICAL",
+    "detection_methods_used": [
+      "bracken_taxonomic",
+      "taxonomy_blast",
+      "sequence_database_search"
+    ],
+    "analysis_timestamp": "2025-07-27T16:52:41.187366",
+    "pipeline_version": "MetaQuest v3.0"
+  },
+  "pathogen_detections": {
+    "Salmonella enterica": {
+      "risk_level": "HIGH",
+      "detection_methods": [
+        "bracken"
+      ],
+      "detection_sources": [
+        "FASTQ taxonomic classification"
+      ],
+      "abundance_percentage": 9.702,
+      "estimated_reads": 3501,
+      "sequence_identity": "N/A",
+      "sequence_hits": 0,
+      "min_evalue": "N/A",
+      "taxonomy_id": 28901,
+      "confidence_score": 0.221
+    },
+    "Brucella melitensis": {
+      "risk_level": "HIGH",
+      "detection_methods": [
+        "bracken"
+      ],
+      "detection_sources": [
+        "FASTQ taxonomic classification"
+      ],
+      "abundance_percentage": 7.973,
+      "estimated_reads": 2877,
+      "sequence_identity": "N/A",
+      "sequence_hits": 0,
+      "min_evalue": "N/A",
+      "taxonomy_id": 29459,
+      "confidence_score": 0.219
+    },
+    "Staphylococcus aureus": {
+      "risk_level": "HIGH",
+      "detection_methods": [
+        "bracken"
+      ],
+      "detection_sources": [
+        "FASTQ taxonomic classification"
+      ],
+      "abundance_percentage": 0.502,
+      "estimated_reads": 181,
+      "sequence_identity": "N/A",
+      "sequence_hits": 0,
+      "min_evalue": "N/A",
+      "taxonomy_id": 1280,
+      "confidence_score": 0.195
+    },
+    "Escherichia coli": {
+      "risk_level": "HIGH",
+      "detection_methods": [
+        "bracken"
+      ],
+      "detection_sources": [
+        "FASTQ taxonomic classification"
+      ],
+      "abundance_percentage": 0.488,
+      "estimated_reads": 176,
+      "sequence_identity": "N/A",
+      "sequence_hits": 0,
+      "min_evalue": "N/A",
+      "taxonomy_id": 562,
+      "confidence_score": 0.195
+    },
+    "Enterococcus faecalis": {
+      "risk_level": "MEDIUM",
+      "detection_methods": [
+        "bracken"
+      ],
+      "detection_sources": [
+        "FASTQ taxonomic classification"
+      ],
+      "abundance_percentage": 0.671,
+      "estimated_reads": 242,
+      "sequence_identity": "N/A",
+      "sequence_hits": 0,
+      "min_evalue": "N/A",
+      "taxonomy_id": 1351,
+      "confidence_score": 0.198
+    },
+    "Klebsiella pneumoniae": {
+      "risk_level": "MEDIUM",
+      "detection_methods": [
+        "bracken"
+      ],
+      "detection_sources": [
+        "FASTQ taxonomic classification"
+      ],
+      "abundance_percentage": 0.449,
+      "estimated_reads": 162,
+      "sequence_identity": "N/A",
+      "sequence_hits": 0,
+      "min_evalue": "N/A",
+      "taxonomy_id": 573,
+      "confidence_score": 0.194
+    },
+    "Clostridium tetani": {
+      "risk_level": "MEDIUM",
+      "detection_methods": [
+        "bracken"
+      ],
+      "detection_sources": [
+        "FASTQ taxonomic classification"
+      ],
+      "abundance_percentage": 0.391,
+      "estimated_reads": 141,
+      "sequence_identity": "N/A",
+      "sequence_hits": 0,
+      "min_evalue": "N/A",
+      "taxonomy_id": 1513,
+      "confidence_score": 0.193
+    },
+    "Acinetobacter baumannii": {
+      "risk_level": "MEDIUM",
+      "detection_methods": [
+        "bracken"
+      ],
+      "detection_sources": [
+        "FASTQ taxonomic classification"
+      ],
+      "abundance_percentage": 0.224,
+      "estimated_reads": 81,
+      "sequence_identity": "N/A",
+      "sequence_hits": 0,
+      "min_evalue": "N/A",
+      "taxonomy_id": 470,
+      "confidence_score": 0.188
+    },
+    "Streptococcus thermophilus": {
+      "risk_level": "LOW",
+      "detection_methods": [
+        "bracken"
+      ],
+      "detection_sources": [
+        "FASTQ taxonomic classification"
+      ],
+      "abundance_percentage": 2.408,
+      "estimated_reads": 869,
+      "sequence_identity": "N/A",
+      "sequence_hits": 0,
+      "min_evalue": "N/A",
+      "taxonomy_id": 1308,
+      "confidence_score": 0.209
+    },
+    "Ferrovibrio terrae": {
+      "risk_level": "LOW",
+      "detection_methods": [
+        "bracken"
+      ],
+      "detection_sources": [
+        "FASTQ taxonomic classification"
+      ],
+      "abundance_percentage": 0.269,
+      "estimated_reads": 97,
+      "sequence_identity": "N/A",
+      "sequence_hits": 0,
+      "min_evalue": "N/A",
+      "taxonomy_id": 2594003,
+      "confidence_score": 0.19
+    },
+    "Desulfovibrio vulgaris": {
+      "risk_level": "LOW",
+      "detection_methods": [
+        "bracken"
+      ],
+      "detection_sources": [
+        "FASTQ taxonomic classification"
+      ],
+      "abundance_percentage": 0.116,
+      "estimated_reads": 42,
+      "sequence_identity": "N/A",
+      "sequence_hits": 0,
+      "min_evalue": "N/A",
+      "taxonomy_id": 881,
+      "confidence_score": 0.182
+    },
+    "Yersinia enterocolitica": {
+      "risk_level": "LOW",
+      "detection_methods": [
+        "bracken"
+      ],
+      "detection_sources": [
+        "FASTQ taxonomic classification"
+      ],
+      "abundance_percentage": 0.05,
+      "estimated_reads": 18,
+      "sequence_identity": "N/A",
+      "sequence_hits": 0,
+      "min_evalue": "N/A",
+      "taxonomy_id": 630,
+      "confidence_score": 0.175
+    },
+    "Vibrio ponticus": {
+      "risk_level": "LOW",
+      "detection_methods": [
+        "bracken"
+      ],
+      "detection_sources": [
+        "FASTQ taxonomic classification"
+      ],
+      "abundance_percentage": 0.05,
+      "estimated_reads": 18,
+      "sequence_identity": "N/A",
+      "sequence_hits": 0,
+      "min_evalue": "N/A",
+      "taxonomy_id": 265668,
+      "confidence_score": 0.175
+    }
+  }
+}

@@ -1,0 +1,56 @@
+TAXONOMIC CLASSIFICATION REPORT
+===============================
+
+Analysis Type: Taxonomic Classification
+Generated: 2025-07-27 16:44:17
+MetaQuest Pipeline v3.0
+
+FASTQ TAXONOMIC CLASSIFICATION (Bracken)
+--------------------------------------------------
+Total classified taxa: 192
+
+TOP 15 MOST ABUNDANT TAXA:
+Rank Taxon                                         Abundance    Reads     
+---------------------------------------------------------------------------
+1    Bacillus cereus                                 13.296%      4798
+2    Salmonella enterica                              9.702%      3501
+3    Brucella melitensis                              7.973%      2877
+4    Luteitalea pratensis                             5.631%      2032
+5    Bacillus subtilis                                3.010%      1086
+6    Streptococcus thermophilus                       2.408%       869
+7    Bifidobacterium longum                           1.433%       517
+8    Priestia megaterium                              1.388%       501
+9    Corynebacterium urealyticum                      1.164%       420
+10   Candidatus Nitrososphaera gargensis              1.117%       403
+11   Nitrospira japonica                              1.092%       394
+12   Rubrobacter sp. SCSIO 52909                      1.042%       376
+13   Sphingomonas rhizophila                          0.975%       352
+14   Pontibacter pudoricolor                          0.956%       345
+15   Blastococcus saxobsidens                         0.951%       343
+
+DIVERSITY METRICS:
+• Shannon diversity index (proxy): 4.177
+• Dominant taxon: Bacillus cereus (0.740%)
+• Taxa >1% abundance: 12
+
+ANALYSIS SUMMARY & INTERPRETATION
+-----------------------------------
+
+✓ COMPLETED ANALYSES:
+  FASTQ classification (Kraken2/Bracken)
+
+KEY INSIGHTS:
+• Review dominant taxa for sample composition validation
+• Check for unexpected organisms indicating contamination
+• High-identity matches (>90%) are most reliable
+• Multiple detection methods increase confidence
+
+QUALITY ASSESSMENT:
+• Rare taxa (<0.1% abundance) require careful interpretation
+• Cross-reference with expected sample characteristics
+• Consider diversity metrics for ecosystem health
+
+RECOMMENDED FOLLOW-UP:
+• Validate unexpected findings with targeted PCR
+• Compare with negative controls if available
+• Consider functional analysis for metabolic insights
