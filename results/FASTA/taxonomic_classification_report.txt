@@ -1,0 +1,71 @@
+TAXONOMIC CLASSIFICATION REPORT
+===============================
+
+Analysis Type: Taxonomic Classification
+Generated: 2025-07-27 16:15:17
+MetaQuest Pipeline v3.0
+
+FASTA TAXONOMIC CLASSIFICATION (BLAST) - COMPREHENSIVE ANALYSIS
+-----------------------------------------------------------------
+Total sequences analyzed: 1
+
+Sequences with hits: 1
+Total BLAST hits: 20
+Unique organisms identified: 5
+Classification rate: 100.0%
+Average hits per classified sequence: 20.0
+
+DETAILED QUALITY METRICS:
+------------------------------
+• Average sequence identity: 99.9%
+• Median sequence identity: 100.0%
+• Identity range: 99.2% - 100.0%
+
+IDENTITY DISTRIBUTION:
+• High-quality hits (>90% identity): 20 (100.0%)
+• Medium-quality hits (75-90% identity): 0 (0.0%)
+• Low-quality hits (<75% identity): 0 (0.0%)
+
+E-VALUE DISTRIBUTION:
+• High confidence (E<1e-50): 20 (100.0%)
+• Medium confidence (1e-50≤E≤1e-5): 0 (0.0%)
+• Low confidence (E>1e-5): 0 (0.0%)
+
+TOP 20 ORGANISMS BY TOTAL HITS:
+--------------------------------------------------------------------------------
+Rank Organism                                 Total Hits Sequences  Avg Hits/Seq Hit %   
+--------------------------------------------------------------------------------
+1    Salmonella enterica                      9          1          9.0          45.0    %
+2    Escherichia coli                         6          1          6.0          30.0    %
+3    Klebsiella pneumoniae                    2          1          2.0          10.0    %
+4    Cloning vector                           2          1          2.0          10.0    %
+5    Uncultured bacterium                     1          1          1.0          5.0     %
+
+ORGANISM DIVERSITY ANALYSIS:
+• Total unique organisms: 5
+• Dominant organism: Salmonella enterica (9 hits)
+• Organisms with >5 hits: 2
+• Organisms with single hits: 1
+
+
+ANALYSIS SUMMARY & INTERPRETATION
+-----------------------------------
+
+✓ COMPLETED ANALYSES:
+  FASTA classification (BLAST)
+
+KEY INSIGHTS:
+• Review dominant taxa for sample composition validation
+• Check for unexpected organisms indicating contamination
+• High-identity matches (>90%) are most reliable
+• Multiple detection methods increase confidence
+
+QUALITY ASSESSMENT:
+• Rare taxa (<0.1% abundance) require careful interpretation
+• Cross-reference with expected sample characteristics
+• Consider diversity metrics for ecosystem health
+
+RECOMMENDED FOLLOW-UP:
+• Validate unexpected findings with targeted PCR
+• Compare with negative controls if available
+• Consider functional analysis for metabolic insights

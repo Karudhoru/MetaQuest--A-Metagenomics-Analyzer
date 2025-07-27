@@ -1,0 +1,39 @@
+{
+  "metadata": {
+    "analysis_type": "Taxonomic Classification",
+    "generation_timestamp": "2025-07-27T16:15:17.497612",
+    "pipeline_version": "MetaQuest v3.0"
+  },
+  "data": {
+    "bracken_analysis": null,
+    "blast_analysis": {
+      "total_sequences": 1,
+      "sequences_with_hits": 1,
+      "unique_organisms": 5,
+      "average_identity": 99.92849136243943,
+      "top_15_organisms": [
+        {
+          "organism": "Salmonella enterica",
+          "hit_count": 9
+        },
+        {
+          "organism": "Escherichia coli",
+          "hit_count": 6
+        },
+        {
+          "organism": "Klebsiella pneumoniae",
+          "hit_count": 2
+        },
+        {
+          "organism": "Cloning vector",
+          "hit_count": 2
+        },
+        {
+          "organism": "Uncultured bacterium",
+          "hit_count": 1
+        }
+      ]
+    },
+    "summary_statistics": {}
+  }
+}

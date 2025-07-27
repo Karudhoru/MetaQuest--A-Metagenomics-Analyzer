@@ -34,6 +34,36 @@
         "organism": "Escherichia coli"
       },
       {
+        "hit_id": "gi|2844909322|gb|CP172472.1|",
+        "hit_def": "Salmonella enterica subsp. enterica serovar Agona strain R24.1120 plasmid pR24.1120_13k, complete sequence",
+        "length": 12954,
+        "e_value": 0.0,
+        "bit_score": 11681.7,
+        "identity": 100.0,
+        "query_cover": 100.0,
+        "organism": "Salmonella enterica"
+      },
+      {
+        "hit_id": "gi|2844909322|gb|CP172472.1|",
+        "hit_def": "Salmonella enterica subsp. enterica serovar Agona strain R24.1120 plasmid pR24.1120_13k, complete sequence",
+        "length": 12954,
+        "e_value": 0.0,
+        "bit_score": 7842.33,
+        "identity": 100.0,
+        "query_cover": 67.1298440636097,
+        "organism": "Salmonella enterica"
+      },
+      {
+        "hit_id": "gi|2844909322|gb|CP172472.1|",
+        "hit_def": "Salmonella enterica subsp. enterica serovar Agona strain R24.1120 plasmid pR24.1120_13k, complete sequence",
+        "length": 12954,
+        "e_value": 0.0,
+        "bit_score": 3840.66,
+        "identity": 100.0,
+        "query_cover": 32.870155936390304,
+        "organism": "Salmonella enterica"
+      },
+      {
         "hit_id": "gi|2917982068|gb|CP182414.1|",
         "hit_def": "Salmonella enterica subsp. enterica serovar Agona strain R22.2512 plasmid pR22.2512-2, complete sequence",
         "length": 12713,
@@ -67,50 +97,10 @@
         "hit_id": "gi|2917982068|gb|CP182414.1|",
         "hit_def": "Salmonella enterica subsp. enterica serovar Agona strain R22.2512 plasmid pR22.2512-2, complete sequence",
         "length": 12713,
-        "e_value": 5.33371e-158,
+        "e_value": 5.44294e-158,
         "bit_score": 574.758,
         "identity": 100.0,
         "query_cover": 4.90968040759611,
-        "organism": "Salmonella enterica"
-      },
-      {
-        "hit_id": "gi|2844909322|gb|CP172472.1|",
-        "hit_def": "Salmonella enterica subsp. enterica serovar Agona strain R24.1120 plasmid pR24.1120_13k, complete sequence",
-        "length": 12954,
-        "e_value": 0.0,
-        "bit_score": 11681.7,
-        "identity": 100.0,
-        "query_cover": 100.0,
-        "organism": "Salmonella enterica"
-      },
-      {
-        "hit_id": "gi|2844909322|gb|CP172472.1|",
-        "hit_def": "Salmonella enterica subsp. enterica serovar Agona strain R24.1120 plasmid pR24.1120_13k, complete sequence",
-        "length": 12954,
-        "e_value": 0.0,
-        "bit_score": 7842.33,
-        "identity": 100.0,
-        "query_cover": 67.1298440636097,
-        "organism": "Salmonella enterica"
-      },
-      {
-        "hit_id": "gi|2844909322|gb|CP172472.1|",
-        "hit_def": "Salmonella enterica subsp. enterica serovar Agona strain R24.1120 plasmid pR24.1120_13k, complete sequence",
-        "length": 12954,
-        "e_value": 0.0,
-        "bit_score": 3840.66,
-        "identity": 100.0,
-        "query_cover": 32.870155936390304,
-        "organism": "Salmonella enterica"
-      },
-      {
-        "hit_id": "gi|2921959531|gb|CP162098.1|",
-        "hit_def": "Salmonella enterica strain SAL22057 plasmid pSAL22057-2, complete sequence",
-        "length": 6477,
-        "e_value": 0.0,
-        "bit_score": 11681.7,
-        "identity": 100.0,
-        "query_cover": 100.0,
         "organism": "Salmonella enterica"
       },
       {
@@ -157,21 +147,11 @@
         "hit_id": "gi|2653042302|gb|CP142411.1|",
         "hit_def": "Klebsiella pneumoniae strain KC25-20925 plasmid pKC25-20925_6.5kb, complete sequence",
         "length": 6477,
-        "e_value": 4.99108e-171,
+        "e_value": 5.0933e-171,
         "bit_score": 618.038,
         "identity": 100.0,
         "query_cover": 5.2802223251505325,
         "organism": "Klebsiella pneumoniae"
-      },
-      {
-        "hit_id": "gi|1948610004|gb|CP066008.1|",
-        "hit_def": "Salmonella enterica strain FDAARGOS_1067 plasmid unnamed1, complete sequence",
-        "length": 8688,
-        "e_value": 0.0,
-        "bit_score": 9734.97,
-        "identity": 99.98148833765272,
-        "query_cover": 83.4028099428748,
-        "organism": "Salmonella enterica"
       },
       {
         "hit_id": "gi|381139700|emb|HE654726.1|",
@@ -184,14 +164,14 @@
         "organism": "Salmonella enterica"
       },
       {
-        "hit_id": "gi|2461860554|dbj|LC760309.1|",
-        "hit_def": "Cloning vector pHRP308 DNA, complete sequence",
-        "length": 12446,
+        "hit_id": "gi|1948610004|gb|CP066008.1|",
+        "hit_def": "Salmonella enterica strain FDAARGOS_1067 plasmid unnamed1, complete sequence",
+        "length": 8688,
         "e_value": 0.0,
-        "bit_score": 9730.46,
-        "identity": 99.96297667530544,
+        "bit_score": 9734.97,
+        "identity": 99.98148833765272,
         "query_cover": 83.4028099428748,
-        "organism": "Cloning vector"
+        "organism": "Salmonella enterica"
       },
       {
         "hit_id": "gi|2465767369|dbj|LC760540.1|",
@@ -202,8 +182,28 @@
         "identity": 99.96297667530544,
         "query_cover": 83.4028099428748,
         "organism": "Cloning vector"
+      },
+      {
+        "hit_id": "gi|2045510068|gb|MW363525.1|",
+        "hit_def": "Uncultured bacterium plasmid pWD1, complete sequence",
+        "length": 8535,
+        "e_value": 0.0,
+        "bit_score": 9730.46,
+        "identity": 99.96297667530544,
+        "query_cover": 83.4028099428748,
+        "organism": "Uncultured bacterium"
+      },
+      {
+        "hit_id": "gi|2461860554|dbj|LC760309.1|",
+        "hit_def": "Cloning vector pHRP308 DNA, complete sequence",
+        "length": 12446,
+        "e_value": 0.0,
+        "bit_score": 9730.46,
+        "identity": 99.96297667530544,
+        "query_cover": 83.4028099428748,
+        "organism": "Cloning vector"
       }
     ],
-    "timestamp": 1748942403.3478832
+    "timestamp": 1753612813.6911752
   }
 ]

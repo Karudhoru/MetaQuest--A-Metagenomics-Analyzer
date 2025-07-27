@@ -1,0 +1,29 @@
+{
+  "metadata": {
+    "analysis_type": "Functional Annotation",
+    "generation_timestamp": "2025-07-27T16:15:30.086473",
+    "pipeline_version": "MetaQuest v3.0"
+  },
+  "data": {
+    "prokka_analysis": {
+      "total_proteins": 7,
+      "length_statistics": {
+        "mean": 241.0,
+        "median": 184.0,
+        "min": 68,
+        "max": 709,
+        "std": 209.1684215445261
+      },
+      "length_distribution": {
+        "very_short": 0,
+        "short": 3,
+        "medium": 3,
+        "long": 1
+      }
+    },
+    "swissprot_analysis": {
+      "error": "'qseqid'"
+    },
+    "coverage_metrics": null
+  }
+}

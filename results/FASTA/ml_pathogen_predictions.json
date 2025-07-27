@@ -1,0 +1,151 @@
+{
+  "metadata": {
+    "total_predictions": 7,
+    "pathogenic_count": 7,
+    "high_confidence_count": 6,
+    "voting_ensemble_used": false,
+    "model_type": "XGBClassifier",
+    "feature_names_available": true,
+    "ml_config": {
+      "enable_ml_prediction": true,
+      "fallback_to_heuristic": true,
+      "confidence_threshold": 0.7,
+      "batch_size": 100,
+      "feature_cache": true
+    },
+    "model_artifacts_dir": "metaquest_v3/metagenomics/model_artifacts",
+    "pathogen_colors": {
+      "Pathogenic": "#FF6B6B",
+      "Non-pathogenic": "#4ECDC4",
+      "Unknown": "#95A5A6",
+      "AMR": "#E74C3C",
+      "Virulence": "#F39C12"
+    },
+    "system_capabilities": {
+      "feature_extractor_available": true,
+      "ml_pipeline_complete": true,
+      "feature_names_available": true,
+      "voting_ensemble_loaded": false,
+      "model_type": "XGBClassifier"
+    },
+    "generation_timestamp": "2025-07-27T16:15:31.508411",
+    "methods_used": [
+      "ML_VotingEnsemble_MetaQuest"
+    ],
+    "feature_alignment_method": "saved_feature_names"
+  },
+  "predictions": [
+    {
+      "sequence_id": "KIEHJLIC_00001",
+      "sequence_type": "protein",
+      "prediction": "Pathogenic",
+      "confidence": 0.7563023567199707,
+      "pathogenic_probability": 0.7563023567199707,
+      "high_confidence": true,
+      "confidence_threshold": 0.7,
+      "sequence_length": 184,
+      "method": "ML_VotingEnsemble_MetaQuest",
+      "extraction_method": "MetaQuest_Production",
+      "model_type": "XGBClassifier",
+      "features_used": 90,
+      "features_selected": 80,
+      "timestamp": "2025-07-27T16:15:31.410165"
+    },
+    {
+      "sequence_id": "KIEHJLIC_00002",
+      "sequence_type": "protein",
+      "prediction": "Pathogenic",
+      "confidence": 0.9339348077774048,
+      "pathogenic_probability": 0.9339348077774048,
+      "high_confidence": true,
+      "confidence_threshold": 0.7,
+      "sequence_length": 94,
+      "method": "ML_VotingEnsemble_MetaQuest",
+      "extraction_method": "MetaQuest_Production",
+      "model_type": "XGBClassifier",
+      "features_used": 90,
+      "features_selected": 80,
+      "timestamp": "2025-07-27T16:15:31.426621"
+    },
+    {
+      "sequence_id": "KIEHJLIC_00003",
+      "sequence_type": "protein",
+      "prediction": "Pathogenic",
+      "confidence": 0.9493933320045471,
+      "pathogenic_probability": 0.9493933320045471,
+      "high_confidence": true,
+      "confidence_threshold": 0.7,
+      "sequence_length": 709,
+      "method": "ML_VotingEnsemble_MetaQuest",
+      "extraction_method": "MetaQuest_Production",
+      "model_type": "XGBClassifier",
+      "features_used": 90,
+      "features_selected": 80,
+      "timestamp": "2025-07-27T16:15:31.443572"
+    },
+    {
+      "sequence_id": "KIEHJLIC_00004",
+      "sequence_type": "protein",
+      "prediction": "Pathogenic",
+      "confidence": 0.6013667583465576,
+      "pathogenic_probability": 0.6013667583465576,
+      "high_confidence": false,
+      "confidence_threshold": 0.7,
+      "sequence_length": 70,
+      "method": "ML_VotingEnsemble_MetaQuest",
+      "extraction_method": "MetaQuest_Production",
+      "model_type": "XGBClassifier",
+      "features_used": 90,
+      "features_selected": 80,
+      "timestamp": "2025-07-27T16:15:31.454448"
+    },
+    {
+      "sequence_id": "KIEHJLIC_00005",
+      "sequence_type": "protein",
+      "prediction": "Pathogenic",
+      "confidence": 0.880147397518158,
+      "pathogenic_probability": 0.880147397518158,
+      "high_confidence": true,
+      "confidence_threshold": 0.7,
+      "sequence_length": 68,
+      "method": "ML_VotingEnsemble_MetaQuest",
+      "extraction_method": "MetaQuest_Production",
+      "model_type": "XGBClassifier",
+      "features_used": 90,
+      "features_selected": 80,
+      "timestamp": "2025-07-27T16:15:31.472216"
+    },
+    {
+      "sequence_id": "KIEHJLIC_00006",
+      "sequence_type": "protein",
+      "prediction": "Pathogenic",
+      "confidence": 0.8590956926345825,
+      "pathogenic_probability": 0.8590956926345825,
+      "high_confidence": true,
+      "confidence_threshold": 0.7,
+      "sequence_length": 279,
+      "method": "ML_VotingEnsemble_MetaQuest",
+      "extraction_method": "MetaQuest_Production",
+      "model_type": "XGBClassifier",
+      "features_used": 90,
+      "features_selected": 80,
+      "timestamp": "2025-07-27T16:15:31.488572"
+    },
+    {
+      "sequence_id": "KIEHJLIC_00007",
+      "sequence_type": "protein",
+      "prediction": "Pathogenic",
+      "confidence": 0.832522988319397,
+      "pathogenic_probability": 0.832522988319397,
+      "high_confidence": true,
+      "confidence_threshold": 0.7,
+      "sequence_length": 283,
+      "method": "ML_VotingEnsemble_MetaQuest",
+      "extraction_method": "MetaQuest_Production",
+      "model_type": "XGBClassifier",
+      "features_used": 90,
+      "features_selected": 80,
+      "timestamp": "2025-07-27T16:15:31.499836"
+    }
+  ]
+}

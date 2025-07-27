@@ -33,12 +33,12 @@ Seq-entry ::= set {
               label
                 str "month" ,
               data
-                int 6 } ,
+                int 7 } ,
             {
               label
                 str "day" ,
               data
-                int 3 } ,
+                int 27 } ,
             {
               label
                 str "year" ,
@@ -47,8 +47,8 @@ Seq-entry ::= set {
         create-date
           std {
             year 2025 ,
-            month 6 ,
-            day 3 } } ,
+            month 7 ,
+            day 27 } } ,
       seq-set {
         seq {
           id {
