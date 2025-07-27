@@ -33,11 +33,11 @@ This guide covers the complete installation process for MetaQuest, a comprehensi
    ```bash
    # If using git
    git clone https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer.git
-   cd metaquest_v3
+   cd metaquest_v3.2
    
    # Or extract from downloaded archive
    tar -xzf metaquest_v3.tar.gz
-   cd metaquest_v3
+   cd metaquest_v3.2
    ```
 
 2. **Create conda environment**
@@ -52,7 +52,7 @@ This guide covers the complete installation process for MetaQuest, a comprehensi
 
 4. **Install MetaQuest package**
    ```bash
-   cd metaquest_v3
+   cd metaquest_v3.2
    pip install -e .
    ```
 
