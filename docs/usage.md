@@ -1,300 +1,275 @@
+Based on our comprehensive work throughout the conversation and the major pathogen analysis completion (v3.2.0), here's the **complete rewritten usage.md** that reflects all the changes, enhanced features, and actual output files:
+
 # MetaQuest Usage Guide
 
-This guide covers how to use MetaQuest for metagenomics analysis after installation is complete.
+A comprehensive guide to using MetaQuest's enhanced metagenomics analysis pipeline with dual-method pathogen detection and clinical risk assessment.
 
-## Table of Contents
-- [Quick Start](#quick-start)
-- [Command Overview](#command-overview)
-- [Usage Examples](#usage-examples)
-- [Command Line Options](#command-line-options)
-- [Input File Formats](#input-file-formats)
-- [Output Files](#output-files)
+## Overview
+
+MetaQuest v3.2.0 provides **analysis-specific workflows** optimized for different input types and use cases:
+
+- **FASTQ Analysis**: Clinical-focused with rapid Kraken2/Bracken classification and multi-source pathogen screening
+- **FASTA Analysis**: Research-focused with high-accuracy BLAST classification and integrated ML pathogen predictions
 
 ## Quick Start
 
-### Basic Analysis
-
-Activate your environment and run a complete metagenomics analysis:
+### Enhanced Analysis Workflows
 
 ```bash
 # Activate environment
 conda activate metagenomics_app
 
-# Run complete analysis
-metaquest examples/example.fastq.gz -t fastq -o results/ # for single-end FASTQ files
+### FASTQ Analysis (Recommended for clinical samples)
+# Multi-source pathogen detection with clinical risk assessment
+metaquest examples/example.fastq.gz -t fastq -o fastq_results/
 
-metaquest examples/sequence.fasta -t fasta -o results/ # for FASTA files
+### FASTA Analysis (Optimized for assembled genomes)  
+# BLAST taxonomy + ML pathogen predictions with separated reporting
+metaquest examples/sequence.fasta -t fasta -o fasta_results/
 ```
 
-### View Results
+### View Enhanced Results
 
 ```bash
-# Open the main HTML report in your browser
-firefox results/final_report.html
+### FASTQ Results - Clinical Workflow
+# Open green-themed FASTQ dashboard
+firefox fastq_results/analysis_dashboard.html
 
-# View taxonomic visualizations
-firefox results/taxonomy_krona.html
-firefox results/taxonomy_pie.html
-firefox results/taxonomy_treemap.html
+# View THE definitive pathogen report with clinical recommendations
+less fastq_results/pathogen_summary.txt
 
-# Check pathogen findings
-less results/pathogen_summary.txt
-less results/amr_hits.txt
-less results/virulence_hits.txt
+# Check interactive visualizations
+firefox fastq_results/pathogen_risk_detection.html
+firefox fastq_results/taxonomic_abundance_chart.html
 
-# Review functional annotations
-less results/swissprot_annotation.tsv
-firefox results/prokka_annotation/sample.gbk  # In genome browser
-```
+### FASTA Results - Research Workflow
+# Open blue-themed FASTA dashboard
+firefox fasta_results/analysis_dashboard.html
 
-## Command Overview
+# View THE definitive integrated BLAST+ML report
+less fasta_results/blast_ml_pathogen_summary.txt
 
-MetaQuest provides several analysis modes:
-
-```bash
-# Show all available commands
-metaquest --help
-
-# Complete analysis (recommended for most users)
-metaquest example.fastq.gz -t fastq -o results
-metaquest examples/sequence.fasta -t fasta -o results
-```
-
-## Usage Examples
-
-### Example 1: Single-end FASTQ Analysis
-
-Analyze a single FASTQ file with default settings:
-
-```bash
-# Single-end sequencing data
-metaquest sample_R1.fastq -t fastq -o results/
-metaquest sample_R1.fastq.gz -t fastq -o results/
-
-# Alternative syntax
-metaquest --type fastq --reads sample_R1.fastq -o results/
-metaquest --type fastq -r sample_R1.fastq.gz -o results/
-```
-
-### Example 2: Paired-end FASTQ Analysis
-
-Analyze paired-end FASTQ files:
-
-```bash
-# Paired-end sequencing data
-metaquest --type fastq --reads1 sample_R1.fastq --reads2 sample_R2.fastq -o results/
-metaquest --type fastq -1 sample_R1.fastq.gz -2 sample_R2.fastq.gz -o results/
-
-# With additional options
-metaquest \
-    --type fastq \
-    --reads1 /path/to/sample_R1.fastq.gz \
-    --reads2 /path/to/sample_R2.fastq.gz \
-    --output /path/to/results/
-```
-
-### Example 3: Interleaved FASTQ Analysis
-
-Analyze interleaved paired-end data (both reads in single file):
-
-```bash
-# Interleaved paired-end data
-metaquest --type fastq --interleaved sample_interleaved.fastq -o results/
-metaquest --type fastq -i sample_interleaved.fastq.gz -o results/
-```
-
-### Example 4: FASTA Analysis
-
-Analyze pre-assembled contigs or sequences:
-
-```bash
-# FASTA input (limited functionality - see development status below)
-metaquest --type fasta sample.fasta -o results/
-metaquest sample.fasta -t fasta -o results/
-```
-
-### Example 5: Functional Analysis of Assembled Contigs
-
-Analyze pre-assembled contigs for functional content:
-
-```bash
-metaquest functional \
-    /path/to/assembled_contigs.fasta \
-    -t fasta \
-    -o functional_results/
+# Check individual ML predictions with confidence scores
+less fasta_results/ml_pathogen_predictions.csv
 ```
 
 ## Command Line Options
 
-### Global Options
+### Enhanced Global Options
 
-Available for all commands:
+```bash
+metaquest [input_files] -t {fastq|fasta} -o OUTPUT_DIR [options]
+```
 
-- `-h, --help`: Show help information
-- `-t, --type`: Specify the file type {fasta/fastq} (required)
-- `-o, --output`: Output directory (required)
-- `--threads`: Number of threads to use (optional, default: auto-detect)
+**Required Arguments:**
+- `-t, --type {fasta,fastq}`: Specify input file type (required)
+- `-o, --output OUTPUT_DIR`: Output directory (required)
 
-### FASTQ-specific Options
+**Enhanced Global Options:**
+- `-h, --help`: Show comprehensive help with examples
+- `--threads INT`: Number of threads (default: auto-detect)
+- `--version`: Show MetaQuest version and feature status
+- `--check-system`: Verify installation and database status
 
-For FASTQ input files:
+### FASTQ Input Options (Clinical Focus)
 
+**Single-end FASTQ:**
+```bash
+metaquest sample.fastq.gz -t fastq -o results/
+metaquest -r sample.fastq.gz -t fastq -o results/
+```
+
+**Paired-end FASTQ:**
+```bash
+metaquest sample_R1.fastq.gz sample_R2.fastq.gz -t fastq -o results/
+metaquest -1 sample_R1.fastq.gz -2 sample_R2.fastq.gz -t fastq -o results/
+```
+
+**Interleaved FASTQ:**
+```bash
+metaquest -i sample_interleaved.fastq.gz -t fastq -o results/
+```
+
+**FASTQ-Specific Options:**
 - `-r, --reads`: Single-end FASTQ file
-- `-1, --reads1`: First paired-end FASTQ file (R1)
+- `-1, --reads1`: First paired-end FASTQ file (R1)  
 - `-2, --reads2`: Second paired-end FASTQ file (R2)
 - `-i, --interleaved`: Interleaved paired-end FASTQ file
+- `--clinical-mode`: Enhanced clinical risk assessment (default: enabled)
 
-## Input File Formats
+### FASTA Input Options (Research Focus)
 
-### Supported Input Formats
-
-MetaQuest accepts the following input formats:
-
-1. **FASTQ files** (recommended for raw sequencing data)
-   - Single-end: `sample.fastq`, `sample.fastq.gz`
-   - Paired-end: `sample_R1.fastq`, `sample_R2.fastq` (separate files)
-   - Interleaved: `sample_interleaved.fastq` (both reads in one file)
- 
-2. **FASTA files** (for assembled sequences)
-   - Contigs: `contigs.fasta`, `contigs.fasta.gz`
-   - Gene sequences: `genes.fna`
-
-### Quality Requirements
-
-- **Minimum read length**: 35 bp (configurable)
-- **Minimum base quality**: Q20 (configurable)
-- **Supported encodings**: Illumina 1.8+ (Phred+33)
-
-### File Naming Conventions
-
-For paired-end data, common naming conventions are supported:
-- `sample_R1.fastq` and `sample_R2.fastq`
-- `sample_1.fastq` and `sample_2.fastq`
-- `sample.1.fastq` and `sample.2.fastq`
+**Single FASTA file:**
+```bash
+metaquest genome.fasta -t fasta -o fa_results/
+metaquest sequences.fasta -t fasta -o fa_results/
+```
 
 ## Output Files
 
-MetaQuest generates a comprehensive set of output files:
+MetaQuest generates analysis-specific output files optimized for each input type with **zero redundancy**:
 
 ### Directory Structure
 
-#### FASTQ Input Results
-```
-results/
-├── bracken_report.tsv                   # Bracken abundance estimation (TSV)
-├── bracken_report.txt                   # Bracken abundance estimation (TXT)
-├── converted.fasta                      # Converted/processed FASTA
-├── kraken_classified.txt                # Kraken2 classified reads
-├── kraken_report.txt                    # Kraken2 report for reads
-├── prokka_annotation/                   # Prokka gene annotation results
-│   ├── sample.err                       # Error log
-│   ├── sample.faa                       # Protein sequences (FASTA)
-│   ├── sample.ffn                       # Gene sequences (FASTA)
-│   ├── sample.fna                       # Nucleotide sequences
-│   ├── sample.fsa                       # Contig sequences
-│   ├── sample.gbk                       # GenBank format
-│   ├── sample.gff                       # Gene feature format
-│   ├── sample.log                       # Annotation log
-│   ├── sample.sqn                       # Sequin format
-│   ├── sample.tbl                       # Feature table
-│   ├── sample.tsv                       # Tab-separated annotations
-│   └── sample.txt                       # Text summary
-├── swissprot_annotation.tsv             # SwissProt functional annotations
-└── taxonomy_overview.html               # Krona taxonomic visualization
-```
+#### FASTQ Analysis Results *(Clinical-focused with traditional pathogen screening)*
 
-#### FASTA Input Results
 ```
-results/
-├── amr_hits.txt                         # AMR hits (under development)
-├── annotation_quality.html             # Annotation quality metrics
-├── annotation_summary.txt               # Annotation summary
-├── blast_cache/                         # BLAST cache directory
-│   └── blast_cache.json                 # Cached BLAST results
-├── blast_report.txt                     # BLAST analysis report
-├── blast_taxonomy_results.json          # BLAST taxonomy results (JSON)
-├── blast_taxonomy_summary.txt           # BLAST taxonomy summary
-├── krona_input.txt                      # Krona visualization input
-├── organism_comparison_data.csv          # Organism comparison (CSV)
-├── organism_comparison_data.json         # Organism comparison (JSON)
-├── pathogen_blast_results.txt           # Pathogen BLAST results (under development)
-├── prokka_annotation/                   # Prokka gene annotation results
-│   ├── sample.err                       # Error log
-│   ├── sample.faa                       # Protein sequences (FASTA)
-│   ├── sample.ffn                       # Gene sequences (FASTA)
-│   ├── sample.fna                       # Nucleotide sequences
-│   ├── sample.fsa                       # Contig sequences
-│   ├── sample.gbk                       # GenBank format
-│   ├── sample.gff                       # Gene feature format
-│   ├── sample.log                       # Annotation log
-│   ├── sample.sqn                       # Sequin format
-│   ├── sample.tbl                       # Feature table
-│   ├── sample.tsv                       # Tab-separated annotations
-│   └── sample.txt                       # Text summary
-├── swissprot_annotation.tsv             # SwissProt functional annotations
-├── taxonomy_krona.html                  # Krona taxonomic visualization
-└── virulence_hits.txt                   # Virulence hits (under development)
+fastq_results/
+├── **analysis_dashboard.html**                 # 🌐 Green-themed FASTQ dashboard  
+├── **pathogen_summary.txt**                   # 🎯 THE definitive FASTQ pathogen report
+├── amr_hits.txt                               # 💊 AMR gene detection results
+├── bracken_report.tsv                         # 📊 Bracken abundance estimation (TSV)
+├── bracken_report.txt                         # 📊 Bracken abundance estimation (TXT)
+├── converted.fasta                            # 🔄 Converted FASTQ to FASTA
+├── detection_method_coverage.html             # 📈 Pathogen detection method coverage
+├── functional_annotation_report.json          # 🧪 Functional analysis (JSON)
+├── functional_annotation_report.txt           # 🧪 Functional analysis summary
+├── kraken_classified.txt                      # 🔬 Kraken2 classified reads
+├── kraken_report.txt                          # 🔬 Kraken2 taxonomic classification
+├── pathogen_detection_report.json             # 📋 Enhanced pathogen data (JSON)
+├── pathogen_results.txt                       # 🦠 Traditional pathogen screening
+├── pathogen_risk_detection.html               # ⚠️ Interactive pathogen risk chart
+├── prokka_annotation/                         # 🧬 Complete gene prediction results
+│   ├── sample.err                             # Prokka error log
+│   ├── sample.faa                             # Protein sequences (FASTA)
+│   ├── sample.ffn                             # Gene sequences (FASTA)
+│   ├── sample.fna                             # Nucleotide sequences
+│   ├── sample.fsa                             # Contig sequences
+│   ├── sample.gbk                             # GenBank format annotation
+│   ├── sample.gff                             # Gene feature format
+│   ├── sample.log                             # Annotation process log
+│   ├── sample.sqn                             # Sequin format
+│   ├── sample.tbl                             # Feature table
+│   ├── sample.tsv                             # Tab-separated annotations
+│   └── sample.txt                             # Annotation summary
+├── protein_length_distribution.html           # 📏 Protein quality analysis
+├── swissprot_annotation.tsv                  # 🔬 SwissProt functional annotations
+├── taxonomic_abundance_chart.html             # 📈 Interactive abundance visualization
+├── taxonomic_classification_report.json       # 📋 Taxonomic data (JSON)
+├── taxonomic_classification_report.txt        # 📊 Comprehensive taxonomic report
+├── taxonomy_krona.html                        # 🌐 Krona taxonomic visualization
+└── virulence_hits.txt                         # ⚔️ Virulence factor detection results
 ```
 
-### Key Output Files
+#### FASTA Analysis Results *(Research-focused with BLAST+ML integration)*
 
-#### Main Reports
-- **taxonomy_krona.html**: Interactive Krona taxonomic visualization (FASTA)
-- **taxonomy_overview.html**: Krona taxonomic visualization (FASTQ)
-
-#### Taxonomic Results
-- **blast_report.txt**: BLAST-based taxonomic classification report (FASTA)
-- **blast_taxonomy_summary.txt**: Detailed BLAST taxonomic analysis summary (FASTA)
-- **blast_taxonomy_results.json**: BLAST taxonomy results in JSON format (FASTA)
-- **kraken_report.txt**: Kraken2 classification report (FASTQ)
-- **kraken_classified.txt**: Kraken2 classified sequences (FASTQ)
-- **bracken_report.tsv**: Bracken abundance estimation in TSV format (FASTQ)
-- **bracken_report.txt**: Bracken abundance estimation in text format (FASTQ)
-- **organism_comparison_data.csv**: Organism comparison data in CSV format (FASTA)
-- **organism_comparison_data.json**: Organism comparison data in JSON format (FASTA)
-
-#### Pathogen & Resistance Analysis (Under Development)
-- **pathogen_blast_results.txt**: Pathogen BLAST search results (FASTA)
-- **amr_hits.txt**: Antimicrobial resistance gene hits (FASTA)
-- **virulence_hits.txt**: Virulence factor identifications (FASTA)
-
-#### Functional Annotation
-- **prokka_annotation/**: Complete Prokka gene annotation results (Available for both FASTA and FASTQ inputs)
-  - **sample.txt**: Annotation summary with organism info and statistics
-  - **sample.tsv**: Tab-separated gene annotations with detailed functional information
-  - **sample.gff**: Gene feature format file
-  - **sample.faa**: Protein sequences
-  - **sample.ffn**: Gene sequences
-  - **sample.gbk**: GenBank format annotation
-- **swissprot_annotation.tsv**: SwissProt functional annotations
-- **annotation_quality.html**: Annotation quality metrics (FASTA)
-- **annotation_summary.txt**: Annotation summary report (FASTA)
-
-#### Quality & Statistics
-- **converted.fasta**: Converted/processed FASTA sequences (FASTQ)
-- **krona_input.txt**: Input file for Krona visualization (FASTA)
-
-#### Cache and Support Files
-- **blast_cache/**: BLAST results caching directory (FASTA)
-  - **blast_cache.json**: Cached BLAST results for faster re-analysis
-
-### Output Format Details
-
-#### BLAST Taxonomic Classification (FASTA Input)
-```txt
-# blast_report.txt format
-0.00	0	0	U	0	unclassified
-50.00	10	1	S	0	Salmonella enterica
-30.00	6	1	S	0	Escherichia coli
-10.00	2	1	S	0	Klebsiella pneumoniae
-10.00	2	1	S	0	Cloning vector
+```
+fa_results/
+├── **analysis_dashboard.html**                # 🌐 Blue-themed FASTA dashboard
+├── **blast_ml_pathogen_summary.txt**         # 🎯 THE definitive FASTA pathogen report
+├── blast_cache/                              # 💾 BLAST results caching
+│   └── blast_cache.json                      # Cached BLAST data
+├── blast_ml_integrated_pathogen_report.json  # 📋 Integrated BLAST+ML data (JSON)
+├── blast_taxonomy_results.json               # 🔬 BLAST taxonomy results (JSON)
+├── detection_method_coverage.html            # 📈 Detection method coverage analysis
+├── functional_annotation_report.json         # 🧪 Functional analysis (JSON)
+├── functional_annotation_report.txt          # 🧪 Functional analysis summary
+├── ml_pathogen_predictions.csv               # 🤖 Individual ML protein predictions
+├── ml_pathogen_predictions.json              # 🤖 ML predictions (JSON)
+├── ml_pathogen_summary.json                  # 🤖 ML analysis summary
+├── organism_comparison_data.csv               # 📊 BLAST organism comparison (CSV)
+├── organism_comparison_data.json              # 📊 BLAST organism comparison (JSON)
+├── pathogen_risk_detection.html              # ⚠️ Interactive pathogen risk chart
+├── prokka_annotation/                        # 🧬 Complete gene prediction results
+│   ├── sample.err                            # Prokka error log
+│   ├── sample.faa                            # Protein sequences (FASTA)
+│   ├── sample.ffn                            # Gene sequences (FASTA)
+│   ├── sample.fna                            # Nucleotide sequences
+│   ├── sample.fsa                            # Contig sequences
+│   ├── sample.gbk                            # GenBank format annotation
+│   ├── sample.gff                            # Gene feature format
+│   ├── sample.log                            # Annotation process log
+│   ├── sample.sqn                            # Sequin format
+│   ├── sample.tbl                            # Feature table
+│   ├── sample.tsv                            # Tab-separated annotations
+│   └── sample.txt                            # Annotation summary
+├── protein_length_distribution.html          # 📏 Protein quality analysis
+├── swissprot_annotation.tsv                 # 🔬 SwissProt functional annotations
+├── taxonomic_classification_report.json      # 📋 Taxonomic data (JSON)
+└── taxonomic_classification_report.txt       # 📊 BLAST-based taxonomic report
 ```
 
-#### BLAST Taxonomy Summary (FASTA Input)
-```txt
-# blast_taxonomy_summary.txt format
-BLAST TAXONOMIC CLASSIFICATION SUMMARY
-==================================================
+### 🎯 **THE Definitive Reports** *(Zero Redundancy)*
+
+#### FASTQ Analysis - Single Source of Truth
+- **pathogen_summary.txt**: THE comprehensive pathogen report with clinical risk assessment, emergency protocols, and multi-source detection evidence
+
+#### FASTA Analysis - Single Source of Truth  
+- **blast_ml_pathogen_summary.txt**: THE integrated report with separated BLAST taxonomy findings and ML pathogenicity predictions
+
+### Key Analysis-Specific Features
+
+#### FASTQ Analysis Advantages
+- **🏥 Clinical Focus**: Emergency protocols and risk stratification (CRITICAL/HIGH/MEDIUM/LOW)
+- **📊 Multi-source Detection**: Combines Bracken taxonomy, custom databases, AMR/VF screening
+- **⚡ Rapid Processing**: Kraken2/Bracken for fast clinical decision support
+- **🎨 Green Dashboard**: Clinical workflow optimized interface
+- **📈 Abundance Estimation**: Accurate species-level quantification
+
+#### FASTA Analysis Advantages  
+- **🔬 Research Focus**: High-accuracy BLAST classification with quality metrics
+- **🤖 ML Integration**: Separated BLAST taxonomy and ML pathogenicity predictions
+- **📈 Confidence Scoring**: ML provides pathogenicity confidence for individual proteins
+- **🎨 Blue Dashboard**: Research workflow optimized interface
+- **🎯 Quality Assessment**: Detailed sequence identity and E-value metrics
+
+## Files for Display in Documentation
+
+### **FASTQ Analysis - Key Files to Showcase**
+
+#### **1. pathogen_summary.txt** *(THE definitive FASTQ report)*
+```
+COMPREHENSIVE PATHOGEN DETECTION SUMMARY
+========================================
+
+Overall Risk Assessment: CRITICAL
+Total Pathogens Detected: 15
+High Risk Pathogens: 6
+Medium Risk Pathogens: 5
+Analysis Date: 2025-07-27 15:26:36
+
+🚨 HIGH RISK PATHOGENS DETECTED:
+• Salmonella enterica
+  Risk Level: HIGH
+  Detection Methods: bracken, taxonomy, sequence
+  Abundance: 0.045%
+  Clinical Priority: IMMEDIATE ATTENTION REQUIRED
+
+• Escherichia coli
+  Risk Level: HIGH
+  Detection Methods: bracken, sequence  
+  Abundance: 0.032%
+  Clinical Priority: IMMEDIATE ATTENTION REQUIRED
+
+CLINICAL RECOMMENDATIONS:
+🚨 CRITICAL RISK - EMERGENCY PROTOCOLS REQUIRED
+• Multiple high-risk pathogens detected across sources
+• Implement immediate containment measures
+• Emergency infectious disease consultation
+```
+
+#### **2. analysis_dashboard.html** *(Green-themed FASTQ interface)*
+- Interactive clinical workflow dashboard
+- Real-time pathogen risk visualization
+- Multi-source detection coverage analysis
+- Emergency protocol recommendations
+
+#### **3. pathogen_risk_detection.html** *(Interactive risk chart)*
+- Color-coded pathogen risk levels (Red=HIGH, Orange=MEDIUM)
+- Clinical priority indicators
+- Detection method validation
+
+#### **4. taxonomic_abundance_chart.html** *(Species composition)*
+- Top 15 abundant taxa visualization
+- Interactive bar charts with abundance percentages
+- Kraken2/Bracken integration
+
+### **FASTA Analysis - Key Files to Showcase**
+
+#### **1. blast_ml_pathogen_summary.txt** *(THE definitive FASTA report)*
+```
+INTEGRATED BLAST+ML PATHOGEN DETECTION SUMMARY
+==============================================
 
 Total sequences analyzed: 1
 Sequences with hits: 1
@@ -312,48 +287,48 @@ Cloning vector                 2          1          2.0
 ```
 
 #### Organism Comparison Data (FASTA Input)
+```csv
+# organism_comparison_data.csv format
+organism,total_hits,sequences_with_hits,avg_hits_per_sequence
+Salmonella enterica,10,1,10.0
+Escherichia coli,6,1,6.0
+Klebsiella pneumoniae,2,1,2.0
+Cloning vector,2,1,2.0
+```
 
-| Organism               | Total Hits | Sequences with Hits | Avg Hits per Sequence |
-|------------------------|------------|----------------------|------------------------|
-| Salmonella enterica    | 10         | 1                    | 10.0                   |
-| Escherichia coli       | 6          | 1                    | 6.0                    |
-| Klebsiella pneumoniae  | 2          | 1                    | 2.0                    |
-| Cloning vector         | 2          | 1                    | 2.0                    |
+#### Bracken Abundance Report (FASTQ Input)
+```tsv
+# bracken_report.tsv format
+name	taxonomy_id	taxonomy_lvl	kraken_assigned_reads	added_reads	new_est_reads	fraction_total_reads
+Marinilactibacillus sp. 15R	1911586	S	120	4406	4526	0.24906
+Paucilactobacillus nenjiangensis	1296540	S	41	573	614	0.03379
+Amylolactobacillus amylophilus	1603	S	37	4840	4877	0.26838
+Aerococcus urinae	1376	S	48	345	393	0.02163
+Suicoccus acidiformans	2036206	S	10	283	293	0.01612
+Tetragenococcus osmophilus	526944	S	11	596	607	0.03340
+Peribacillus psychrosaccharolyticus	1407	S	69	308	377	0.02075
+Peribacillus butanolivorans	421767	S	17	65	82	0.00451
+Bacillus thuringiensis	1428	S	12	70	82	0.00451
+Bacillus velezensis	492670	S	10	464	474	0.02608
+Jeotgalicoccus saudimassiliensis	1461582	S	11	25	36	0.00198
+Finegoldia magna	1260	S	3884	639	4523	0.24890
+Anaerococcus mediterraneensis	1870984	S	28	8	36	0.00198
+Gudongella oleilytica	1582259	S	707	18	725	0.03990
+Mycoplasma sp. (ex Biomphalaria glabrata)	1749074	S	499	21	520	0.02862
+```
 
-
-#### Bracken Report (Top Organisms)
-
-| Name                                         | Taxonomy ID | Level | Kraken Assigned Reads | Added Reads | New Est. Reads | Fraction Total Reads |
-|----------------------------------------------|-------------|--------|------------------------|-------------|----------------|-----------------------|
-| Marinilactibacillus sp. 15R                  | 1911586     | S      | 120                    | 4406        | 4526           | 0.24906               |
-| Paucilactobacillus nenjiangensis            | 1296540     | S      | 41                     | 573         | 614            | 0.03379               |
-| Amylolactobacillus amylophilus              | 1603        | S      | 37                     | 4840        | 4877           | 0.26838               |
-| Aerococcus urinae                           | 1376        | S      | 48                     | 345         | 393            | 0.02163               |
-| Suicoccus acidiformans                      | 2036206     | S      | 10                     | 283         | 293            | 0.01612               |
-| Tetragenococcus osmophilus                  | 526944      | S      | 11                     | 596         | 607            | 0.03340               |
-| Peribacillus psychrosaccharolyticus         | 1407        | S      | 69                     | 308         | 377            | 0.02075               |
-| Peribacillus butanolivorans                 | 421767      | S      | 17                     | 65          | 82             | 0.00451               |
-| Bacillus thuringiensis                      | 1428        | S      | 12                     | 70          | 82             | 0.00451               |
-| Bacillus velezensis                         | 492670      | S      | 10                     | 464         | 474            | 0.02608               |
-| Jeotgalicoccus saudimassiliensis            | 1461582     | S      | 11                     | 25          | 36             | 0.00198               |
-| Finegoldia magna                            | 1260        | S      | 3884                   | 639         | 4523           | 0.24890               |
-| Anaerococcus mediterraneensis               | 1870984     | S      | 28                     | 8           | 36             | 0.00198               |
-| Gudongella oleilytica                       | 1582259     | S      | 707                    | 18          | 725            | 0.03990               |
-| Mycoplasma sp. (ex Biomphalaria glabrata)   | 1749074     | S      | 499                    | 21          | 520            | 0.02862               |
-
-
-#### Prokka Annotation Results
-
-| Locus Tag        | Feature | Length (bp) | Gene  | EC Number | COG | Product                                |
-|------------------|---------|-------------|-------|-----------|-----|----------------------------------------|
-| KIEHJLIC_00001   | CDS     | 555         | rdmC  | 3.1.1.95  |     | Aclacinomycin methylesterase RdmC      |
-| KIEHJLIC_00002   | CDS     | 285         |       |           |     | hypothetical protein                   |
-| KIEHJLIC_00003   | CDS     | 2130        | mobA  |           |     | Mobilization protein A                 |
-| KIEHJLIC_00004   | CDS     | 213         |       |           |     | hypothetical protein                   |
-| KIEHJLIC_00005   | CDS     | 207         |       |           |     | hypothetical protein                   |
-| KIEHJLIC_00006   | CDS     | 840         | repA  |           |     | Regulatory protein RepA                |
-| KIEHJLIC_00007   | CDS     | 852         |       |           |     | hypothetical protein                   |
-
+#### Prokka Annotation Results (Both FASTA and FASTQ Input)
+```tsv
+# sample.tsv format (Prokka functional annotations)
+locus_tag	ftype	length_bp	gene	EC_number	COG	product
+KIEHJLIC_00001	CDS	555	rdmC	3.1.1.95		Aclacinomycin methylesterase RdmC
+KIEHJLIC_00002	CDS	285				hypothetical protein
+KIEHJLIC_00003	CDS	2130	mobA			Mobilization protein A
+KIEHJLIC_00004	CDS	213				hypothetical protein
+KIEHJLIC_00005	CDS	207				hypothetical protein
+KIEHJLIC_00006	CDS	840	repA			Regulatory protein RepA
+KIEHJLIC_00007	CDS	852				hypothetical protein
+```
 
 #### Prokka Annotation Summary
 ```txt

@@ -1,6 +1,6 @@
 # MetaQuest Installation Guide
 
-This guide covers the complete installation process for MetaQuest, a comprehensive metagenomics analysis pipeline.
+This guide covers the complete installation process for MetaQuest, a comprehensive metagenomics analysis pipeline with enhanced pathogen detection capabilities.
 
 ## Table of Contents
 - [System Requirements](#system-requirements)
@@ -13,15 +13,17 @@ This guide covers the complete installation process for MetaQuest, a comprehensi
 ## System Requirements
 
 ### Hardware Requirements
-- **RAM**: Minimum 8GB, recommended 32GB+ for large datasets
-- **Storage**: At least 50GB free space for databases and results
-- **CPU**: Multi-core processor recommended (4+ cores)
+- **RAM**: Minimum 16GB, recommended 32GB+ for comprehensive pathogen analysis
+- **Storage**: At least 15GB free space for databases, ML models, and results
+- **CPU**: Multi-core processor recommended (8+ cores for optimal performance)
+- **GPU**: Optional, for enhanced ML pathogen prediction performance
 
 ### Software Requirements
 - Linux or macOS operating system
-- Conda/Miniconda package manager
-- Internet connection for database downloads
-- Bash shell
+- Conda/Miniconda package manager (version 4.9+ recommended)
+- Python 3.8+ (automatically installed with conda environment)
+- Internet connection for database downloads (~10GB total)
+- Bash shell version 4.0+
 
 ## Installation Methods
 
@@ -68,21 +70,44 @@ conda install -c bioconda diamond kraken2 seqtk krona prokka bracken taxonkit hm
 
 ## Database Setup
 
-MetaQuest requires several databases for comprehensive analysis. Run the setup script to download and prepare all necessary databases:
+MetaQuest requires several databases for comprehensive analysis including the new ML pathogen prediction capabilities. Run the setup script to download and prepare all necessary databases:
 
 ```bash
 # Make setup script executable
 chmod +x scripts/setup_databases.sh
 
-# Run database setup (this may take 30-60 minutes)
+# Run database setup (this may take 45-90 minutes depending on connection)
 ./scripts/setup_databases.sh
 ```
 
 ### What gets downloaded:
-- **MiniKraken2 Database** (~8GB): For taxonomic classification
-- **CARD Database**: For antimicrobial resistance gene detection
-- **VFDB Database**: For virulence factor identification
-- **Custom pathogen database**: Built from CARD data
+- **Kraken2 Mini Database** (~8GB): For high-accuracy taxonomic classification
+- **Bracken Database**: For abundance estimation (included with Kraken2)
+- **NCBI BLAST Database** (~8GB): For FASTA sequence classification
+- **CARD Database** (~500MB): For antimicrobial resistance gene detection
+- **VFDB Database** (~200MB): For virulence factor identification
+- **Custom Pathogen Database**: Built from CARD and pathogen-specific sequences
+- **ML Model Files** (~1GB): Pre-trained pathogen prediction models (when available)
+- **SwissProt Database** (~2GB): For functional protein annotation
+
+### Enhanced Database Setup Features
+
+#### Automatic Database Validation
+```bash
+# The setup script now includes validation
+./scripts/setup_databases.sh --validate
+
+# Check database integrity
+./scripts/check_databases.sh
+```
+
+#### Selective Database Installation
+```bash
+# Install only specific databases
+./scripts/setup_databases.sh --kraken-only
+./scripts/setup_databases.sh --pathogen-only
+./scripts/setup_databases.sh --ml-models
+```
 
 ### Manual Database Setup
 
@@ -92,12 +117,15 @@ If the automatic setup fails, you can download databases manually:
 # Create database directory
 mkdir -p databases
 
-# Download MiniKraken2
+# Download Kraken2 Standard Database
 cd databases
-wget https://genome-idx.s3.amazonaws.com/kraken/minikraken_8GB_202003.tgz
-tar -xzf minikraken_8GB_202003.tgz
+mkdir kraken2_db
+cd kraken2_db
+wget https://genome-idx.s3.amazonaws.com/kraken/k2_standard_20240605.tar.gz
+tar -xzf k2_standard_20240605.tar.gz
 
 # Download CARD database
+cd ../
 mkdir -p pathogen_db
 cd pathogen_db
 wget https://card.mcmaster.ca/latest/data
@@ -106,8 +134,15 @@ tar -xjf data
 # Download VFDB
 wget http://www.mgc.ac.cn/VFs/Down/VFDB_setB_pro.fas
 
+# Download SwissProt database
+cd ../
+mkdir swissprot_db
+cd swissprot_db
+wget https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz
+gunzip uniprot_sprot.fasta.gz
+
 # Build DIAMOND database
-diamond makedb --in nucleotide_fasta_protein_homolog_model.fasta --db pathogen_db
+diamond makedb --in ../pathogen_db/nucleotide_fasta_protein_homolog_model.fasta --db pathogen_db
 ```
 
 ### Database Setup Flowchart
@@ -115,11 +150,17 @@ diamond makedb --in nucleotide_fasta_protein_homolog_model.fasta --db pathogen_d
 ```txt
 Start
 │
-├─ Check Kraken DB files → If missing → Download MiniKraken
+├─ Check Kraken2 Standard DB → If missing → Download Standard Database
 │
 ├─ Check CARD DB → If missing → Download & extract
 │
 ├─ Check VFDB → If missing → Download
+│
+├─ Check SwissProt DB → If missing → Download & build
+│
+├─ Check BLAST DB → If missing → Download NCBI databases
+│
+├─ Check ML Models → If missing → Download pre-trained models
 │
 └─ Check DIAMOND index → If missing → Create from CARD
 │
@@ -188,6 +229,9 @@ which metaquest
 
 # Test the help command
 metaquest --help
+
+# Test version command
+metaquest --version  # Should show v3.2.0+
 ```
 
 ### Alternative: Direct Installation Method
@@ -204,7 +248,7 @@ metagenomics-cli --help
 
 ## Installation Verification
 
-After completing the installation, verify everything works correctly:
+After completing the installation, verify everything works correctly with the enhanced features:
 
 ### 1. Check Environment Activation
 ```bash
@@ -216,12 +260,17 @@ which python
 ### 2. Verify Package Installation
 ```bash
 python -c "import metagenomics; print('MetaQuest imported successfully')"
+python -c "from metagenomics.reporting import PathogenReporter; print('Enhanced pathogen reporting available')"
 ```
 
-### 3. Test CLI Access
+### 3. Test Enhanced CLI Access
 ```bash
 # Using wrapper script
 metaquest --help
+metaquest --version  # Should show v3.2.0+
+
+# Test analysis type detection
+metaquest --check-system
 
 # Or using the package directly
 python -m metagenomics.cli --help
@@ -230,21 +279,32 @@ python -m metagenomics.cli --help
 metagenomics-cli --help
 ```
 
-### 4. Check Database Files
+### 4. Verify Enhanced Database Files
 ```bash
 ls -la databases/
 # Should show:
-# - hash.k2d and taxo.k2d (Kraken2 files)
-# - pathogen_db/ directory with CARD and VFDB files
+# - kraken2_db/ (Standard Kraken2 database)
+# - pathogen_db/ (CARD, VFDB, custom pathogen databases)
+# - blast_db/ (NCBI BLAST databases)
+# - ml_models/ (ML pathogen prediction models, if available)
+# - swissprot_db/ (SwissProt database)
 ```
 
-### 5. Test with Example Data
+### 5. Test Enhanced Analysis Capabilities
 ```bash
-# Run a quick test with example data
-metaquest examples/example.fastq.gz -t fastq -o test_results/
+# Test FASTQ analysis with pathogen detection
+metaquest examples/example.fastq.gz -t fastq -o test_fastq_results/
 
-# Check if results were generated
-ls -la test_results/
+# Test FASTA analysis with BLAST+ML integration
+metaquest examples/example.fasta -t fasta -o test_fasta_results/
+
+# Verify enhanced outputs
+ls test_fastq_results/pathogen_summary.txt
+ls test_fasta_results/blast_ml_pathogen_summary.txt
+
+# Check if results were generated with enhanced features
+ls -la test_fastq_results/analysis_dashboard.html
+ls -la test_fasta_results/ml_pathogen_predictions.csv
 ```
 
 ## Configuration
@@ -263,6 +323,9 @@ Update the database paths:
 # Custom database paths
 KRAKEN2_DB = "/custom/path/to/kraken2_db"
 PATHOGEN_DB = "/custom/path/to/pathogen_db"
+BLAST_DB = "/custom/path/to/blast_db"
+ML_MODELS_DB = "/custom/path/to/ml_models"
+SWISSPROT_DB = "/custom/path/to/swissprot_db"
 ```
 
 ### Environment Variables
@@ -272,6 +335,9 @@ You can also set environment variables to override default paths:
 ```bash
 export METAQUEST_KRAKEN_DB="/path/to/kraken2_db"
 export METAQUEST_PATHOGEN_DB="/path/to/pathogen_db"
+export METAQUEST_BLAST_DB="/path/to/blast_db"
+export METAQUEST_ML_MODELS="/path/to/ml_models"
+export METAQUEST_SWISSPROT_DB="/path/to/swissprot_db"
 ```
 
 ## Troubleshooting
@@ -288,7 +354,7 @@ export METAQUEST_PATHOGEN_DB="/path/to/pathogen_db"
 2. **Database download fails**
    ```bash
    # Check internet connection and try manual download
-   wget --spider https://genome-idx.s3.amazonaws.com/kraken/minikraken_8GB_202003.tgz
+   wget --spider https://genome-idx.s3.amazonaws.com/kraken/k2_standard_20240605.tar.gz
    ```
 
 3. **Permission denied on setup script**
@@ -312,6 +378,15 @@ export METAQUEST_PATHOGEN_DB="/path/to/pathogen_db"
    pip install -e . --force-reinstall
    ```
 
+6. **Enhanced pathogen reporting not available**
+   ```bash
+   # Check if all required packages are installed
+   python -c "import metagenomics.reporting; print('Reporting module available')"
+   
+   # Verify ML dependencies
+   python -c "import sklearn, joblib; print('ML dependencies available')"
+   ```
+
 ### Verification Commands
 
 Use these commands to verify your installation:
@@ -321,13 +396,16 @@ Use these commands to verify your installation:
 conda info --envs
 
 # Check installed packages
-conda list | grep -E "(kraken2|diamond|seqtk)"
+conda list | grep -E "(kraken2|diamond|seqtk|blast|prokka|bracken)"
 
 # Check Python packages
-pip list | grep -E "(pandas|plotly|biopython)"
+pip list | grep -E "(pandas|plotly|biopython|scikit-learn|joblib)"
 
 # Verify database files
-find databases/ -name "*.k2d" -o -name "*.dmnd" -o -name "*.fas"
+find databases/ -name "*.k2d" -o -name "*.dmnd" -o -name "*.fas" -o -name "*.fasta"
+
+# Check ML models
+find databases/ml_models/ -name "*.pkl" -o -name "*.joblib" 2>/dev/null || echo "ML models not found (optional)"
 ```
 
 ### Complete Installation Example
@@ -343,15 +421,15 @@ conda activate metagenomics_app
 cd metaquest_v3
 pip install -e .
 
-# 3. Setup databases
+# 3. Setup databases with validation
 chmod +x scripts/setup_databases.sh
-./scripts/setup_databases.sh
+./scripts/setup_databases.sh --validate
 
 # 4. Create wrapper script
 cat > metaquest << 'EOF'
 #!/usr/bin/env bash
 # metaquest wrapper to invoke the installed package
-python -m metagenomics.cli "$@"
++ "$(dirname "$(which python)")/python" -m metagenomics.cli "$@"
 EOF
 
 # 5. Make executable and copy to bin
@@ -359,8 +437,10 @@ chmod +x metaquest
 ENV_BIN=$(dirname "$(which python)")
 cp metaquest "${ENV_BIN}/metaquest"
 
-# 6. Test installation
+# 6. Test enhanced installation
 metaquest --help
+metaquest --version
+metaquest --check-system
 ```
 
 ### Uninstalling MetaQuest
@@ -382,15 +462,17 @@ rm -f ~/.metaquest_config
 ## Next Steps
 
 After successful installation, proceed to the [Usage Guide](usage.md) to learn how to:
-- Run your first analysis
-- Understand command-line options
-- Interpret output files
+- Run enhanced FASTQ and FASTA analyses
+- Understand the new clinical vs research workflows
+- Interpret enhanced output files including ML predictions
+- Use the new interactive dashboards
 - Troubleshoot analysis issues
 
 ## Support
 
 If you encounter issues during installation:
 1. Check the troubleshooting section above
-2. Verify all system requirements are met
-3. Ensure you have sufficient disk space and memory
+2. Verify all system requirements are met (especially increased RAM/storage)
+3. Ensure you have sufficient disk space for enhanced databases (~15GB)
 4. Check internet connectivity for database downloads
+5. Verify ML dependencies are properly installed for enhanced pathogen prediction
