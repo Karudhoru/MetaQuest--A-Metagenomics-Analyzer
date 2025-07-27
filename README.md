@@ -8,161 +8,116 @@ MetaQuest is an integrated bioinformatics pipeline that addresses the complex ch
 
 ## ⚠️ Development Status
 
-**MetaQuest is currently under active development.** The core functionality is operational with significant improvements in FASTA processing capabilities:
+**MetaQuest is currently under active development.** The core functionality is operational with major improvements completed across all processing capabilities:
 
-### Current FASTA Processing Status
-- **Taxonomic Classification**: ✅ **COMPLETED** - FASTA taxonomic profiling is now accurate and fully functional
-- **Pathogenicity Assessment**: 🔄 **IN DEVELOPMENT** - Pathogen detection workflows for FASTA inputs require optimization
-- **Virulence Factor Analysis**: 🔄 **IN DEVELOPMENT** - Virulence factor identification from FASTA files needs refinement
-- **AMR Analysis**: 🔄 **IN DEVELOPMENT** - Antimicrobial resistance detection for FASTA inputs under active development
+### Current Processing Status
+- **Taxonomic Classification**: ✅ **COMPLETED** - Both FASTQ and FASTA taxonomic profiling are now accurate and fully functional
+- **Pathogenicity Assessment**: ✅ **COMPLETED** - Comprehensive pathogen detection workflows for both FASTQ and FASTA inputs with clinical risk assessment
+- **Virulence Factor Analysis**: 🔄 **IN DEVELOPMENT** - Virulence factor identification workflows require optimization and integration
+- **AMR Analysis**: 🔄 **IN DEVELOPMENT** - Antimicrobial resistance detection needs enhancement and clinical integration
 
-**Current Status**: FASTA files now provide reliable taxonomic classification. Pathogen screening, AMR analysis, and virulence factor detection are functional but undergoing optimization for improved accuracy.
+**Major Achievements (July 2025)**: 
+- ✅ **Dual-Method Pathogen Detection**: FASTQ uses multi-source traditional screening, FASTA uses integrated BLAST+ML predictions
+- ✅ **Clinical Risk Assessment**: Comprehensive risk stratification with emergency protocols and clinical recommendations
+- ✅ **Analysis-Specific Dashboards**: Separate optimized interfaces for FASTQ (green theme) and FASTA (blue theme) workflows
+- ✅ **Redundancy Elimination**: Streamlined reporting with single definitive pathogen reports per analysis type
+- ✅ **Enhanced Visualization**: Fixed pathogen risk charts and detection coverage analysis
 
 ### Development Timeline
-- **FASTA Taxonomic Classification**: ✅ **COMPLETED** (v3.1.2)
-- **Enhanced Pathogen Detection**: Target completion Q3 2025
-- **AMR & Virulence Optimization**: Target completion Q4 2025
-- **Comprehensive Validation**: Ongoing testing across file formats
+- **Taxonomic Classification**: ✅ **COMPLETED** (v3.1.2)
+- **Pathogen Detection & Risk Assessment**: ✅ **COMPLETED** (v3.2.0) - *Major milestone achieved*
+- **Enhanced Virulence Factor Detection**: Target completion Q3 2025
+- **Comprehensive AMR Analysis**: Target completion Q4 2025
+- **Integrated Clinical Decision Support**: Target completion Q1 2026
 
-**Recommendation**: Both FASTQ and FASTA inputs are now viable, with FASTA providing excellent taxonomic results. For pathogen detection and AMR analysis, FASTQ inputs remain more reliable until optimization is complete.
+**Current Status**: Both FASTQ and FASTA inputs now provide comprehensive analysis with reliable taxonomic classification and advanced pathogen detection. The pipeline successfully identifies high-risk pathogens (e.g., Salmonella enterica, E. coli, Klebsiella pneumoniae) with proper clinical risk assessment and emergency protocol recommendations.
 
 ### Key Features
 
 - **Taxonomic Profiling**: Species-level identification and abundance estimation *(Fully supported for both FASTQ and FASTA)*
-- **Pathogen Screening**: Detection of bacterial, viral, and fungal pathogens *(FASTQ recommended, FASTA under optimization)*
-- **Antimicrobial Resistance (AMR) Analysis**: Comprehensive resistance gene detection *(FASTQ recommended, FASTA under optimization)*
-- **Virulence Factor Assessment**: Identification of pathogenicity determinants *(FASTQ recommended, FASTA under optimization)*
+- **Advanced Pathogen Screening**: 
+  - **FASTQ**: Multi-source traditional screening with Bracken integration *(Fully operational)*
+  - **FASTA**: Integrated BLAST taxonomy + ML pathogen predictions *(Fully operational)*
+- **Clinical Risk Assessment**: Comprehensive risk stratification with clinical recommendations *(Fully operational)*
+- **Antimicrobial Resistance (AMR) Analysis**: Basic resistance gene detection *(Under enhancement)*
+- **Virulence Factor Assessment**: Basic pathogenicity determinant identification *(Under development)*
 - **Functional Annotation**: Gene prediction and functional characterization *(Fully supported for both formats)*
-- **Quality Assessment**: Statistical analysis and quality metrics
-- **Interactive Visualization**: Rich HTML reports with dynamic plots
+- **Interactive Dashboards**: Analysis-specific HTML reports with dynamic visualizations *(Fully operational)*
+- **Quality Assessment**: Statistical analysis and quality metrics *(Fully operational)*
 
-## Theoretical Background
+## Recent Updates
 
-### Metagenomics Workflow
+### Major Pathogen Analysis Completion (v3.2.0) - July 2025
 
-MetaQuest implements a comprehensive metagenomics analysis workflow based on established computational biology principles:
+#### ✅ **Comprehensive Pathogen Detection System**
+- **Dual-Method Architecture**: Separate optimized workflows for FASTQ and FASTA inputs
+- **FASTQ Pathogen Analysis**: Multi-source traditional screening using Bracken taxonomy, custom databases, AMR/VF scanning
+- **FASTA Pathogen Analysis**: Integrated BLAST taxonomy + Machine Learning predictions with separated reporting sections
+- **Clinical Risk Assessment**: Emergency protocol recommendations for CRITICAL/HIGH risk samples
 
-#### 1. **Sequence Quality Assessment**
-- Statistical analysis of read length distribution
-- GC content profiling for contamination detection
-- Base quality scoring and filtering
-- Assembly quality metrics (N50, coverage, contiguity)
+#### ✅ **Enhanced Reporting & Visualization**
+- **Streamlined Reports**: Single definitive pathogen report per analysis type (pathogen_summary.txt for FASTQ, blast_ml_pathogen_summary.txt for FASTA)
+- **Analysis-Specific Dashboards**: Green-themed FASTQ dashboard vs. Blue-themed FASTA dashboard with optimized layouts
+- **Fixed Visualizations**: Proper pathogen risk detection charts and method coverage analysis
+- **Redundancy Elimination**: Removed all duplicate and overlapping report files
 
-#### 2. **Taxonomic Classification**
-The pipeline employs a k-mer based classification approach:
-- **K-mer Analysis**: Uses Kraken2's exact k-mer matching against a curated database
-- **Lowest Common Ancestor (LCA) Algorithm**: Resolves taxonomic assignments when k-mers match multiple taxa
-- **Abundance Estimation**: Bracken's Bayesian approach redistributes reads to species level
-- **Confidence Scoring**: Statistical confidence assessment for each taxonomic assignment
+#### ✅ **Production-Ready Pipeline**
+- **Error-Free Execution**: Resolved all analysis failures and missing method issues
+- **Proper File Detection**: Fixed dashboard generation with correct analysis type identification
+- **Clean Output Structure**: Users receive exactly the reports they need without confusion
+- **Validated Results**: Successfully detects dangerous pathogens with proper CRITICAL risk classification
 
-#### 3. **Pathogen Detection Strategy**
-Multi-layered approach for pathogen identification:
-- **Primary Screening**: Taxonomic classification against known pathogen databases
-- **Sequence Similarity**: DIAMOND/BLAST alignment for validation
-- **Risk Assessment**: Integration of pathogenicity databases (CARD, VFDB)
-- **Clinical Relevance**: Priority scoring based on medical significance
+### FASTA Processing Improvements (v3.1.2)
 
-#### 4. **Antimicrobial Resistance Analysis**
-Comprehensive AMR profiling methodology:
-- **Gene Homology**: Sequence similarity search against CARD database
-- **Resistance Mechanisms**: Classification by mechanism (efflux, modification, target alteration)
-- **Drug Classes**: Mapping to specific antimicrobial categories
-- **Clinical Context**: Integration with resistance breakpoints and clinical guidelines
+#### Enhanced Taxonomic Classification
+- **Complete FASTA Support**: Taxonomic profiling for FASTA files is now fully functional and accurate
+- **Improved k-mer Classification**: Optimized Kraken2 integration for assembled sequences
+- **Enhanced Visualization**: Accurate taxonomic visualizations (Krona, pie charts, treemaps)
+- **Quality Metrics**: Comprehensive assembly quality assessment and reporting
 
-#### 5. **Functional Annotation Framework**
-Multi-step functional characterization:
-- **Gene Prediction**: Open reading frame identification using Prokka
-- **Homology Search**: Sequence similarity against SwissProt database
-- **Functional Classification**: GO terms, KEGG pathways, and enzyme classification
-- **Metabolic Reconstruction**: Pathway completeness assessment
+### CLI & Pipeline Enhancements (v3.1.1)
 
-## Tools and Technologies
+#### Enhanced FASTQ Input Support
+- **Mutually Exclusive Input Groups**: Added support for single-end, paired-end, and interleaved FASTQ inputs
+- **Automatic Interleaved Processing**: Seamless detection and splitting of interleaved FASTQ files
+- **Improved Validation**: Enhanced file existence checking and format validation
+- **Flexible Command Interface**: Multiple input options with clear usage patterns
 
-### Core Bioinformatics Tools
+## Future Directions
 
-#### **Kraken2** - Taxonomic Classification Engine
-- **Algorithm**: Exact k-mer matching with minimizer-based indexing
-- **Database**: Pre-built taxonomic database with bacterial, archaeal, viral genomes
-- **Performance**: Ultra-fast classification (~1M reads/minute)
-- **Accuracy**: High precision taxonomic assignment with confidence scoring
+### Immediate Priorities (v3.3-3.4)
 
-#### **Bracken** - Abundance Estimation
-- **Method**: Bayesian re-estimation of taxonomic abundances
-- **Input**: Kraken2 classification results
-- **Output**: Species-level abundance profiles with statistical confidence
-- **Application**: Corrects for database composition bias
+#### **Virulence Factor Analysis Enhancement** *(High Priority)*
+- **Advanced VF Detection**: Optimize virulence factor identification workflows for both FASTQ and FASTA
+- **Clinical Integration**: Map virulence factors to clinical severity and treatment protocols
+- **Interactive VF Visualization**: Enhanced charts showing virulence profiles with risk assessment
+- **Pathogenesis Pathway Analysis**: Integrate VF findings with pathogen detection for comprehensive threat assessment
 
-#### **DIAMOND** - High-Performance Sequence Aligner
-- **Algorithm**: Double Index Alignment of Next-generation sequencing Data
-- **Speed**: 100-20,000x faster than BLASTX
-- **Sensitivity**: Comparable to BLAST with optimized scoring matrices
-- **Use Case**: Pathogen detection and functional annotation
+#### **AMR Analysis Optimization** *(High Priority)*
+- **Enhanced Resistance Detection**: Improve antimicrobial resistance gene identification accuracy
+- **Clinical Breakpoint Integration**: Map resistance genes to clinical susceptibility testing
+- **Treatment Recommendation Engine**: Suggest appropriate antimicrobial therapy based on resistance profiles
+- **Resistance Mechanism Classification**: Detailed categorization by resistance mechanisms and drug classes
 
-#### **Prokka** - Rapid Prokaryotic Genome Annotation
-- **Pipeline**: Integrates multiple annotation tools (Prodigal, HMMER, BLAST)
-- **Features**: Gene prediction, tRNA/rRNA detection, functional annotation
-- **Output**: Standard formats (GFF3, GenBank, FASTA)
-- **Speed**: Complete bacterial genome annotation in <10 minutes
+#### **Integrated Clinical Decision Support**
+- **Unified Risk Assessment**: Combine pathogen, virulence, and resistance data for comprehensive threat evaluation
+- **Emergency Protocol Enhancement**: Expand clinical recommendations based on integrated findings
+- **Multi-sample Comparison**: Comparative analysis dashboards for outbreak investigation
+- **Real-time Alerting**: Automated high-risk pathogen detection notifications
 
-#### **Seqkit** - Fast Sequence Processing Toolkit
-- **Purpose**: High-performance FASTQ/FASTA file manipulation
-- **Features**: Format conversion, quality filtering, sequence splitting
-- **Application**: Interleaved FASTQ splitting and preprocessing
-- **Speed**: Optimized for large-scale sequence processing
+### Medium-term Developments (v4.0+)
 
-### Specialized Databases
+#### **Machine Learning Integration**
+- **Enhanced ML Pathogen Prediction**: Expand ML capabilities beyond current FASTA integration
+- **Resistance Phenotype Prediction**: ML models for clinical resistance prediction from genotype
+- **Outbreak Detection**: Automated surveillance and clustering for epidemiological investigation
+- **Treatment Outcome Prediction**: Integration of resistance/virulence data for therapy success prediction
 
-#### **CARD** - Comprehensive Antibiotic Resistance Database
-- **Content**: >6,000 reference sequences across all major AMR gene families
-- **Organization**: Hierarchical classification by mechanism and drug class
-- **Curation**: Expert-curated with regular updates
-- **Integration**: Direct mapping to clinical resistance phenotypes
-
-#### **VFDB** - Virulence Factor Database
-- **Scope**: Comprehensive collection of bacterial virulence factors
-- **Classification**: Organized by pathogenesis mechanism
-- **Validation**: Experimentally verified virulence associations
-- **Coverage**: >2,500 virulence factor genes from >70 bacterial genera
-
-#### **MiniKraken2** - Optimized Taxonomic Database
-- **Size**: ~8GB compressed database for efficient processing
-- **Content**: Representative genomes from bacteria, archaea, viruses
-- **Performance**: Balanced between speed and taxonomic resolution
-- **Maintenance**: Regular updates with new reference genomes
-
-### Visualization and Reporting
-
-#### **Krona** - Interactive Taxonomic Visualization
-- **Format**: HTML5-based hierarchical pie charts
-- **Interactivity**: Zoom, filter, and explore taxonomic distributions
-- **Integration**: Direct import from Kraken2 results
-- **Customization**: Multiple visualization modes and color schemes
-
-#### **Plotly** - Interactive Scientific Plotting
-- **Technology**: JavaScript-based interactive plotting library
-- **Features**: Zoom, pan, hover tooltips, data export
-- **Chart Types**: Bar plots, heatmaps, scatter plots, treemaps
-- **Output**: Self-contained HTML files for easy sharing
-
-## Scientific Applications
-
-### Clinical Metagenomics
-- **Infectious Disease Diagnosis**: Rapid pathogen identification from clinical samples
-- **AMR Surveillance**: Population-level resistance monitoring
-- **Outbreak Investigation**: Source tracking and transmission analysis
-- **Personalized Medicine**: Treatment selection based on resistance profiles
-
-### Environmental Microbiology
-- **Microbiome Studies**: Community structure and function analysis
-- **Contamination Assessment**: Pathogen detection in water/food samples
-- **Biodegradation Studies**: Functional potential assessment
-- **Ecosystem Monitoring**: Microbial community health indicators
-
-### Agricultural Applications
-- **Plant Microbiome**: Beneficial and pathogenic microorganism detection
-- **Soil Health**: Microbial diversity and functional assessment
-- **Food Safety**: Pathogen screening in agricultural products
-- **Livestock Health**: Gut microbiome and pathogen monitoring
+#### **Advanced Clinical Features**
+- **Multi-omics Integration**: Combine metagenomic data with host genomics and clinical parameters
+- **Longitudinal Analysis**: Track pathogen evolution and resistance development over time
+- **Population Surveillance**: Large-scale monitoring for public health applications
+- **Point-of-Care Integration**: Rapid diagnostic platform compatibility
 
 ## Installation
 
@@ -176,167 +131,31 @@ MetaQuest requires a Linux/macOS environment with conda package manager. The ins
 
 ## Usage
 
-### Enhanced FASTQ Input Support
+### Comprehensive Input Support
 
-MetaQuest now supports multiple FASTQ input modes for improved flexibility:
+MetaQuest now supports optimized workflows for both FASTQ and FASTA inputs:
 
-**📖 For detailed installation instructions, see [Usage Guide](docs/usage.md)**
+#### **FASTQ Analysis** *(Recommended for clinical samples)*
+- **Taxonomic Classification**: Kraken2/Bracken rapid classification
+- **Pathogen Detection**: Multi-source traditional screening with clinical risk assessment
+- **Output**: Green-themed dashboard with pathogen_summary.txt as the definitive report
 
-
-### Command-line Options
-
-#### Required Arguments
-- `--type` (`-t`): Input file type (`fastq` or `fasta`)
-- `--output` (`-o`): Output directory path
-
-#### FASTQ Input Options (Mutually Exclusive)
-- `--reads` (`-r`): Single-end FASTQ file
-- `--reads1` (`-1`) + `--reads2` (`-2`): Paired-end FASTQ files
-- `--interleaved` (`-i`): Interleaved paired-end FASTQ file
-
-#### FASTA Input Options
-- Input file specified as positional argument
-
-### Input Validation and Processing
-
-MetaQuest automatically:
-- Validates file existence and format
-- Detects interleaved FASTQ files and splits them using seqkit
-- Configures analysis parameters based on input type
-- Provides informative error messages for invalid inputs
+#### **FASTA Analysis** *(Optimized for assembled genomes)*
+- **Taxonomic Classification**: BLAST-based high-accuracy classification
+- **Pathogen Detection**: Integrated BLAST taxonomy + ML predictions with separated reporting
+- **Output**: Blue-themed dashboard with blast_ml_pathogen_summary.txt as the definitive report
 
 **📖 For comprehensive usage examples and options, see [Usage Guide](docs/usage.md)**
 
-## Recent Updates
-
-### FASTA Processing Improvements (v3.1.2)
-
-#### Enhanced Taxonomic Classification
-- **Complete FASTA Support**: Taxonomic profiling for FASTA files is now fully functional and accurate
-- **Improved k-mer Classification**: Optimized Kraken2 integration for assembled sequences
-- **Enhanced Visualization**: Accurate taxonomic visualizations (Krona, pie charts, treemaps)
-- **Quality Metrics**: Comprehensive assembly quality assessment and reporting
-
-#### Ongoing Developments
-- **Pathogen Detection**: Active optimization of pathogen screening workflows for FASTA inputs
-- **AMR Analysis**: Enhanced antimicrobial resistance detection algorithms under development
-- **Virulence Factors**: Improved virulence factor identification accuracy in progress
-- **Performance Tuning**: Continued optimization for large FASTA datasets
-
-### CLI & Pipeline Enhancements (v3.1.1)
-
-#### Enhanced FASTQ Input Support
-- **Mutually Exclusive Input Groups**: Added support for single-end, paired-end, and interleaved FASTQ inputs
-- **Automatic Interleaved Processing**: Seamless detection and splitting of interleaved FASTQ files
-- **Improved Validation**: Enhanced file existence checking and format validation
-- **Flexible Command Interface**: Multiple input options with clear usage patterns
-
-#### Technical Improvements
-- **Seqkit Integration**: Added seqkit for efficient interleaved FASTQ splitting
-- **Enhanced Logging**: Improved progress reporting and paired-end detection
-- **Streamlined Processing**: Optimized workflow for different input formats
-- **Error Handling**: Better error messages and validation feedback
-
-#### Backend Updates
-- **CLI Module**: Restructured argument parsing with mutually exclusive groups
-- **Analysis Pipeline**: Enhanced to handle list-based input file processing
-- **Taxonomic Classification**: Improved Kraken2 integration for paired-end reads
-- **Utility Functions**: New helper functions for format conversion and file splitting
-
-## Future Directions
-
-### Short-term Enhancements (v3.2-3.3)
-
-#### **FASTA Processing Optimization** *(High Priority)*
-- **Pathogen Detection**: Complete optimization of assembly-aware pathogen screening
-- **AMR Analysis**: Enhanced antimicrobial resistance detection for longer sequences
-- **Virulence Analysis**: Improved virulence factor detection accuracy
-- **Clinical Validation**: Comprehensive benchmarking against known datasets
-
-#### **Performance Optimization**
-- **GPU Acceleration**: CUDA-enabled alignment for DIAMOND searches
-- **Memory Management**: Streaming algorithms for large dataset processing
-- **Parallel Processing**: Multi-sample batch processing with job queuing
-- **Database Compression**: Advanced indexing for reduced memory footprint
-
-#### **Extended Analysis Capabilities**
-- **Plasmid Detection**: Identification and characterization of mobile genetic elements
-- **Prophage Analysis**: Integrated viral sequence detection and annotation
-- **Metabolic Profiling**: KEGG pathway reconstruction and completeness scoring
-- **Strain-level Resolution**: Sub-species identification using marker genes
-
-#### **Enhanced Visualization**
-- **3D Network Graphs**: Interactive microbial interaction networks
-- **Time-series Analysis**: Longitudinal microbiome dynamics visualization
-- **Comparative Analysis**: Multi-sample comparison dashboards
-- **Publication-ready Figures**: Export to vector formats (SVG, PDF)
-
-### Medium-term Developments (v4.0-4.5)
-
-#### **Machine Learning Integration**
-- **Pathogenicity Prediction**: ML models for novel pathogen risk assessment
-- **Resistance Prediction**: Phenotype prediction from genotype data
-- **Community Classification**: Microbiome state classification and clustering
-- **Anomaly Detection**: Automated identification of unusual microbial signatures
-
-#### **Advanced Genomics Features**
-- **Pangenome Analysis**: Core and accessory genome characterization
-- **Horizontal Gene Transfer**: Detection and visualization of HGT events
-- **Evolutionary Analysis**: Phylogenetic reconstruction and molecular evolution
-- **Functional Redundancy**: Assessment of metabolic pathway robustness
-
-#### **Clinical Decision Support**
-- **Treatment Recommendations**: Evidence-based therapy suggestions
-- **Resistance Prediction**: Clinical breakpoint integration
-- **Risk Stratification**: Patient-specific pathogen risk assessment
-- **Outbreak Detection**: Automated surveillance and alerting systems
-
-### Long-term Vision (v5.0+)
-
-#### **Real-time Analysis Platform**
-- **Streaming Analysis**: Live analysis of MinION/GridION sequencing data
-- **Cloud Integration**: Scalable cloud-based processing infrastructure
-- **Mobile Interface**: Tablet/smartphone access for field applications
-- **API Development**: RESTful API for integration with LIMS systems
-
-#### **Multi-omics Integration**
-- **Proteomics**: Integration with metaproteomic analysis pipelines
-- **Metabolomics**: Correlation with metabolic profiling data
-- **Transcriptomics**: RNA-seq integration for activity assessment
-- **Host-Microbe Interactions**: Integrated host genomics analysis
-
-#### **Artificial Intelligence**
-- **Natural Language Processing**: Automated literature mining for pathogen information
-- **Computer Vision**: Integration of microscopy and imaging data
-- **Predictive Modeling**: Population-level outbreak prediction
-- **Knowledge Graphs**: Semantic integration of multi-source biological data
-
-#### **Global Health Applications**
-- **Surveillance Networks**: International pathogen monitoring platforms
-- **Rapid Diagnostics**: Point-of-care sequencing integration
-- **Antimicrobial Stewardship**: Population-level resistance management
-- **One Health Integration**: Environmental-clinical-veterinary data fusion
-
 ## Contributing
 
-We welcome contributions from the scientific community. Areas of particular interest include:
+We welcome contributions from the scientific community. Current priority areas include:
 
-- **Algorithm Development**: New methods for metagenomic analysis
-- **Database Curation**: Expansion and validation of reference databases
-- **Visualization Tools**: Novel approaches for data presentation
-- **Clinical Validation**: Real-world testing and benchmarking studies
-- **Documentation**: User guides, tutorials, and best practices
-- **FASTA Processing**: Help optimize pathogen detection and AMR analysis workflows
-
-## Reporting Issues
-
-If you encounter problems, please report them with:
-- Input file format and size
-- Error messages or unexpected output
-- System specifications
-- MetaQuest version information
-
-**Note**: For FASTA files, taxonomic classification is now fully reliable. If you experience issues with pathogen detection, AMR analysis, or virulence factor identification, please note that these features are under active optimization.
+- **Virulence Factor Analysis**: Help optimize VF detection workflows and clinical integration
+- **AMR Enhancement**: Improve antimicrobial resistance detection and clinical mapping
+- **Clinical Validation**: Real-world testing of pathogen detection accuracy and risk assessment
+- **Machine Learning**: Expand ML capabilities for enhanced pathogen prediction
+- **Documentation**: User guides and clinical interpretation guidelines
 
 ## Contact and Support
 
@@ -350,4 +169,4 @@ If you encounter problems, please report them with:
 *Advancing metagenomics through integrated computational solutions*
 
 ---
-*Last updated: June 2025 - Development version with enhanced FASTA taxonomic classification and ongoing pathogen detection optimization*
+*Last updated: July 2025 - Major pathogen analysis completion with comprehensive risk assessment and clinical decision support*
