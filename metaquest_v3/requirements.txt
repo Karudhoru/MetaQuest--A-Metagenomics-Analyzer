@@ -1,5 +1,0 @@
-pandas
-plotly
-seaborn
-biopython
-matplotlib
