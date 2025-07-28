@@ -1,3 +1,0 @@
-SRR33797155.13039	NP_819251.2	52.2	46	1.12e-06	44.3	NP_819251.2 glutamine--tRNA ligase [Coxiella burnetii RSA 493] [Coxiella burnetii]
-SRR33797155.14922_14921	VFG052265(gb|WP_011777576.1)	35.7	70	5.36e-04	38.1	VFG052265(gb|WP_011777576.1) (aftD) alpha-(1->3)-arabinofuranosyltransferase [LAM (VF0318) - Immune modulation (VFC0258)] [Mycobacterium vanbaalenii PYR-1]
-SRR33797155.19983_19982	NP_706472.2	48.3	29	7.55e-04	36.6	NP_706472.2 [citrate (pro-3S)-lyase] ligase [Shigella flexneri 2a str. 301] [Shigella flexneri]

@@ -1,8 +1,0 @@
-sequence_id,sequence_type,prediction,confidence,pathogenic_probability,high_confidence,confidence_threshold,sequence_length,method,extraction_method,model_type,features_used,features_selected,timestamp
-KIEHJLIC_00001,protein,Pathogenic,0.7563023567199707,0.7563023567199707,True,0.7,184,ML_VotingEnsemble_MetaQuest,MetaQuest_Production,XGBClassifier,90,80,2025-07-27T16:15:31.410165
-KIEHJLIC_00002,protein,Pathogenic,0.9339348077774048,0.9339348077774048,True,0.7,94,ML_VotingEnsemble_MetaQuest,MetaQuest_Production,XGBClassifier,90,80,2025-07-27T16:15:31.426621
-KIEHJLIC_00003,protein,Pathogenic,0.9493933320045471,0.9493933320045471,True,0.7,709,ML_VotingEnsemble_MetaQuest,MetaQuest_Production,XGBClassifier,90,80,2025-07-27T16:15:31.443572
-KIEHJLIC_00004,protein,Pathogenic,0.6013667583465576,0.6013667583465576,False,0.7,70,ML_VotingEnsemble_MetaQuest,MetaQuest_Production,XGBClassifier,90,80,2025-07-27T16:15:31.454448
-KIEHJLIC_00005,protein,Pathogenic,0.880147397518158,0.880147397518158,True,0.7,68,ML_VotingEnsemble_MetaQuest,MetaQuest_Production,XGBClassifier,90,80,2025-07-27T16:15:31.472216
-KIEHJLIC_00006,protein,Pathogenic,0.8590956926345825,0.8590956926345825,True,0.7,279,ML_VotingEnsemble_MetaQuest,MetaQuest_Production,XGBClassifier,90,80,2025-07-27T16:15:31.488572
-KIEHJLIC_00007,protein,Pathogenic,0.832522988319397,0.832522988319397,True,0.7,283,ML_VotingEnsemble_MetaQuest,MetaQuest_Production,XGBClassifier,90,80,2025-07-27T16:15:31.499836
