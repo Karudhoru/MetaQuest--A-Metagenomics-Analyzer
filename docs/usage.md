@@ -1,31 +1,46 @@
-Based on our comprehensive work throughout the conversation and the major pathogen analysis completion (v3.2.0), here's the **complete rewritten usage.md** that reflects all the changes, enhanced features, and actual output files:
-
 # MetaQuest Usage Guide
 
-A comprehensive guide to using MetaQuest's enhanced metagenomics analysis pipeline with dual-method pathogen detection and clinical risk assessment.
+A comprehensive guide to using MetaQuest's enhanced metagenomics analysis pipeline with advanced file validation, dual-method pathogen detection, and clinical risk assessment.
 
 ## Overview
 
-MetaQuest v3.2.0 provides **analysis-specific workflows** optimized for different input types and use cases:
+MetaQuest v3.2.1 provides **analysis-specific workflows** optimized for different input types and use cases, with comprehensive file validation:
 
 - **FASTQ Analysis**: Clinical-focused with rapid Kraken2/Bracken classification and multi-source pathogen screening
 - **FASTA Analysis**: Research-focused with high-accuracy BLAST classification and integrated ML pathogen predictions
+- **Advanced Validation**: Comprehensive quality control for both input types with detailed statistics and quality thresholds
 
 ## Quick Start
 
-### Enhanced Analysis Workflows
+### File Validation (Recommended First Step)
 
 ```bash
 # Activate environment
 conda activate metagenomics_app
 
+# Validate FASTQ file before analysis
+metaquest SRR33675829.fastq.gz -t fastq --validate-only
+
+# Validate FASTA file with detailed statistics
+metaquest sequence.fasta -t fasta  --validate-only
+
+# Check file with custom quality thresholds
+metaquest reads.fastq.gz -t fastq --min-quality 25 --min-sequences 1000 --validate-only
+```
+
+### Enhanced Analysis Workflows
+
+```bash
 ### FASTQ Analysis (Recommended for clinical samples)
 # Multi-source pathogen detection with clinical risk assessment
-metaquest examples/example.fastq.gz -t fastq -o fastq_results/
+metaquest SRR33675829.fastq.gz -t fastq -o fastq_results/
 
 ### FASTA Analysis (Optimized for assembled genomes)  
 # BLAST taxonomy + ML pathogen predictions with separated reporting
-metaquest examples/sequence.fasta -t fasta -o fasta_results/
+metaquest sequence.fasta -t fasta -o fasta_results/
+
+### Skip validation for trusted files (advanced users)
+metaquest trusted_file.fastq.gz -t fastq -o results/ --skip-validation
 ```
 
 ### View Enhanced Results
@@ -71,6 +86,26 @@ metaquest [input_files] -t {fastq|fasta} -o OUTPUT_DIR [options]
 - `--version`: Show MetaQuest version and feature status
 - `--check-system`: Verify installation and database status
 
+### File Validation Options (New in v3.2.1)
+
+**Validation Commands:**
+- `--validate-only`: Validate file and show statistics without running analysis
+- `--skip-validation`: Skip file validation (not recommended)
+- `--min-quality INT`: Minimum mean quality score for FASTQ files (default: 20)
+- `--min-sequences INT`: Minimum number of sequences required (default: 100)
+
+**Validation Examples:**
+```bash
+# Basic validation
+metaquest sample.fastq.gz -t fastq  --validate-only
+
+# Custom quality thresholds
+metaquest sample.fastq.gz -t fastq --min-quality 25 --min-sequences 5000  --validate-only
+
+# FASTA validation with statistics
+metaquest genome.fasta -t fasta  --validate-only
+```
+
 ### FASTQ Input Options (Clinical Focus)
 
 **Single-end FASTQ:**
@@ -104,6 +139,120 @@ metaquest -i sample_interleaved.fastq.gz -t fastq -o results/
 metaquest genome.fasta -t fasta -o fa_results/
 metaquest sequences.fasta -t fasta -o fa_results/
 ```
+
+## File Validation Features
+
+### FASTQ Validation Output Example
+
+```
+============================================================
+🔍 METAQUEST FILE VALIDATION
+============================================================
+File: SRR33675829.fastq.gz
+Type: FASTQ
+Time: 2025-08-03 18:47:44
+============================================================
+
+📁 FILE INFORMATION
+────────────────────────────────────────
+  Size:        0.61 MB
+  MD5:         a708be745aed5cd8...
+  Compressed:  Yes (gzip)
+
+🧬 SEQUENCE STATISTICS
+────────────────────────────────────────
+  Total Sequences:  19,643
+  Total Bases:      8,479,628
+  Length Range:     428 - 436 bp
+  Mean Length:      431.7 bp
+  Median Length:    432.0 bp
+  N50 Length:       432.0 bp
+  GC Content:       46.6%
+
+📊 QUALITY STATISTICS
+────────────────────────────────────────
+  Encoding:         Sanger/Illumina 1.8+ (Phred+33)
+  Mean Quality:     30.0
+  Quality Range:    30 - 30
+  Q20 Bases:        100.0%
+  Q30 Bases:        100.0%
+
+🔍 QUALITY ASSESSMENT
+────────────────────────────────────────
+  Note: All bases have uniform quality (30)
+  ✅ All quality metrics passed
+
+⚙️  VALIDATION CRITERIA
+────────────────────────────────────────
+  Minimum sequences:  100 ✅ (Found: 19,643)
+  Minimum quality:    20 ✅ (Found: 30.0)
+
+============================================================
+✅ FILE VALIDATION: PASSED
+============================================================
+```
+
+### FASTA Validation Output Example
+
+```
+============================================================
+🔍 METAQUEST FILE VALIDATION
+============================================================
+File: sequence.fasta
+Type: FASTA
+Time: 2025-08-03 18:48:16
+============================================================
+
+📁 FILE INFORMATION
+────────────────────────────────────────
+  Size:        0.01 MB
+  MD5:         42e1352c3ae16582...
+  Compressed:  No
+
+🧬 SEQUENCE STATISTICS
+────────────────────────────────────────
+  Type:             Single sequence (likely genome/chromosome)
+  Total Sequences:  1
+  Total Bases:      6,477
+  Length Range:     6,477 - 6,477
+  Mean Length:      6477.0
+  Median Length:    6477.0
+
+🧪 COMPOSITION ANALYSIS
+────────────────────────────────────────
+  GC Content:       61.2%
+
+🔍 QUALITY ASSESSMENT
+────────────────────────────────────────
+  ✅ All quality checks passed
+
+⚙️  VALIDATION CRITERIA
+────────────────────────────────────────
+  Minimum sequences:  1 ✅ (Found: 1)
+  Unique IDs:         Required ✅ (All unique)
+
+============================================================
+✅ FILE VALIDATION: PASSED
+============================================================
+```
+
+### Validation Features by File Type
+
+#### FASTQ Validation Capabilities
+- **Quality Score Analysis**: Automatic detection of quality encoding (Phred+33/Phred+64)
+- **Statistical Metrics**: Mean, median, N50 length calculations with quality score distributions
+- **Quality Thresholds**: Q20/Q30 base percentage analysis with customizable thresholds
+- **Contamination Detection**: Adapter sequence screening in first 1000 reads
+- **Sequence Composition**: GC content analysis and ambiguous base detection
+- **File Integrity**: MD5 checksum calculation and compression detection
+
+#### FASTA Validation Capabilities
+- **Sequence Type Detection**: Automatic classification as protein or nucleotide sequences
+- **Composition Analysis**: GC content statistics with per-sequence variance analysis
+- **Quality Assessment**: Duplicate ID detection, gap analysis, and N-base counting
+- **Length Distribution**: Comprehensive length statistics with coefficient of variation
+- **Category Classification**: Intelligent sequence categorization (genome, contigs, genes, etc.)
+- **Format Validation**: Strict FASTA format compliance checking
 
 ## Output Files
 
@@ -205,6 +354,7 @@ fa_results/
 - **⚡ Rapid Processing**: Kraken2/Bracken for fast clinical decision support
 - **🎨 Green Dashboard**: Clinical workflow optimized interface
 - **📈 Abundance Estimation**: Accurate species-level quantification
+- **📊 Quality Control**: Comprehensive FASTQ quality analysis and validation
 
 #### FASTA Analysis Advantages  
 - **🔬 Research Focus**: High-accuracy BLAST classification with quality metrics
@@ -212,8 +362,51 @@ fa_results/
 - **📈 Confidence Scoring**: ML provides pathogenicity confidence for individual proteins
 - **🎨 Blue Dashboard**: Research workflow optimized interface
 - **🎯 Quality Assessment**: Detailed sequence identity and E-value metrics
+- **🧪 Composition Analysis**: Advanced sequence statistics and diversity metrics
 
-## Files for Display in Documentation
+## Advanced Validation Workflows
+
+### Quality Control Pipelines
+
+#### High-Throughput FASTQ Validation
+```bash
+# Validate multiple FASTQ files
+for file in *.fastq.gz; do
+    metaquest --validate-only "$file" -t fastq --min-quality 25
+done
+
+# Batch validation with strict quality control
+metaquest --validate-only high_quality.fastq.gz -t fastq \
+    --min-quality 30 --min-sequences 10000
+```
+
+#### Research FASTA Validation
+```bash
+# Validate assembled genome
+metaquest --validate-only genome_assembly.fasta -t fasta
+
+# Check metagenomic contigs
+metaquest --validate-only contigs.fasta -t fasta --min-sequences 100
+```
+
+### Integration with Analysis Workflows
+
+#### Recommended Workflow Pattern
+```bash
+# Step 1: Validate input file
+metaquest --validate-only sample.fastq.gz -t fastq
+
+# Step 2: Review validation output
+# Check for quality warnings and adjust parameters if needed
+
+# Step 3: Run full analysis (validation runs automatically)
+metaquest sample.fastq.gz -t fastq -o results/
+
+# Alternative: Skip validation for trusted files
+metaquest trusted_sample.fastq.gz -t fastq -o results/ --skip-validation
+```
+
+## Sample Output Files
 
 ### **FASTQ Analysis - Key Files to Showcase**
 
@@ -248,21 +441,21 @@ CLINICAL RECOMMENDATIONS:
 • Emergency infectious disease consultation
 ```
 
-#### **2. analysis_dashboard.html** *(Green-themed FASTQ interface)*
-- Interactive clinical workflow dashboard
-- Real-time pathogen risk visualization
-- Multi-source detection coverage analysis
-- Emergency protocol recommendations
-
-#### **3. pathogen_risk_detection.html** *(Interactive risk chart)*
-- Color-coded pathogen risk levels (Red=HIGH, Orange=MEDIUM)
-- Clinical priority indicators
-- Detection method validation
-
-#### **4. taxonomic_abundance_chart.html** *(Species composition)*
-- Top 15 abundant taxa visualization
-- Interactive bar charts with abundance percentages
-- Kraken2/Bracken integration
+#### **2. Bracken Abundance Report (FASTQ Input)**
+```tsv
+# bracken_report.tsv format
+name	taxonomy_id	taxonomy_lvl	kraken_assigned_reads	added_reads	new_est_reads	fraction_total_reads
+Marinilactibacillus sp. 15R	1911586	S	120	4406	4526	0.24906
+Paucilactobacillus nenjiangensis	1296540	S	41	573	614	0.03379
+Amylolactobacillus amylophilus	1603	S	37	4840	4877	0.26838
+Aerococcus urinae	1376	S	48	345	393	0.02163
+Suicoccus acidiformans	2036206	S	10	283	293	0.01612
+Tetragenococcus osmophilus	526944	S	11	596	607	0.03340
+Peribacillus psychrosaccharolyticus	1407	S	69	308	377	0.02075
+Peribacillus butanolivorans	421767	S	17	65	82	0.00451
+Bacillus thuringiensis	1428	S	12	70	82	0.00451
+Bacillus velezensis	492670	S	10	464	474	0.02608
+```
 
 ### **FASTA Analysis - Key Files to Showcase**
 
@@ -284,40 +477,44 @@ Salmonella enterica            10         1          10.0
 Escherichia coli               6          1          6.0         
 Klebsiella pneumoniae          2          1          2.0         
 Cloning vector                 2          1          2.0
+
+MACHINE LEARNING PATHOGENICITY PREDICTIONS:
+===========================================
+High Confidence Pathogenic Proteins: 8
+Medium Confidence Pathogenic Proteins: 12
+Low Confidence Pathogenic Proteins: 5
+
+INTEGRATED RISK ASSESSMENT:
+==========================
+BLAST Taxonomy Risk: HIGH (Salmonella enterica dominant)
+ML Pathogenicity Risk: MEDIUM (8 high-confidence pathogenic proteins)
+Overall Assessment: HIGH RISK
 ```
 
-#### Organism Comparison Data (FASTA Input)
+#### **2. ML Pathogen Predictions (FASTA Input)**
+```csv
+# ml_pathogen_predictions.csv format
+protein_id,pathogenicity_score,confidence,prediction,organism_context
+protein_001,0.85,HIGH,PATHOGENIC,Salmonella enterica
+protein_002,0.72,MEDIUM,PATHOGENIC,Escherichia coli
+protein_003,0.45,LOW,NON_PATHOGENIC,Cloning vector
+protein_004,0.91,HIGH,PATHOGENIC,Salmonella enterica
+protein_005,0.38,LOW,NON_PATHOGENIC,Unknown
+```
+
+#### **3. Organism Comparison Data (FASTA Input)**
 ```csv
 # organism_comparison_data.csv format
-organism,total_hits,sequences_with_hits,avg_hits_per_sequence
-Salmonella enterica,10,1,10.0
-Escherichia coli,6,1,6.0
-Klebsiella pneumoniae,2,1,2.0
-Cloning vector,2,1,2.0
+organism,total_hits,sequences_with_hits,avg_hits_per_sequence,max_identity,avg_identity
+Salmonella enterica,10,1,10.0,98.5,95.2
+Escherichia coli,6,1,6.0,96.8,92.1
+Klebsiella pneumoniae,2,1,2.0,89.3,87.6
+Cloning vector,2,1,2.0,100.0,98.9
 ```
 
-#### Bracken Abundance Report (FASTQ Input)
-```tsv
-# bracken_report.tsv format
-name	taxonomy_id	taxonomy_lvl	kraken_assigned_reads	added_reads	new_est_reads	fraction_total_reads
-Marinilactibacillus sp. 15R	1911586	S	120	4406	4526	0.24906
-Paucilactobacillus nenjiangensis	1296540	S	41	573	614	0.03379
-Amylolactobacillus amylophilus	1603	S	37	4840	4877	0.26838
-Aerococcus urinae	1376	S	48	345	393	0.02163
-Suicoccus acidiformans	2036206	S	10	283	293	0.01612
-Tetragenococcus osmophilus	526944	S	11	596	607	0.03340
-Peribacillus psychrosaccharolyticus	1407	S	69	308	377	0.02075
-Peribacillus butanolivorans	421767	S	17	65	82	0.00451
-Bacillus thuringiensis	1428	S	12	70	82	0.00451
-Bacillus velezensis	492670	S	10	464	474	0.02608
-Jeotgalicoccus saudimassiliensis	1461582	S	11	25	36	0.00198
-Finegoldia magna	1260	S	3884	639	4523	0.24890
-Anaerococcus mediterraneensis	1870984	S	28	8	36	0.00198
-Gudongella oleilytica	1582259	S	707	18	725	0.03990
-Mycoplasma sp. (ex Biomphalaria glabrata)	1749074	S	499	21	520	0.02862
-```
+### **Prokka Annotation Results (Both FASTQ and FASTA)**
 
-#### Prokka Annotation Results (Both FASTA and FASTQ Input)
+#### **Functional Annotation Summary**
 ```tsv
 # sample.tsv format (Prokka functional annotations)
 locus_tag	ftype	length_bp	gene	EC_number	COG	product
@@ -330,17 +527,191 @@ KIEHJLIC_00006	CDS	840	repA			Regulatory protein RepA
 KIEHJLIC_00007	CDS	852				hypothetical protein
 ```
 
-#### Prokka Annotation Summary
+#### **Annotation Statistics**
 ```txt
 # sample.txt format
 organism: Genus species strain 
 contigs: 19643
 bases: 8479628
 CDS: 44150
+rRNA: 12
+tRNA: 67
+tmRNA: 1
 ```
 
-### Getting Help
+## Validation Best Practices
 
-For issues not covered in this guide, please check the project repository or contact the development team.
+### When to Use Validation
 
-This completes the MetaQuest usage guide. For installation instructions, see the [Installation Guide](installation.md).
+#### **Always Validate When:**
+- Working with new datasets or unknown quality files
+- Preparing data for clinical applications
+- Quality control is critical for downstream analysis
+- Files come from external sources or collaborators
+
+#### **Consider Skipping Validation When:**
+- Files have been previously validated and haven't changed
+- Running batch processing on trusted datasets
+- Speed is critical and file quality is guaranteed
+- Advanced users with proven data quality pipelines
+
+### Quality Threshold Guidelines
+
+#### **FASTQ Quality Recommendations:**
+- **Minimum Quality Score**: 20 (basic), 25 (recommended), 30 (high-quality)
+- **Minimum Sequences**: 100 (testing), 1,000 (basic analysis), 10,000+ (clinical)
+- **Q30 Percentage**: >80% (recommended), >90% (high-quality)
+
+#### **FASTA Quality Indicators:**
+- **Sequence Count**: Depends on application (1 for genomes, 100+ for contigs)
+- **Length Distribution**: Check coefficient of variation for expected uniformity
+- **GC Content**: Should be within expected range for organism type
+- **Duplicate IDs**: Should be zero for proper analysis
+
+### Troubleshooting Validation Issues
+
+#### **Common FASTQ Issues:**
+```bash
+# Low quality scores
+metaquest low_quality.fastq.gz -t fastq --min-quality 15 --validate-only
+
+# Insufficient sequences
+metaquest small_file.fastq.gz -t fastq --min-sequences 50 --validate-only
+
+# Quality encoding issues
+# Check validation output for encoding detection
+```
+
+#### **Common FASTA Issues:**
+```bash
+# Duplicate sequence IDs (will be auto-renamed)
+metaquest duplicates.fasta -t fasta --validate-only
+
+# Mixed sequence types
+# Check validation output for sequence type detection
+
+# Empty or corrupted files
+# Validation will detect and report format issues
+```
+
+## Interactive Features
+
+### Dashboard Navigation
+
+#### **FASTQ Dashboard Features (Green Theme):**
+- **Clinical Risk Overview**: Color-coded pathogen risk levels
+- **Abundance Charts**: Interactive species composition
+- **Quality Metrics**: FASTQ-specific quality visualizations
+- **Detection Coverage**: Multi-method pathogen detection analysis
+
+#### **FASTA Dashboard Features (Blue Theme):**
+- **BLAST Results**: Organism similarity and identity metrics
+- **ML Predictions**: Pathogenicity confidence scoring
+- **Composition Analysis**: GC content and length distributions
+- **Integrated Assessment**: Combined BLAST+ML risk evaluation
+
+### Real-time Analysis Features
+
+#### **Progress Monitoring:**
+- File validation progress with detailed statistics
+- Analysis step completion indicators
+- Real-time quality metric updates
+- Error detection and reporting
+
+#### **Result Interpretation:**
+- Color-coded risk levels (Red=HIGH, Orange=MEDIUM, Green=LOW)
+- Clinical priority indicators with emergency protocols
+- Confidence scoring for ML predictions
+- Multi-method validation for pathogen detection
+
+## Advanced Usage Patterns
+
+### Batch Processing
+
+#### **Multiple File Validation:**
+```bash
+#!/bin/bash
+# Validate multiple FASTQ files
+for file in data/*.fastq.gz; do
+    echo "Validating $file..."
+    metaquest --validate-only "$file" -t fastq --min-quality 25
+    if [ $? -eq 0 ]; then
+        echo "✅ $file passed validation"
+        # Run analysis
+        metaquest "$file" -t fastq -o "results/$(basename $file .fastq.gz)/"
+    else
+        echo "❌ $file failed validation"
+    fi
+done
+```
+
+#### **Quality-Controlled Pipeline:**
+```bash
+#!/bin/bash
+# High-quality analysis pipeline
+QUALITY_THRESHOLD=30
+MIN_SEQUENCES=10000
+
+# Validate with strict criteria
+metaquest --validate-only "$1" -t fastq \
+    --min-quality $QUALITY_THRESHOLD \
+    --min-sequences $MIN_SEQUENCES
+
+if [ $? -eq 0 ]; then
+    echo "Starting high-quality analysis..."
+    metaquest "$1" -t fastq -o high_quality_results/
+else
+    echo "File does not meet high-quality criteria"
+    exit 1
+fi
+```
+
+### Integration with External Tools
+
+#### **Pre-processing Integration:**
+```bash
+# Quality filtering before MetaQuest
+fastp -i raw.fastq.gz -o filtered.fastq.gz -q 25 -l 100
+
+# Validate filtered file
+metaquest filtered.fastq.gz -t fastq --validate-only 
+
+# Run MetaQuest analysis
+metaquest filtered.fastq.gz -t fastq -o results/
+```
+
+## Getting Help
+
+### Common Command Patterns
+
+```bash
+# Show version and feature status
+metaquest --version
+
+# Get comprehensive help
+metaquest --help
+
+# Check system dependencies
+metaquest --check-only 
+
+# Validate file with custom settings
+metaquest [file] -t [type] --min-quality [score] --min-sequences [count] --validate-only 
+
+# Run analysis with validation
+metaquest [file] -t [type] -o [output_dir]
+
+# Skip validation (advanced)
+metaquest [file] -t [type] -o [output_dir] --skip-validation
+```
+
+### Support Resources
+
+For issues not covered in this guide:
+- Check the [Installation Guide](installation.md) for setup issues
+- Review validation output for specific quality concerns
+- Contact the development team for clinical interpretation guidance
+- Visit the project repository for bug reports and feature requests
+
+---
+
+This completes the comprehensive MetaQuest usage guide with advanced file validation features. The validation system ensures data quality before analysis begins, providing detailed statistics and quality assessment for both FASTQ and FASTA inputs.
