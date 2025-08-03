@@ -9,6 +9,7 @@ from Bio import SeqIO
 import numpy as np
 import json
 from .config import *
+from .file_validator import FileValidator
 from .utils import check_dependencies, convert_fastq_to_fasta, split_interleaved
 from .taxonomic_analysis import run_kraken, run_bracken, run_fasta_blast_taxonomy
 from .pathogen_analysis import run_pathogen_scan, run_antimicrobial_resistance_scan, run_virulence_factor_scan
@@ -74,14 +75,33 @@ def should_use_ml_prediction(prokka_dir):
         return False
 
 def run_analysis(input_file, file_type, output_dir):
-    """Main analysis controller with streamlined reporting"""
+    """Main analysis controller with validation"""
     try:
         output_dir = Path(output_dir)
         output_dir.mkdir(exist_ok=True)
         
-        print(f"Analyzing {input_file} as {file_type}")
-        print(f"Output directory: {output_dir}")
+        # Validate and display statistics
+        validator = FileValidator()
+        is_valid, file_stats = validator.validate_and_analyze(input_file, file_type)
         
+        if not is_valid:
+            print("\n❌ Analysis aborted due to validation failure.")
+            print("💡 Tips:")
+            print("   - For FASTQ: Check quality scores and sequence count")
+            print("   - For FASTA: Ensure proper format and unique IDs")
+            print("   - Use --validate-only flag to check files without analysis")
+            return False
+        
+        # Save statistics for pipeline use
+        import json
+        stats_file = output_dir / "input_statistics.json"
+        with open(stats_file, 'w') as f:
+            json.dump(file_stats, f, indent=2)
+        
+        print(f"\n🚀 Starting {file_type.upper()} analysis pipeline...")
+        print(f"📁 Output directory: {output_dir}\n")
+        
+        # Continue with existing analysis
         if file_type == 'fastq':
             analyze_fastq(input_file, output_dir)
         else:
