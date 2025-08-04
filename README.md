@@ -14,26 +14,55 @@ MetaQuest is an integrated bioinformatics pipeline that addresses the complex ch
 - **File Validation & Quality Control**: ✅ **COMPLETED** - Comprehensive validation with detailed statistics for both FASTQ and FASTA inputs
 - **Taxonomic Classification**: ✅ **COMPLETED** - Both FASTQ and FASTA taxonomic profiling are now accurate and fully functional
 - **Pathogenicity Assessment**: ✅ **COMPLETED** - Comprehensive pathogen detection workflows for both FASTQ and FASTA inputs with clinical risk assessment
+- **Machine Learning Integration**: ✅ **COMPLETED** - Advanced ML-based pathogen prediction with feature extraction and model artifacts
 - **Virulence Factor Analysis**: 🔄 **IN DEVELOPMENT** - Virulence factor identification workflows require optimization and integration
 - **AMR Analysis**: 🔄 **IN DEVELOPMENT** - Antimicrobial resistance detection needs enhancement and clinical integration
 
 **Major Achievements (August 2025)**: 
 - ✅ **Advanced File Validation**: Comprehensive quality control with detailed statistics, format validation, and quality thresholds
+- ✅ **Machine Learning Pipeline**: Complete ML pathogen prediction system with feature extraction, model training, and inference
 - ✅ **Dual-Method Pathogen Detection**: FASTQ uses multi-source traditional screening, FASTA uses integrated BLAST+ML predictions
 - ✅ **Clinical Risk Assessment**: Comprehensive risk stratification with emergency protocols and clinical recommendations
 - ✅ **Analysis-Specific Dashboards**: Separate optimized interfaces for FASTQ (green theme) and FASTA (blue theme) workflows
-- ✅ **Redundancy Elimination**: Streamlined reporting with single definitive pathogen reports per analysis type
-- ✅ **Enhanced Visualization**: Fixed pathogen risk charts and detection coverage analysis
+- ✅ **Modular Architecture**: Clean separation of concerns with dedicated modules for IO, ML, visualization, and reporting
+- ✅ **Enhanced Visualization**: Fixed pathogen risk charts and detection coverage analysis with interactive dashboards
 
 ### Development Timeline
 - **File Validation System**: ✅ **COMPLETED** (v3.2.1) - *New major feature*
-- **Taxonomic Classification**: ✅ **COMPLETED** (v3.1.2)
+- **Machine Learning Integration**: ✅ **COMPLETED** (v3.2.1) - *Major milestone achieved*
 - **Pathogen Detection & Risk Assessment**: ✅ **COMPLETED** (v3.2.0) - *Major milestone achieved*
+- **Taxonomic Classification**: ✅ **COMPLETED** (v3.1.2)
 - **Enhanced Virulence Factor Detection**: Target completion Q3 2025
 - **Comprehensive AMR Analysis**: Target completion Q4 2025
 - **Integrated Clinical Decision Support**: Target completion Q1 2026
 
-**Current Status**: Both FASTQ and FASTA inputs now provide comprehensive analysis with reliable taxonomic classification and advanced pathogen detection. The pipeline successfully identifies high-risk pathogens (e.g., Salmonella enterica, E. coli, Klebsiella pneumoniae) with proper clinical risk assessment and emergency protocol recommendations. Advanced file validation ensures data quality before analysis begins.
+**Current Status**: Both FASTQ and FASTA inputs now provide comprehensive analysis with reliable taxonomic classification, advanced pathogen detection, and ML-powered predictions. The pipeline successfully identifies high-risk pathogens (e.g., Salmonella enterica, E. coli, Klebsiella pneumoniae) with proper clinical risk assessment and emergency protocol recommendations. Advanced file validation ensures data quality before analysis begins.
+
+## Architecture & Modules
+
+MetaQuest follows a modular architecture with clear separation of concerns:
+
+```
+src/metaquest/
+├── cli.py                    # Command-line interface
+├── config.py                 # Configuration management
+├── core/                     # Core analysis modules
+│   ├── analysis.py          # Main analysis orchestration
+│   ├── taxonomic_analysis.py # Taxonomic classification
+│   ├── pathogen_analysis.py  # Pathogen detection
+│   └── functional_analysis.py # Functional annotation
+├── io/                       # Input/Output handling
+│   ├── file_validator.py     # File validation & QC
+│   └── utils.py             # I/O utilities
+├── ml/                       # Machine Learning components
+│   ├── feature_extractor.py  # Feature extraction for ML
+│   ├── pathogen_predictor.py # ML pathogen prediction
+│   └── model_artifacts/      # Pre-trained models
+├── reporting/                # Report generation
+│   └── reporting.py         # Comprehensive reporting
+└── visualization/            # Data visualization
+    └── visualization.py     # Interactive dashboards
+```
 
 ### Key Features
 
@@ -41,18 +70,49 @@ MetaQuest is an integrated bioinformatics pipeline that addresses the complex ch
   - **FASTQ Quality Control**: Quality score analysis, encoding detection, adapter contamination screening *(Fully operational)*
   - **FASTA Format Validation**: Sequence type detection, composition analysis, duplicate ID checking *(Fully operational)*
   - **Comprehensive Statistics**: MD5 checksums, N50/length metrics, GC content analysis *(Fully operational)*
+
+- **Machine Learning Integration**:
+  - **Feature Extraction**: Automated extraction of sequence features for ML models *(Fully operational)*
+  - **Pathogen Prediction**: Pre-trained models for pathogen classification *(Fully operational)*
+  - **Model Artifacts**: Complete set of trained models, scalers, and feature selectors *(Fully operational)*
+
 - **Taxonomic Profiling**: Species-level identification and abundance estimation *(Fully supported for both FASTQ and FASTA)*
+
 - **Advanced Pathogen Screening**: 
   - **FASTQ**: Multi-source traditional screening with Bracken integration *(Fully operational)*
   - **FASTA**: Integrated BLAST taxonomy + ML pathogen predictions *(Fully operational)*
+
 - **Clinical Risk Assessment**: Comprehensive risk stratification with clinical recommendations *(Fully operational)*
+
 - **Antimicrobial Resistance (AMR) Analysis**: Basic resistance gene detection *(Under enhancement)*
+
 - **Virulence Factor Assessment**: Basic pathogenicity determinant identification *(Under development)*
+
 - **Functional Annotation**: Gene prediction and functional characterization *(Fully supported for both formats)*
+
 - **Interactive Dashboards**: Analysis-specific HTML reports with dynamic visualizations *(Fully operational)*
+
 - **Quality Assessment**: Statistical analysis and quality metrics *(Fully operational)*
 
 ## Recent Updates
+
+### Machine Learning Integration (v3.2.1) - August 2025
+
+#### ✅ **Complete ML Pipeline**
+- **Feature Extraction Module**: Automated extraction of sequence-based features for pathogen prediction
+- **Pathogen Prediction Engine**: Pre-trained machine learning models for accurate pathogen classification
+- **Model Artifacts**: Complete set of trained models including:
+  - `best_model.pkl`: Primary classification model
+  - `scaler.pkl`: Feature scaling transformation
+  - `feature_selector.pkl`: Feature selection model
+  - `feature_names.pkl`: Selected feature names
+  - `all_feature_names.pkl`: Complete feature vocabulary
+
+#### ✅ **Enhanced Analysis Workflows**
+- **FASTA ML Integration**: Seamless integration of ML predictions with BLAST-based taxonomy
+- **Feature Engineering**: Advanced sequence feature extraction including composition, k-mer, and structural features
+- **Model Inference**: Real-time pathogen prediction during analysis pipeline
+- **Confidence Scoring**: Prediction confidence scores for clinical decision support
 
 ### Advanced File Validation System (v3.2.1) - August 2025
 
@@ -94,42 +154,6 @@ MetaQuest is an integrated bioinformatics pipeline that addresses the complex ch
 - **Clean Output Structure**: Users receive exactly the reports they need without confusion
 - **Validated Results**: Successfully detects dangerous pathogens with proper CRITICAL risk classification
 
-### FASTA Processing Improvements (v3.1.2)
-
-#### Enhanced Taxonomic Classification
-- **Complete FASTA Support**: Taxonomic profiling for FASTA files is now fully functional and accurate
-- **Improved k-mer Classification**: Optimized Kraken2 integration for assembled sequences
-- **Enhanced Visualization**: Accurate taxonomic visualizations (Krona, pie charts, treemaps)
-- **Quality Metrics**: Comprehensive assembly quality assessment and reporting
-
-### CLI & Pipeline Enhancements (v3.1.1)
-
-#### Enhanced FASTQ Input Support
-- **Mutually Exclusive Input Groups**: Added support for single-end, paired-end, and interleaved FASTQ inputs
-- **Automatic Interleaved Processing**: Seamless detection and splitting of interleaved FASTQ files
-- **Improved Validation**: Enhanced file existence checking and format validation
-- **Flexible Command Interface**: Multiple input options with clear usage patterns
-
-## Validation Features
-
-### FASTQ Validation Capabilities
-
-- **Quality Score Analysis**: Automatic detection of quality encoding (Phred+33/Phred+64)
-- **Statistical Metrics**: Mean, median, N50 length calculations with quality score distributions
-- **Quality Thresholds**: Q20/Q30 base percentage analysis with customizable thresholds
-- **Contamination Detection**: Adapter sequence screening in first 1000 reads
-- **Sequence Composition**: GC content analysis and ambiguous base detection
-- **File Integrity**: MD5 checksum calculation and compression detection
-
-### FASTA Validation Capabilities
-
-- **Sequence Type Detection**: Automatic classification as protein or nucleotide sequences
-- **Composition Analysis**: GC content statistics with per-sequence variance analysis
-- **Quality Assessment**: Duplicate ID detection, gap analysis, and N-base counting
-- **Length Distribution**: Comprehensive length statistics with coefficient of variation
-- **Category Classification**: Intelligent sequence categorization (genome, contigs, genes, etc.)
-- **Format Validation**: Strict FASTA format compliance checking
-
 ## Installation
 
 MetaQuest requires a Linux/macOS environment with conda package manager. The installation process includes:
@@ -137,6 +161,7 @@ MetaQuest requires a Linux/macOS environment with conda package manager. The ins
 1. Environment setup with conda
 2. Database downloads (~8GB total)
 3. Tool integration and testing
+4. ML model setup
 
 **📖 For detailed installation instructions, see [Installation Guide](docs/installation.md)**
 
@@ -144,7 +169,7 @@ MetaQuest requires a Linux/macOS environment with conda package manager. The ins
 
 ### Comprehensive Input Support
 
-MetaQuest now supports optimized workflows for both FASTQ and FASTA inputs with advanced validation:
+MetaQuest now supports optimized workflows for both FASTQ and FASTA inputs with advanced validation and ML integration:
 
 #### **FASTQ Analysis** *(Recommended for clinical samples)*
 - **Pre-Analysis Validation**: Comprehensive quality control with detailed statistics
@@ -155,6 +180,7 @@ MetaQuest now supports optimized workflows for both FASTQ and FASTA inputs with 
 #### **FASTA Analysis** *(Optimized for assembled genomes)*
 - **Format Validation**: Sequence type detection and composition analysis
 - **Taxonomic Classification**: BLAST-based high-accuracy classification
+- **ML Pathogen Prediction**: Advanced machine learning-based pathogen classification
 - **Pathogen Detection**: Integrated BLAST taxonomy + ML predictions with separated reporting
 - **Output**: Blue-themed dashboard with blast_ml_pathogen_summary.txt as the definitive report
 
@@ -166,15 +192,43 @@ MetaQuest now supports optimized workflows for both FASTQ and FASTA inputs with 
 
 **📖 For comprehensive usage examples and validation options, see [Usage Guide](docs/usage.md)**
 
+## Output Structure
+
+MetaQuest generates comprehensive outputs organized by analysis type:
+
+### FASTQ Analysis Outputs
+```
+results/
+├── analysis_dashboard.html          # Interactive green-themed dashboard
+├── pathogen_summary.txt            # Definitive pathogen report
+├── taxonomic_classification.tsv     # Kraken2/Bracken results
+├── quality_stats.txt               # File validation statistics
+├── functional_annotation/          # Gene prediction results
+└── visualization/                   # Charts and plots
+```
+
+### FASTA Analysis Outputs
+```
+results/
+├── analysis_dashboard.html          # Interactive blue-themed dashboard
+├── blast_ml_pathogen_summary.txt   # Definitive BLAST+ML pathogen report
+├── ml_pathogen_predictions.csv     # Detailed ML predictions
+├── taxonomic_classification.tsv     # BLAST taxonomy results
+├── quality_stats.txt               # File validation statistics
+├── functional_annotation/          # Gene prediction results
+└── visualization/                   # Charts and plots
+```
+
 ## Contributing
 
 We welcome contributions from the scientific community. Current priority areas include:
 
+- **Machine Learning Enhancement**: Improve ML models with additional training data and feature engineering
 - **Advanced Validation**: Help enhance file validation with additional quality metrics and contamination detection
 - **Virulence Factor Analysis**: Help optimize VF detection workflows and clinical integration
 - **AMR Enhancement**: Improve antimicrobial resistance detection and clinical mapping
 - **Clinical Validation**: Real-world testing of pathogen detection accuracy and risk assessment
-- **Machine Learning**: Expand ML capabilities for enhanced pathogen prediction
+- **Model Training**: Contribute to expanding ML training datasets and model optimization
 - **Documentation**: User guides and clinical interpretation guidelines
 
 ## Contact and Support
@@ -189,4 +243,4 @@ We welcome contributions from the scientific community. Current priority areas i
 *Advancing metagenomics through integrated computational solutions*
 
 ---
-*Last updated: August 2025 - Advanced file validation system with comprehensive quality control*
+*Last updated: August 2025 - Machine learning integration with comprehensive pathogen prediction capabilities*
