@@ -1,0 +1,12 @@
+pandas
+plotly
+seaborn
+Bio
+matplotlib
+scikit-learn
+scipy
+numpy
+xgboost
+plotly
+lightgbm
+catboost

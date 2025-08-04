@@ -1,0 +1,2 @@
+[console_scripts]
+metaquest-cli = metaquest.cli:main
