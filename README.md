@@ -33,6 +33,7 @@ MetaQuest is an integrated bioinformatics pipeline that addresses the complex ch
 - **Pathogen Detection & Risk Assessment**: ✅ **COMPLETED** (v3.2.0) - *Major milestone achieved*
 - **Taxonomic Classification**: ✅ **COMPLETED** (v3.1.2)
 - **Enhanced Virulence Factor Detection**: Target completion Q3 2025
+- **Integrating "scikit-bio" Package**: Target completion Q4 2025
 - **Comprehensive AMR Analysis**: Target completion Q4 2025
 - **Integrated Clinical Decision Support**: Target completion Q1 2026
 
@@ -243,4 +244,5 @@ We welcome contributions from the scientific community. Current priority areas i
 *Advancing metagenomics through integrated computational solutions*
 
 ---
+
 *Last updated: August 2025 - Machine learning integration with comprehensive pathogen prediction capabilities*
