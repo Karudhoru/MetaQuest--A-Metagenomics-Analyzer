@@ -1,20 +1,21 @@
 # MetaQuest Installation Guide
 
-This guide covers the complete installation process for MetaQuest, a comprehensive metagenomics analysis pipeline with enhanced pathogen detection capabilities.
+This guide covers the complete installation process for MetaQuest, a comprehensive metagenomics analysis pipeline with enhanced pathogen detection capabilities and machine learning integration.
 
 ## Table of Contents
 - [System Requirements](#system-requirements)
 - [Installation Methods](#installation-methods)
 - [Database Setup](#database-setup)
-- [Wrapper Script Creation](#wrapper-script-creation)
+- [ML Model Setup](#ml-model-setup)
+- [Package Installation](#package-installation)
 - [Installation Verification](#installation-verification)
 - [Troubleshooting](#troubleshooting)
 
 ## System Requirements
 
 ### Hardware Requirements
-- **RAM**: Minimum 8GB, recommended 16GB+ for comprehensive pathogen analysis
-- **Storage**: At least 15GB free space for databases, ML models, and results
+- **RAM**: Minimum 8GB, recommended 16GB+ for comprehensive pathogen analysis and ML predictions
+- **Storage**: At least 20GB free space for databases, ML models, and results
 - **CPU**: Multi-core processor recommended (8+ cores for optimal performance)
 - **GPU**: Optional, for enhanced ML pathogen prediction performance
 
@@ -22,72 +23,145 @@ This guide covers the complete installation process for MetaQuest, a comprehensi
 - Linux or macOS operating system
 - Conda/Miniconda package manager (version 4.9+ recommended)
 - Python 3.10+ (automatically installed with conda environment)
-- Internet connection for database downloads (~10GB total)
+- Internet connection for database downloads (~15GB total)
 - Bash shell version 4.0+
 
 ## Installation Methods
 
-### Method 1: Conda Environment (Recommended)
+### Method 1: Conda Environment + Package Installation (Recommended)
 
 1. **Clone or download MetaQuest**
-   ```bash
+```bash
    # If using git
-   git clone https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer.git
-   cd metaquest_v3.2
+   git clone https://github.com/Karudhoru/MetaQuest.git
+   cd MetaQuest
    
    # Or extract from downloaded archive
-   tar -xzf metaquest_v3.tar.gz
-   cd metaquest_v3.2
-   ```
+   tar -xzf MetaQuest.tar.gz
+   cd MetaQuest
+```
 
 2. **Create conda environment**
    ```bash
-   conda env create -f environment/environment.yml
+   conda env create -f environment.yml
    ```
 
 3. **Activate the environment**
-   ```bash
-   conda activate metagenomics_app
-   ```
+```bash
+   conda activate metaquest
+```
 
 4. **Install MetaQuest package**
-   ```bash
-   cd metaquest_v3.2
+```bash
+   # Install in development mode (recommended for contributors)
    pip install -e .
-   ```
+   
+   # Or install normally
+   pip install .
+```
 
-### Method 2: Manual Installation
+### Method 2: Direct Package Installation
 
-If you prefer not to use conda, install dependencies manually:
+If you have a compatible Python environment with required dependencies:
 
 ```bash
-# Install Python dependencies
-pip install -r requirements.txt
+# Install directly from source
+pip install -e .
 
-# Install bioinformatics tools (using conda or system package manager)
+# Install required bioinformatics tools
 conda install -c bioconda diamond kraken2 seqtk krona prokka bracken taxonkit hmmer blast prodigal
+```
+
+## Package Installation
+
+The new modular structure requires proper package installation:
+
+### Understanding the New Structure
+
+```
+MetaQuest/
+├── src/metaquest/              # Main package source
+│   ├── cli.py                  # Command-line interface
+│   ├── config.py              # Configuration management
+│   ├── core/                  # Core analysis modules
+│   ├── io/                    # Input/output handling
+│   ├── ml/                    # Machine learning components
+│   ├── reporting/             # Report generation
+│   └── visualization/         # Data visualization
+├── setup.py                   # Package setup configuration
+├── pyproject.toml            # Modern Python packaging
+└── environment.yml           # Conda environment
+```
+
+### Installation Process
+
+1. **Install the package**
+```bash
+   cd MetaQuest
+   pip install -e .
+```
+
+2. **Verify installation**
+```bash
+   # Check package installation
+   python -c "import metaquest; print('MetaQuest package installed successfully')"
+   
+   # Check CLI availability
+   metaquest --help
+```
+
+3. **Installing the Wrapper Script**
+```bash
+   # Navigate to your project root
+   cd /mnt/d/GIT/MetaQuest
+
+   # Update the wrapper script content
+   cat > metaquest << 'EOF'
+   #!/usr/bin/env bash
+   # metaquest wrapper to invoke the installed package
+   python -m metaquest.cli "$@"
+   EOF
+
+   # Make it executable
+   chmod +x metaquest
+
+   # Copy to conda environment bin
+   ENV_BIN=$(dirname "$(which python)")
+   cp metaquest "${ENV_BIN}/metaquest"
+```
+
+3. **Alternative CLI access methods**
+```bash
+   # Method 1: Direct package execution
+   python -m metaquest.cli --help
+   
+   # Method 2: Installed entry point
+   metaquest --help
+   
+   # Method 3: Full module path
+   python -c "from metaquest.cli import main; main()" --help
 ```
 
 ## Database Setup
 
-MetaQuest requires several databases for comprehensive analysis including the new ML pathogen prediction capabilities. Run the setup script to download and prepare all necessary databases:
+MetaQuest requires several databases for comprehensive analysis including ML model artifacts. Run the setup script to download and prepare all necessary databases:
 
 ```bash
 # Make setup script executable
 chmod +x scripts/setup_databases.sh
 
-# Run database setup (this may take 45-90 minutes depending on connection)
+# Run database setup (this may take 60-120 minutes depending on connection)
 ./scripts/setup_databases.sh
 ```
 
 ### What gets downloaded:
-- **Kraken2 Mini Database** (~8GB): For high-accuracy taxonomic classification
+- **Kraken2 Standard Database** (~8GB): For high-accuracy taxonomic classification
 - **Bracken Database**: For abundance estimation (included with Kraken2)
 - **NCBI BLAST Database** (~8GB): For FASTA sequence classification
 - **CARD Database** (~500MB): For antimicrobial resistance gene detection
 - **VFDB Database** (~200MB): For virulence factor identification
 - **Custom Pathogen Database**: Built from CARD and pathogen-specific sequences
-- **ML Model Files** (~1GB): Pre-trained pathogen prediction models (when available)
+- **ML Model Files** (~1GB): Pre-trained pathogen prediction models
 - **SwissProt Database** (~2GB): For functional protein annotation
 
 ### Enhanced Database Setup Features
@@ -107,305 +181,270 @@ chmod +x scripts/setup_databases.sh
 ./scripts/setup_databases.sh --kraken-only
 ./scripts/setup_databases.sh --pathogen-only
 ./scripts/setup_databases.sh --ml-models
+./scripts/setup_databases.sh --all
 ```
 
-### Manual Database Setup
+## ML Model Setup
 
-If the automatic setup fails, you can download databases manually:
+The machine learning components require additional setup:
+
+### Pre-trained Model Artifacts
+
+MetaQuest includes pre-trained models in `src/metaquest/ml/model_artifacts/`:
 
 ```bash
-# Create database directory
-mkdir -p databases
-
-# Download Kraken2 Standard Database
-cd databases
-mkdir kraken2_db
-cd kraken2_db
-wget https://genome-idx.s3.amazonaws.com/kraken/k2_standard_20240605.tar.gz
-tar -xzf k2_standard_20240605.tar.gz
-
-# Download CARD database
-cd ../
-mkdir -p pathogen_db
-cd pathogen_db
-wget https://card.mcmaster.ca/latest/data
-tar -xjf data
-
-# Download VFDB
-wget http://www.mgc.ac.cn/VFs/Down/VFDB_setB_pro.fas
-
-# Download SwissProt database
-cd ../
-mkdir swissprot_db
-cd swissprot_db
-wget https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz
-gunzip uniprot_sprot.fasta.gz
-
-# Build DIAMOND database
-diamond makedb --in ../pathogen_db/nucleotide_fasta_protein_homolog_model.fasta --db pathogen_db
-```
-
-### Database Setup Flowchart
-
-```txt
-Start
-│
-├─ Check Kraken2 Standard DB → If missing → Download Standard Database
-│
-├─ Check CARD DB → If missing → Download & extract
-│
-├─ Check VFDB → If missing → Download
-│
-├─ Check SwissProt DB → If missing → Download & build
-│
-├─ Check BLAST DB → If missing → Download NCBI databases
-│
-├─ Check ML Models → If missing → Download pre-trained models
-│
-└─ Check DIAMOND index → If missing → Create from CARD
-│
-End
-```
-
-## Wrapper Script Creation
-
-To make MetaQuest easily accessible from the command line, create a wrapper script:
-
-### Step 1: Create the wrapper script file
-
-1. In your project directory (where you have `MetaQuest` unpacked), create a new file named `metaquest` (no extension):
-
-```bash
-# Create the wrapper script
-touch metaquest
-nano metaquest # Use any one to create file
-```
-
-2. Edit the file to have exactly these contents:
-
-```bash
-#!/usr/bin/env bash
-# metaquest wrapper to invoke the installed package
-python -m metagenomics.cli "$@"
-```
-
-This means whenever you run `metaquest`, it will invoke your package's `cli.py` module.
-
-### Step 2: Make the script executable
-
-In your shell:
-
-```bash
-chmod +x metaquest
-```
-
-Now `./metaquest --help` in that directory should print your CLI help.
-
-### Step 3: Copy it into your conda env's bin folder
-
-When you activate your `metagenomics_app` environment, `which python` will point at something like:
-```
-/root/miniconda3/envs/metagenomics_app/bin/python
-```
-
-We want its `bin/` directory. Run:
-
-```bash
-ENV_BIN=$(dirname "$(which python)")
-echo "Copying wrapper into $ENV_BIN"
-cp metaquest "${ENV_BIN}/metaquest"
-```
-
-Now your `metaquest` script lives alongside `python`, `pip`, etc.
-
-### Step 4: Test the wrapper script
-
-Still in your shell (with the env activated):
-
-```bash
-# Check if metaquest is in PATH
-which metaquest
-# should output something like /root/miniconda3/envs/metagenomics_app/bin/metaquest
-
-# Test the help command
-metaquest --help
-
-# Test version command
-metaquest --version  # Should show v3.2.0+
-```
-
-### Alternative: Direct Installation Method
-
-If you prefer not to create a wrapper script, you can also use the package directly:
-
-```bash
-# Install with console script entry point
-pip install -e .
-
-# This should make metagenomics-cli available directly
-metagenomics-cli --help
-```
-
-## Installation Verification
-
-After completing the installation, verify everything works correctly with the enhanced features:
-
-### 1. Check Environment Activation
-```bash
-conda activate metagenomics_app
-which python
-# Should point to the conda environment
-```
-
-### 2. Verify Package Installation
-```bash
-python -c "import metagenomics; print('MetaQuest imported successfully')"
-python -c "from metagenomics.reporting import PathogenReporter; print('Enhanced pathogen reporting available')"
-```
-
-### 3. Test Enhanced CLI Access
-```bash
-# Using wrapper script
-metaquest --help
-metaquest --version  # Should show v3.2.0+
-
-# Test analysis type detection
-metaquest --check-system
-
-# Or using the package directly
-python -m metagenomics.cli --help
-
-# Or using entry point (if installed)
-metagenomics-cli --help
-```
-
-### 4. Verify Enhanced Database Files
-```bash
-ls -la databases/
+# Verify ML model files exist
+ls -la src/metaquest/ml/model_artifacts/
 # Should show:
-# - kraken2_db/ (Standard Kraken2 database)
-# - pathogen_db/ (CARD, VFDB, custom pathogen databases)
-# - blast_db/ (NCBI BLAST databases)
-# - ml_models/ (ML pathogen prediction models, if available)
-# - swissprot_db/ (SwissProt database)
+# - best_model.pkl          (Main classification model)
+# - scaler.pkl             (Feature scaling model)
+# - feature_selector.pkl   (Feature selection model)
+# - feature_names.pkl      (Selected feature names)
+# - all_feature_names.pkl  (Complete feature vocabulary)
 ```
 
-### 5. Test Enhanced Analysis Capabilities
+### ML Dependencies Installation
+
 ```bash
-# Test FASTQ analysis with pathogen detection
-metaquest examples/example.fastq.gz -t fastq -o test_fastq_results/
+# Ensure ML dependencies are installed
+pip install scikit-learn joblib pandas numpy
 
-# Test FASTA analysis with BLAST+ML integration
-metaquest examples/example.fasta -t fasta -o test_fasta_results/
+# Verify ML components
+python -c "from metaquest.ml.pathogen_predictor import PathogenPredictor; print('ML components available')"
+python -c "from metaquest.ml.feature_extractor import FeatureExtractor; print('Feature extraction available')"
+```
 
-# Verify enhanced outputs
-ls test_fastq_results/pathogen_summary.txt
-ls test_fasta_results/blast_ml_pathogen_summary.txt
+### Custom Model Training (Optional)
 
-# Check if results were generated with enhanced features
-ls -la test_fastq_results/analysis_dashboard.html
-ls -la test_fasta_results/ml_pathogen_predictions.csv
+To train custom models with your own data:
+
+```bash
+# Access the ML training utilities
+python -c "from metaquest.ml.pathogen_predictor import PathogenPredictor; pp = PathogenPredictor(); print('Ready for custom training')"
 ```
 
 ## Configuration
 
-### Custom Database Paths
+### Default Configuration
 
-If you want to use custom database locations, edit the configuration file:
+The package uses configuration from `src/metaquest/config.py`:
 
-```bash
-# Edit the config file
-nano metaquest_v3/metagenomics/config.py
+```python
+# Default database paths
+KRAKEN2_DB = "databases/kraken2_db"
+PATHOGEN_DB = "databases/pathogen_db"
+BLAST_DB = "databases/blast_db"
+ML_MODELS_DB = "src/metaquest/ml/model_artifacts"
+SWISSPROT_DB = "databases/swissprot_db"
 ```
 
-Update the database paths:
-```python
-# Custom database paths
+### Custom Configuration
+
+You can override default settings:
+
+#### Method 1: Environment Variables
+```bash
+export METAQUEST_KRAKEN_DB="/custom/path/to/kraken2_db"
+export METAQUEST_PATHOGEN_DB="/custom/path/to/pathogen_db"
+export METAQUEST_BLAST_DB="/custom/path/to/blast_db"
+export METAQUEST_ML_MODELS="/custom/path/to/ml_models"
+export METAQUEST_SWISSPROT_DB="/custom/path/to/swissprot_db"
+```
+
+#### Method 2: Configuration File
+```bash
+# Create custom config file
+cat > ~/.metaquest_config.py << EOF
 KRAKEN2_DB = "/custom/path/to/kraken2_db"
 PATHOGEN_DB = "/custom/path/to/pathogen_db"
-BLAST_DB = "/custom/path/to/blast_db"
 ML_MODELS_DB = "/custom/path/to/ml_models"
-SWISSPROT_DB = "/custom/path/to/swissprot_db"
+EOF
 ```
 
-### Environment Variables
+## Installation Verification
 
-You can also set environment variables to override default paths:
+After completing the installation, verify everything works correctly:
 
+### 1. Check Environment
 ```bash
-export METAQUEST_KRAKEN_DB="/path/to/kraken2_db"
-export METAQUEST_PATHOGEN_DB="/path/to/pathogen_db"
-export METAQUEST_BLAST_DB="/path/to/blast_db"
-export METAQUEST_ML_MODELS="/path/to/ml_models"
-export METAQUEST_SWISSPROT_DB="/path/to/swissprot_db"
+conda activate metaquest
+which python
+# Should point to the conda environment
+python --version
+# Should show Python 3.10+
+```
+
+### 2. Verify Package Installation
+```bash
+# Check package import
+python -c "import metaquest; print(f'MetaQuest version: {metaquest.__version__}')"
+
+# Check all modules
+python -c "
+from metaquest.core import analysis
+from metaquest.io import file_validator
+from metaquest.ml import pathogen_predictor
+from metaquest.reporting import reporting
+from metaquest.visualization import visualization
+print('All modules imported successfully')
+"
+```
+
+### 3. Test CLI Access
+```bash
+# Test command-line interface
+metaquest --help
+metaquest --version
+
+# Test analysis capabilities
+metaquest --check-system
+
+# Test ML integration
+python -c "from metaquest.ml.pathogen_predictor import PathogenPredictor; pp = PathogenPredictor(); print('ML pipeline ready')"
+```
+
+### 4. Verify Database Files
+```bash
+# Check database structure
+ls -la databases/
+# Should show:
+# - kraken2_db/           (Kraken2 database files)
+# - pathogen_db/          (CARD, VFDB databases)
+# - blast_db/             (NCBI BLAST databases)
+# - swissprot_db/         (SwissProt database)
+
+# Check ML models
+ls -la src/metaquest/ml/model_artifacts/
+# Should show .pkl model files
+```
+
+### 5. Test Complete Analysis Pipeline
+```bash
+# Create test data directory
+mkdir -p test_data
+
+# Test FASTQ analysis (if you have test data)
+metaquest test_data/example.fastq.gz -t fastq -o test_fastq_results/
+
+# Test FASTA analysis with ML
+metaquest test_data/example.fasta -t fasta -o test_fasta_results/
+
+# Verify outputs
+ls -la test_fastq_results/pathogen_summary.txt
+ls -la test_fasta_results/blast_ml_pathogen_summary.txt
+ls -la test_fasta_results/ml_pathogen_predictions.csv
+```
+
+### 6. Test ML Components Separately
+```bash
+# Test feature extraction
+python -c "
+from metaquest.ml.feature_extractor import FeatureExtractor
+fe = FeatureExtractor()
+print('Feature extractor initialized')
+"
+
+# Test pathogen prediction
+python -c "
+from metaquest.ml.pathogen_predictor import PathogenPredictor
+pp = PathogenPredictor()
+print('Pathogen predictor ready')
+print(f'Model loaded: {pp.model is not None}')
+"
 ```
 
 ## Troubleshooting
 
 ### Common Installation Issues
 
-1. **Conda environment creation fails**
-   ```bash
-   # Try updating conda first
-   conda update conda
-   conda env create -f environment/environment.yml
-   ```
-
-2. **Database download fails**
-   ```bash
-   # Check internet connection and try manual download
-   wget --spider https://genome-idx.s3.amazonaws.com/kraken/k2_standard_20240605.tar.gz
-   ```
-
-3. **Permission denied on setup script**
-   ```bash
-   chmod +x scripts/setup_databases.sh
-   ls -la scripts/setup_databases.sh  # Verify permissions
-   ```
-
-4. **Wrapper script not found**
-   ```bash
-   # Ensure you're in the correct environment
-   conda activate metagenomics_app
-   
-   # Check if wrapper was copied correctly
-   ls -la $(dirname "$(which python)")/metaquest
-   ```
-
-5. **Package import errors**
-   ```bash
+1. **Package import fails**
+```bash
    # Reinstall in development mode
    pip install -e . --force-reinstall
-   ```
-
-6. **Enhanced pathogen reporting not available**
-   ```bash
-   # Check if all required packages are installed
-   python -c "import metagenomics.reporting; print('Reporting module available')"
    
-   # Verify ML dependencies
-   python -c "import sklearn, joblib; print('ML dependencies available')"
-   ```
+   # Check Python path
+   python -c "import sys; print(sys.path)"
+   
+   # Verify package location
+   pip show metaquest
+```
+
+2. **CLI command not found**
+```bash
+   # Check if entry point was installed
+   pip show metaquest | grep Entry-points
+   
+   # Try alternative access methods
+   python -m metaquest.cli --help
+   
+   # Reinstall with entry points
+   pip install -e . --force-reinstall
+```
+
+3. **ML components not working**
+```bash
+   # Check ML dependencies
+   python -c "import sklearn, joblib, pandas; print('ML dependencies OK')"
+   
+   # Verify model files exist
+   find src/metaquest/ml/model_artifacts/ -name "*.pkl"
+   
+   # Test ML import
+   python -c "from metaquest.ml.pathogen_predictor import PathogenPredictor; print('ML import OK')"
+```
+
+4. **Database setup fails**
+```bash
+   # Check available disk space
+   df -h
+   
+   # Test internet connectivity
+   wget --spider https://genome-idx.s3.amazonaws.com/kraken/k2_standard_20240605.tar.gz
+   
+   # Try manual database setup
+   mkdir -p databases && cd databases
+```
+
+5. **Module not found errors**
+```bash
+   # Ensure you're in the correct environment
+   conda activate metaquest
+   
+   # Check package installation
+   pip list | grep metaquest
+   
+   # Verify directory structure
+   ls -la src/metaquest/
+```
+
+6. **Permission issues**
+```bash
+   # Fix script permissions
+   chmod +x scripts/*.sh
+   
+   # Check directory permissions
+   ls -la databases/
+```
 
 ### Verification Commands
 
 Use these commands to verify your installation:
 
 ```bash
-# Check conda environment
+# Environment verification
 conda info --envs
+conda list | head -20
 
-# Check installed packages
-conda list | grep -E "(kraken2|diamond|seqtk|blast|prokka|bracken)"
+# Package verification
+python -c "import metaquest; print('Package OK')"
+python -c "from metaquest.cli import main; print('CLI OK')"
+python -c "from metaquest.ml.pathogen_predictor import PathogenPredictor; print('ML OK')"
 
-# Check Python packages
-pip list | grep -E "(pandas|plotly|biopython|scikit-learn|joblib)"
+# Database verification
+find databases/ -name "*.k2d" -o -name "*.dmnd" -o -name "*.fas" -o -name "*.fasta" | wc -l
 
-# Verify database files
-find databases/ -name "*.k2d" -o -name "*.dmnd" -o -name "*.fas" -o -name "*.fasta"
-
-# Check ML models
-find databases/ml_models/ -name "*.pkl" -o -name "*.joblib" 2>/dev/null || echo "ML models not found (optional)"
+# ML model verification
+find src/metaquest/ml/model_artifacts/ -name "*.pkl" | wc -l
 ```
 
 ### Complete Installation Example
@@ -413,66 +452,90 @@ find databases/ml_models/ -name "*.pkl" -o -name "*.joblib" 2>/dev/null || echo 
 Here's a complete installation workflow:
 
 ```bash
-# 1. Create and activate environment
-conda env create -f environment/environment.yml
-conda activate metagenomics_app
+# 1. Clone and setup
+git clone https://github.com/Karudhoru/MetaQuest.git
+cd MetaQuest
 
-# 2. Install MetaQuest package
-cd metaquest_v3
+# 2. Create environment
+conda env create -f environment.yml
+conda activate metaquest
+
+# 3. Install package
 pip install -e .
 
-# 3. Setup databases with validation
+# 4. Setup databases
 chmod +x scripts/setup_databases.sh
-./scripts/setup_databases.sh --validate
+./scripts/setup_databases.sh --all
 
-# 4. Create wrapper script
-cat > metaquest << 'EOF'
-#!/usr/bin/env bash
-# metaquest wrapper to invoke the installed package
-+ "$(dirname "$(which python)")/python" -m metagenomics.cli "$@"
-EOF
-
-# 5. Make executable and copy to bin
-chmod +x metaquest
-ENV_BIN=$(dirname "$(which python)")
-cp metaquest "${ENV_BIN}/metaquest"
-
-# 6. Test enhanced installation
-metaquest --help
+# 5. Verify installation
 metaquest --version
-metaquest --check-system
+python -c "from metaquest.ml.pathogen_predictor import PathogenPredictor; print('Complete installation verified')"
+
+# 6. Test with sample data
+metaquest [input_file] [type] --check-only
 ```
 
-### Uninstalling MetaQuest
+### Development Installation
+
+For developers working on MetaQuest:
+
+```bash
+# Install with development dependencies
+pip install -e ".[dev]"
+
+# Install pre-commit hooks
+pre-commit install
+
+# Run tests
+python -m pytest tests/
+
+# Check code style
+flake8 src/metaquest/
+black src/metaquest/
+```
+
+## Uninstalling MetaQuest
 
 To completely remove MetaQuest:
 
 ```bash
+# Remove package
+pip uninstall metaquest
+
 # Remove conda environment
 conda deactivate
-conda env remove -n metagenomics_app
+conda env remove -n metaquest
 
 # Remove databases (if desired)
 rm -rf databases/
 
 # Remove any custom configurations
-rm -f ~/.metaquest_config
+rm -f ~/.metaquest_config.py
 ```
 
 ## Next Steps
 
 After successful installation, proceed to the [Usage Guide](usage.md) to learn how to:
-- Run enhanced FASTQ and FASTA analyses
+- Use the modular MetaQuest package
+- Run enhanced FASTQ and FASTA analyses with ML integration
 - Understand the new clinical vs research workflows
 - Interpret enhanced output files including ML predictions
 - Use the new interactive dashboards
 - Troubleshoot analysis issues
+- Customize ML model training
 
 ## Support
 
 If you encounter issues during installation:
 1. Check the troubleshooting section above
-2. Verify all system requirements are met (especially increased RAM/storage)
-3. Ensure you have sufficient disk space for enhanced databases (~15GB)
+2. Verify all system requirements are met (especially increased RAM/storage for ML)
+3. Ensure you have sufficient disk space for enhanced databases (~20GB)
 4. Check internet connectivity for database downloads
-5. Verify ML dependencies are properly installed for enhanced pathogen prediction
+5. Verify ML dependencies are properly installed
+6. Check that the package structure matches the expected layout
+7. Ensure entry points are properly installed for CLI access
+
+For additional help:
+- **GitHub Issues**: Report bugs and installation problems
+- **Documentation**: Check the usage guide for detailed examples
+- **Community**: Join discussions for installation tips and troubleshooting
