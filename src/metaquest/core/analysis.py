@@ -82,9 +82,35 @@ def run_analysis(input_file, file_type, output_dir):
         output_dir = Path(output_dir)
         output_dir.mkdir(exist_ok=True)
         
-        # Validate and display statistics
+        # Handle validation for different input types
         validator = FileValidator()
-        is_valid, file_stats = validator.validate_and_analyze(input_file, file_type)
+        
+        if file_type == 'fastq':
+            # For FASTQ, input_file might be a list (paired-end) or single file
+            if isinstance(input_file, list):
+                # Validate the first file (R1 for paired-end, or single file)
+                validation_file = input_file[0]
+                print(f"🔍 Validating primary FASTQ file: {validation_file}")
+                is_valid, file_stats = validator.validate_and_analyze(validation_file, file_type)
+                
+                # For paired-end, also validate R2 if present
+                if len(input_file) > 1:
+                    print(f"🔍 Validating secondary FASTQ file: {input_file[1]}")
+                    is_valid_r2, file_stats_r2 = validator.validate_and_analyze(input_file[1], file_type)
+                    is_valid = is_valid and is_valid_r2
+                    # Combine stats (use R1 stats as primary, note R2 in metadata)
+                    file_stats['paired_end'] = True
+                    file_stats['r2_file'] = input_file[1]
+                    file_stats['r2_sequences'] = file_stats_r2.get('total_sequences', 0)
+            else:
+                # Single FASTQ file
+                validation_file = input_file
+                is_valid, file_stats = validator.validate_and_analyze(validation_file, file_type)
+                file_stats['paired_end'] = False
+        else:
+            # For FASTA, input_file should be a single file (already handled in CLI)
+            validation_file = input_file[0] if isinstance(input_file, list) else input_file
+            is_valid, file_stats = validator.validate_and_analyze(validation_file, file_type)
         
         if not is_valid:
             print("\n❌ Analysis aborted due to validation failure.")
@@ -103,11 +129,13 @@ def run_analysis(input_file, file_type, output_dir):
         print(f"\n🚀 Starting {file_type.upper()} analysis pipeline...")
         print(f"📁 Output directory: {output_dir}\n")
         
-        # Continue with existing analysis
+        # Continue with existing analysis using the original input_file format
         if file_type == 'fastq':
             analyze_fastq(input_file, output_dir)
         else:
-            analyze_fasta(input_file[0], output_dir)
+            # For FASTA, ensure we pass the actual file path, not a list
+            fasta_path = input_file[0] if isinstance(input_file, list) else input_file
+            analyze_fasta(fasta_path, output_dir)
         
         print("\nGenerating analysis dashboard...")
         create_analysis_dashboard(output_dir)
