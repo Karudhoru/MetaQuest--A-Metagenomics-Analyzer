@@ -7,7 +7,7 @@ from .io.file_validator import FileValidator
 from .io.utils import run_system_check
 
 # Version information
-__version__ = "3.2.1"
+__version__ = "3.2.2"
 __app_name__ = "MetaQuest"
 
 def _display_header():

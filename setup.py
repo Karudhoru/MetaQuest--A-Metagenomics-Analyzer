@@ -8,7 +8,7 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 
 setup(
     name='MetaQuest',
-    version='3.2.1',
+    version='3.2.2',
     author='MetaQuest Development Team',
     author_email='devpatelcambay@gmail.com',
     description='Comprehensive metagenomics analysis pipeline with ML-based pathogen detection',
