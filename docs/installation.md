@@ -89,7 +89,6 @@ MetaQuest/
 │   ├── reporting/             # Report generation
 │   └── visualization/         # Data visualization
 ├── setup.py                   # Package setup configuration
-├── pyproject.toml            # Modern Python packaging
 └── environment.yml           # Conda environment
 ```
 
@@ -293,11 +292,11 @@ print('All modules imported successfully')
 ### 3. Test CLI Access
 ```bash
 # Test command-line interface
-metaquest --help
-metaquest --version
+metaquest -h
+metaquest -v
 
 # Test analysis capabilities
-metaquest --check-system
+metaquest check
 
 # Test ML integration
 python -c "from metaquest.ml.pathogen_predictor import PathogenPredictor; pp = PathogenPredictor(); print('ML pipeline ready')"
@@ -316,41 +315,6 @@ ls -la databases/
 # Check ML models
 ls -la src/metaquest/ml/model_artifacts/
 # Should show .pkl model files
-```
-
-### 5. Test Complete Analysis Pipeline
-```bash
-# Create test data directory
-mkdir -p test_data
-
-# Test FASTQ analysis (if you have test data)
-metaquest test_data/example.fastq.gz -t fastq -o test_fastq_results/
-
-# Test FASTA analysis with ML
-metaquest test_data/example.fasta -t fasta -o test_fasta_results/
-
-# Verify outputs
-ls -la test_fastq_results/pathogen_summary.txt
-ls -la test_fasta_results/blast_ml_pathogen_summary.txt
-ls -la test_fasta_results/ml_pathogen_predictions.csv
-```
-
-### 6. Test ML Components Separately
-```bash
-# Test feature extraction
-python -c "
-from metaquest.ml.feature_extractor import FeatureExtractor
-fe = FeatureExtractor()
-print('Feature extractor initialized')
-"
-
-# Test pathogen prediction
-python -c "
-from metaquest.ml.pathogen_predictor import PathogenPredictor
-pp = PathogenPredictor()
-print('Pathogen predictor ready')
-print(f'Model loaded: {pp.model is not None}')
-"
 ```
 
 ## Troubleshooting
@@ -469,10 +433,9 @@ chmod +x scripts/setup_databases.sh
 
 # 5. Verify installation
 metaquest --version
-python -c "from metaquest.ml.pathogen_predictor import PathogenPredictor; print('Complete installation verified')"
 
 # 6. Test with sample data
-metaquest [input_file] [type] --check-only
+metaquest check [type] [input_file]
 ```
 
 ### Development Installation
