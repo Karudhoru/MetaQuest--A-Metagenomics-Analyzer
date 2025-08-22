@@ -28,6 +28,7 @@ MetaQuest is an integrated bioinformatics pipeline that addresses the complex ch
 - ✅ **Enhanced Visualization**: Fixed pathogen risk charts and detection coverage analysis with interactive dashboards
 
 ### Development Timeline
+- **Updated CLI**: ✅ **COMPLETED** (v3.2.2) - *New major revamp*
 - **File Validation System**: ✅ **COMPLETED** (v3.2.1) - *New major feature*
 - **Machine Learning Integration**: ✅ **COMPLETED** (v3.2.1) - *Major milestone achieved*
 - **Pathogen Detection & Risk Assessment**: ✅ **COMPLETED** (v3.2.0) - *Major milestone achieved*
@@ -43,7 +44,6 @@ MetaQuest is an integrated bioinformatics pipeline that addresses the complex ch
 
 MetaQuest follows a modular architecture with clear separation of concerns:
 
-```
 src/metaquest/
 ├── cli.py                    # Command-line interface
 ├── config.py                 # Configuration management
@@ -62,8 +62,8 @@ src/metaquest/
 ├── reporting/                # Report generation
 │   └── reporting.py         # Comprehensive reporting
 └── visualization/            # Data visualization
-    └── visualization.py     # Interactive dashboards
-```
+└── visualization.py     # Interactive dashboards
+
 
 ### Key Features
 
@@ -157,68 +157,40 @@ src/metaquest/
 
 ## Installation
 
-MetaQuest requires a Linux/macOS environment with conda package manager. The installation process includes:
+MetaQuest requires a Linux/macOS environment with conda package manager.
 
-1. Environment setup with conda
-2. Database downloads (~8GB total)
-3. Tool integration and testing
-4. ML model setup
-
-**📖 For detailed installation instructions, see [Installation Guide](docs/installation.md)**
+**📖 For detailed installation instructions, see [installation.md](installation.md)**
 
 ## Usage
 
-### Comprehensive Input Support
+MetaQuest now supports optimized workflows for both FASTQ and FASTA inputs with advanced validation and ML integration.
 
-MetaQuest now supports optimized workflows for both FASTQ and FASTA inputs with advanced validation and ML integration:
-
-#### **FASTQ Analysis** *(Recommended for clinical samples)*
-- **Pre-Analysis Validation**: Comprehensive quality control with detailed statistics
-- **Taxonomic Classification**: Kraken2/Bracken rapid classification
-- **Pathogen Detection**: Multi-source traditional screening with clinical risk assessment
-- **Output**: Green-themed dashboard with pathogen_summary.txt as the definitive report
-
-#### **FASTA Analysis** *(Optimized for assembled genomes)*
-- **Format Validation**: Sequence type detection and composition analysis
-- **Taxonomic Classification**: BLAST-based high-accuracy classification
-- **ML Pathogen Prediction**: Advanced machine learning-based pathogen classification
-- **Pathogen Detection**: Integrated BLAST taxonomy + ML predictions with separated reporting
-- **Output**: Blue-themed dashboard with blast_ml_pathogen_summary.txt as the definitive report
-
-#### **Validation Features**
-- **Quality Thresholds**: Customizable minimum quality and sequence count requirements
-- **Statistical Analysis**: Comprehensive file statistics including N50, GC content, and quality distributions
-- **Format Compliance**: Strict validation of FASTQ/FASTA format requirements
-- **Pre-flight Checks**: Validation-only mode for quick file assessment
-
-**📖 For comprehensive usage examples and validation options, see [Usage Guide](docs/usage.md)**
+**📖 For comprehensive usage examples and validation options, see [usage.md](usage.md)**
 
 ## Output Structure
 
 MetaQuest generates comprehensive outputs organized by analysis type:
 
 ### FASTQ Analysis Outputs
-```
 results/
 ├── analysis_dashboard.html          # Interactive green-themed dashboard
 ├── pathogen_summary.txt            # Definitive pathogen report
-├── taxonomic_classification.tsv     # Kraken2/Bracken results
+├── taxonomic_classification_report.txt     # Kraken2/Bracken results summary
 ├── quality_stats.txt               # File validation statistics
 ├── functional_annotation/          # Gene prediction results
-└── visualization/                   # Charts and plots
-```
+└── ... (other reports and visualization files)
+
 
 ### FASTA Analysis Outputs
-```
 results/
 ├── analysis_dashboard.html          # Interactive blue-themed dashboard
 ├── blast_ml_pathogen_summary.txt   # Definitive BLAST+ML pathogen report
 ├── ml_pathogen_predictions.csv     # Detailed ML predictions
-├── taxonomic_classification.tsv     # BLAST taxonomy results
+├── taxonomic_classification_report.txt     # BLAST taxonomy results summary
 ├── quality_stats.txt               # File validation statistics
 ├── functional_annotation/          # Gene prediction results
-└── visualization/                   # Charts and plots
-```
+└── ... (other reports and visualization files)
+
 
 ## Contributing
 
@@ -234,14 +206,13 @@ We welcome contributions from the scientific community. Current priority areas i
 
 ## Contact and Support
 
-- **Documentation**: [Installation Guide](docs/installation.md) | [Usage Guide](docs/usage.md)
+- **Documentation**: [installation.md](installation.md) | [usage.md](usage.md)
 - **Issues**: Report bugs and feature requests via GitHub issues
 - **Community**: Join our discussion forum for questions and collaboration
 
 ---
 
-**MetaQuest Development Team**  
-*Advancing metagenomics through integrated computational solutions*
+**MetaQuest Development Team** *Advancing metagenomics through integrated computational solutions*
 
 ---
 
