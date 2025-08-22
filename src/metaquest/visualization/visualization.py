@@ -17,8 +17,7 @@ from collections import Counter
 from ..config import *
 
 class BaseVisualizer:
-    """Base class for all visualizations"""
-    
+    # ... (this class remains the same) ...
     def __init__(self, output_dir: Path):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -31,61 +30,89 @@ class BaseVisualizer:
 
 class TaxonomicVisualizer(BaseVisualizer):
     """Clean taxonomic classification visualizations"""
-    
+
+    def _prepare_dataframe_from_data(self, data):
+        """
+        Helper function to process different input data types (BLAST list or Bracken/Kraken file path)
+        into a standardized pandas DataFrame.
+        """
+        if isinstance(data, (str, Path)) and Path(data).exists():
+            # Handle Kraken/Bracken report files
+            df = pd.read_csv(data, sep='\t')
+            if 'fraction_total_reads' in df.columns:
+                return df, 'bracken'
+            else:
+                df = pd.read_csv(data, sep='\t', header=None,
+                               names=['percentage', 'clade_reads', 'taxon_reads', 'rank', 'taxid', 'name'])
+                df['fraction_total_reads'] = df['percentage'] / 100
+                df['new_est_reads'] = df['clade_reads']
+                return df, 'kraken'
+        elif isinstance(data, list):
+            # --- NEW LOGIC TO HANDLE BLAST RESULTS ---
+            print("  Processing BLAST results for visualization...")
+            all_organisms = []
+            for result in data:
+                if result and result.get('hits'):
+                    for hit in result['hits']:
+                        # Get the top hit's organism for abundance counting
+                        all_organisms.append(hit.get('organism', 'Unknown'))
+
+            if not all_organisms:
+                print("  No identifiable organisms found in BLAST results.")
+                return pd.DataFrame(), 'blast'
+            
+            # Count hits per organism to estimate abundance
+            organism_counts = Counter(all_organisms)
+            df = pd.DataFrame(organism_counts.items(), columns=['name', 'new_est_reads'])
+            df['fraction_total_reads'] = df['new_est_reads'] / df['new_est_reads'].sum()
+            return df, 'blast'
+        
+        # Fallback for other data types like pre-loaded DataFrames
+        return pd.DataFrame(data), 'unknown'
+
+
     def create_abundance_chart(self, data, title="Taxonomic Abundance Analysis", top_n=15):
         """Create clean abundance bar chart with better insights"""
         try:
-            # Handle different data formats (Bracken vs Kraken)
-            if isinstance(data, (str, Path)):
-                df = pd.read_csv(data, sep='\t')
-                if 'fraction_total_reads' in df.columns:
-                    # Bracken format
-                    abundance_col = 'fraction_total_reads'
-                    name_col = 'name'
-                    count_col = 'new_est_reads'
-                else:
-                    # Kraken format
-                    df = pd.read_csv(data, sep='\t', header=None,
-                                   names=['percentage', 'clade_reads', 'taxon_reads', 'rank', 'taxid', 'name'])
-                    abundance_col = 'percentage'
-                    name_col = 'name'
-                    count_col = 'clade_reads'
-                    # Convert percentage to fraction for consistency
-                    df['fraction_total_reads'] = df['percentage'] / 100
-                    abundance_col = 'fraction_total_reads'
-            else:
-                df = data
-                abundance_col = 'fraction_total_reads'
-                name_col = 'name'
-                count_col = 'new_est_reads'
+            df, data_source = self._prepare_dataframe_from_data(data)
+
+            if df.empty:
+                print("No data available to create abundance chart.")
+                return None
+
+            # Define standard column names
+            abundance_col = 'fraction_total_reads'
+            name_col = 'name'
+            count_col = 'new_est_reads'
             
-            # Filter significant taxa (>0.01% for better focus)
-            significant_taxa = df[
-                (df[abundance_col] > 0.0001) & 
-                (~df[name_col].str.contains('unclassified', case=False, na=False))
-            ].copy()
-            
-            if len(significant_taxa) == 0:
-                print("No significant taxa found for abundance chart")
+            # Filter significant taxa
+            significant_taxa = df[df[abundance_col] > 0.0001].copy()
+            if significant_taxa.empty:
+                print("No significant taxa found for abundance chart.")
                 return None
             
-            # Clean names and get top N
             significant_taxa[name_col] = significant_taxa[name_col].str.strip()
             top_taxa = significant_taxa.nlargest(top_n, abundance_col)
             
-            # Convert to percentage for display
-            abundance_values = top_taxa[abundance_col] * 100
-            
-            # Create enhanced bar chart
+            # Use appropriate values based on data source
+            if data_source == 'blast':
+                x_values = top_taxa[count_col]
+                x_label = 'Number of BLAST Hits'
+                hover_data = None
+            else:
+                x_values = top_taxa[abundance_col] * 100
+                x_label = 'Relative Abundance (%)'
+                hover_data = {'Estimated Reads': top_taxa[count_col]}
+
             fig = px.bar(
-                x=abundance_values,
+                x=x_values,
                 y=top_taxa[name_col],
                 orientation='h',
                 title=f'{title} - Top {top_n} Taxa',
-                labels={'x': 'Relative Abundance (%)', 'y': 'Taxon'},
-                color=abundance_values,
+                labels={'x': x_label, 'y': 'Taxon'},
+                color=x_values,
                 color_continuous_scale='viridis',
-                hover_data={'Estimated Reads': top_taxa[count_col]} if count_col in top_taxa.columns else None
+                hover_data=hover_data
             )
             
             fig.update_layout(
@@ -97,16 +124,6 @@ class TaxonomicVisualizer(BaseVisualizer):
                 margin=dict(l=250, r=50, t=80, b=50)
             )
             
-            # Add summary annotation
-            total_taxa = len(significant_taxa)
-            fig.add_annotation(
-                text=f"Showing top {len(top_taxa)} of {total_taxa} detected taxa",
-                xref="paper", yref="paper",
-                x=0.02, y=0.98, xanchor="left", yanchor="top",
-                showarrow=False,
-                font=dict(size=10, color="gray")
-            )
-            
             return self.save_plot(fig, "taxonomic_abundance_chart.html")
             
         except Exception as e:
@@ -116,69 +133,33 @@ class TaxonomicVisualizer(BaseVisualizer):
     def create_krona_plot(self, data, output_filename="taxonomy_krona.html"):
         """Create focused Krona plot for taxonomic data"""
         try:
-            # Handle different data formats
-            if isinstance(data, (str, Path)):
-                df = pd.read_csv(data, sep='\t')
-                if 'fraction_total_reads' in df.columns:
-                    # Bracken format
-                    abundance_col = 'fraction_total_reads'
-                    name_col = 'name'
-                    count_col = 'new_est_reads'
-                else:
-                    # Kraken format
-                    df = pd.read_csv(data, sep='\t', header=None,
-                                   names=['percentage', 'clade_reads', 'taxon_reads', 'rank', 'taxid', 'name'])
-                    abundance_col = 'percentage'
-                    name_col = 'name'
-                    count_col = 'clade_reads'
-            else:
-                df = data
-                abundance_col = 'fraction_total_reads'
-                name_col = 'name'
-                count_col = 'new_est_reads'
+            df, _ = self._prepare_dataframe_from_data(data)
             
-            # Filter significant taxa (threshold based on format)
-            if abundance_col == 'percentage':
-                significant_df = df[
-                    (df[abundance_col] > 0.01) &
-                    (~df[name_col].str.contains('unclassified', case=False, na=False))
-                ].copy()
-            else:
-                significant_df = df[
-                    (df[abundance_col] > 0.0001) &
-                    (~df[name_col].str.contains('unclassified', case=False, na=False))
-                ].copy()
-            
-            if len(significant_df) == 0:
-                print("No significant taxa found for Krona plot")
+            if df.empty:
+                print("No data available to create Krona plot.")
+                return None
+
+            # Filter significant taxa
+            significant_df = df[df['fraction_total_reads'] > 0.0001].copy()
+            if significant_df.empty:
+                print("No significant taxa found for Krona plot.")
                 return None
             
-            # Create Krona input file
             krona_input = self.output_dir / "krona_input.txt"
             with open(krona_input, 'w') as f:
                 for _, row in significant_df.iterrows():
-                    if abundance_col == 'percentage':
-                        count = int(row[count_col]) if row[count_col] > 0 else int(row['taxon_reads'])
-                    else:
-                        count = int(row.get(count_col, row[abundance_col] * 10000))
-                    
-                    taxon_name = row[name_col].strip()
-                    
-                    # Create hierarchical structure for better visualization
-                    if ' ' in taxon_name and not taxon_name.startswith('Candidatus'):
-                        genus = taxon_name.split(' ')[0]
-                        species = taxon_name
-                        f.write(f"{count}\t{genus}\t{species}\n")
-                    else:
-                        f.write(f"{count}\t{taxon_name}\n")
+                    count = int(row['new_est_reads'])
+                    taxon_name = row['name'].strip()
+                    # Create a simple hierarchy for Krona
+                    hierarchy = taxon_name.replace(' ', '\t')
+                    f.write(f"{count}\t{hierarchy}\n")
             
-            # Generate Krona plot
             krona_output = self.output_dir / output_filename
             cmd = f"ktImportText {krona_input} -o {krona_output}"
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
             
             if result.returncode == 0:
-                krona_input.unlink()  # Clean up
+                krona_input.unlink()
                 print(f"✓ Krona plot created: {krona_output}")
                 return str(krona_output)
             else:
@@ -189,203 +170,134 @@ class TaxonomicVisualizer(BaseVisualizer):
             print(f"Error creating Krona plot: {e}")
             return None
 
+
 class PathogenVisualizer(BaseVisualizer):
     """Enhanced pathogen detection visualizations for new reporting system"""
     
     def create_risk_detection_chart(self, pathogen_data, title="Pathogen Risk Assessment"):
-        """Create risk-stratified pathogen detection visualization - UPDATED for BLAST+ML format"""
+        """
+        Create risk-stratified pathogen detection visualization.
+        This function is designed to handle both FASTQ and FASTA+ML report formats.
+        """
         try:
-            # Handle different input formats with enhanced error checking
+            # This function's loading logic is correct and robust.
+            # We will copy it to the other function.
             if isinstance(pathogen_data, (str, Path)):
-                if not Path(pathogen_data).exists():
-                    print("⚠️ Pathogen data file does not exist")
+                if not Path(pathogen_data).exists() or Path(pathogen_data).stat().st_size == 0:
+                    print("⚠️ Pathogen data file is missing or empty. Skipping visualization.")
                     return None
                 with open(pathogen_data, 'r') as f:
-                    content = f.read().strip()
-                    if not content:
-                        print("⚠️ Pathogen data file is empty - no visualizations to create")
-                        return None
-                    data = json.loads(content)
+                    data = json.load(f)
             elif isinstance(pathogen_data, dict):
                 data = pathogen_data
             else:
+                print("⚠️ Invalid pathogen data format for visualization.")
                 return None
 
-            # UPDATED: Handle the new BLAST+ML integrated format
-            detections = {}
-            analysis_summary = {}
+            # Unpack data, which may be nested inside a 'data' key
+            if 'data' in data and isinstance(data['data'], dict):
+                data = data['data']
             
-            # Check for new BLAST+ML integrated format
+            detections = {}
+            analysis_summary = data.get('analysis_summary', {})
+            
             if 'blast_taxonomy_section' in data:
-                # New BLAST+ML integrated format
-                blast_detections = data.get('blast_taxonomy_section', {}).get('detections', {})
-                analysis_summary = data.get('analysis_summary', {})
-                
-                # Convert BLAST detections to visualization format
-                for organism, details in blast_detections.items():
-                    detections[organism] = {
-                        'risk_level': details.get('risk_level', 'Unknown'),
-                        'abundance_percentage': 0,  # BLAST doesn't have abundance
-                        'sequence_identity': details.get('blast_identity', 0),
-                        'detection_methods': ['blast_taxonomy'],
-                        'estimated_reads': 0,
-                        'detection_sources': ['BLAST Taxonomic Classification'],
-                        'confidence_score': details.get('blast_identity', 0) / 100,
-                        'blast_hits': details.get('blast_hits', 0),
-                        'blast_evalue': details.get('blast_evalue', 1.0)
-                    }
+                print("  Visualizing FASTA+ML integrated report...")
+                detections = data.get('blast_taxonomy_section', {}).get('detections', {})
             else:
-                # Handle legacy format (metadata wrapper or direct format)
-                if 'data' in data and isinstance(data['data'], dict):
-                    analysis_summary = data['data'].get('analysis_summary', {})
-                    detections = data['data'].get('pathogen_detections', {})
-                else:
-                    analysis_summary = data.get('analysis_summary', {})
-                    detections = data.get('pathogen_detections', data)
+                print("  Visualizing FASTQ traditional report...")
+                detections = data.get('pathogen_detections', {})
 
             if not detections:
-                print("⚠️ No pathogen detections found - skipping risk detection chart")
+                print("⚠️ No pathogen detections found in the report. Skipping chart generation.")
                 return None
 
             # Convert to DataFrame for visualization
-            data_rows = []
-            for organism, details in detections.items():
-                data_rows.append({
-                    'organism': organism,
-                    'risk_level': details.get('risk_level', 'Unknown'),
-                    'abundance_percentage': details.get('abundance_percentage', 0),
-                    'sequence_identity': details.get('sequence_identity', 0) if details.get('sequence_identity') != 'N/A' else 0,
-                    'detection_methods': len(details.get('detection_methods', [])),
-                    'estimated_reads': details.get('estimated_reads', 0),
-                    'detection_sources': ', '.join(details.get('detection_sources', [])),
-                    'confidence_score': details.get('confidence_score', 0),
-                    'blast_hits': details.get('blast_hits', 0),
-                    'blast_evalue': details.get('blast_evalue', 1.0)
-                })
-
-            df = pd.DataFrame(data_rows)
+            df = pd.DataFrame.from_dict(detections, orient='index').reset_index().rename(columns={'index': 'organism'})
             if df.empty:
-                print("⚠️ No pathogen data to visualize")
+                print("⚠️ No pathogen data to visualize.")
                 return None
 
-            # Sort by risk level and sequence identity (for BLAST data)
+            # Sort by risk level and a relevant metric (blast_hits for FASTA, abundance for FASTQ)
             risk_order = {'HIGH': 3, 'MEDIUM': 2, 'LOW': 1, 'Unknown': 0}
             df['risk_numeric'] = df['risk_level'].map(risk_order)
-            df_sorted = df.sort_values(['risk_numeric', 'sequence_identity'], ascending=[False, False])
-
-            # Take top 20 for clarity
+            sort_metric = 'blast_hits' if 'blast_hits' in df.columns else 'abundance_percentage'
+            df_sorted = df.sort_values(['risk_numeric', sort_metric], ascending=[False, False])
             top_pathogens = df_sorted.head(20)
 
-            # Risk-based color mapping
+            # Define the primary metric for the y-axis
+            if 'blast_hits' in top_pathogens.columns and top_pathogens['blast_hits'].sum() > 0:
+                y_values = top_pathogens['blast_hits']
+                y_title = "Total BLAST Hits"
+            elif 'abundance_percentage' in top_pathogens.columns and top_pathogens['abundance_percentage'].sum() > 0:
+                y_values = top_pathogens['abundance_percentage']
+                y_title = "Abundance (%)"
+            else:
+                y_values = pd.Series([1] * len(top_pathogens), index=top_pathogens.index) # Fallback to presence/absence
+                y_title = "Detection Count"
+
+
+            # Create the bar chart
             risk_colors = {'HIGH': '#DC143C', 'MEDIUM': '#FF8C00', 'LOW': '#32CD32', 'Unknown': '#808080'}
-            colors = [risk_colors.get(risk, '#808080') for risk in top_pathogens['risk_level']]
-
-            # Create enhanced bar chart - use BLAST hits instead of abundance for FASTA
-            y_values = top_pathogens['blast_hits'] if top_pathogens['blast_hits'].sum() > 0 else top_pathogens['sequence_identity']
-            y_title = "BLAST Hits" if top_pathogens['blast_hits'].sum() > 0 else "Sequence Identity (%)"
-
-            fig = go.Figure()
-            fig.add_trace(go.Bar(
-                x=top_pathogens['organism'],
+            fig = px.bar(
+                top_pathogens,
+                x='organism',
                 y=y_values,
-                marker_color=colors,
-                name="Pathogen Detection",
-                hovertemplate=(
-                    "<b>%{x}</b><br>" +
-                    "Risk Level: %{customdata[0]}<br>" +
-                    "Identity: %{customdata[1]:.1f}%<br>" +
-                    "BLAST Hits: %{customdata[2]}<br>" +
-                    "E-value: %{customdata[3]:.2e}<br>" +
-                    "Sources: %{customdata[4]}<br>" +
-                    "Confidence: %{customdata[5]:.3f}<br>" +
-                    "<extra></extra>"
-                ),
-                customdata=list(zip(
-                    top_pathogens['risk_level'],
-                    top_pathogens['sequence_identity'],
-                    top_pathogens['blast_hits'],
-                    top_pathogens['blast_evalue'],
-                    top_pathogens['detection_sources'],
-                    top_pathogens['confidence_score']
-                ))
-            ))
-
-            # Add risk level indicators
-            for i, (risk, organism) in enumerate(zip(top_pathogens['risk_level'], top_pathogens['organism'])):
-                if risk == 'HIGH':
-                    fig.add_annotation(
-                        x=organism, y=y_values.iloc[i],
-                        text="⚠️", showarrow=False, yshift=10, font=dict(size=12)
-                    )
-                elif risk == 'MEDIUM':
-                    fig.add_annotation(
-                        x=organism, y=y_values.iloc[i],
-                        text="🟡", showarrow=False, yshift=10, font=dict(size=10)
-                    )
-
+                color='risk_level',
+                color_discrete_map=risk_colors,
+                labels={'y': y_title, 'organism': 'Pathogen Species'},
+                title=f"{title}<br>Overall Risk: {analysis_summary.get('overall_risk_assessment', 'Unknown')}"
+            )
+            
             fig.update_layout(
-                title=f"{title}<br>" +
-                    f"Overall Risk: {analysis_summary.get('overall_risk_assessment', 'Unknown')} | " +
-                    f"Total Detected: {len(df)} organisms",
-                xaxis_title="Pathogen Species",
-                yaxis_title=y_title,
                 template="plotly_white",
                 height=600,
-                showlegend=False,
-                xaxis={'tickangle': 45, 'tickfont': {'size': 10}},
-                font=dict(size=11),
-                margin=dict(l=60, r=60, t=100, b=120)  # Increase bottom margin for rotated labels
+                xaxis={'tickangle': -45, 'categoryorder': 'total descending'},
+                margin=dict(b=150) # Increase bottom margin for labels
             )
 
             return self.save_plot(fig, "pathogen_risk_detection.html")
 
+        except json.JSONDecodeError:
+            print(f"Error creating risk detection chart: Invalid JSON format in the report file.")
+            return None
         except Exception as e:
             print(f"Error creating risk detection chart: {e}")
             return None
 
         
     def create_detection_coverage_chart(self, pathogen_data, title="Detection Method Coverage"):
-        """Create detection method coverage visualization - UPDATED for BLAST+ML format"""
+        """Create detection method coverage visualization - UPDATED for robustness"""
         try:
-            # Handle different input formats
+            # --- START: MODIFIED SECTION ---
+            # This logic is now identical to the working function above.
             if isinstance(pathogen_data, (str, Path)):
-                if not Path(pathogen_data).exists():
-                    print("⚠️ Pathogen data file does not exist")
+                if not Path(pathogen_data).exists() or Path(pathogen_data).stat().st_size == 0:
+                    print("⚠️ Pathogen data file is missing or empty for coverage chart. Skipping.")
                     return None
                 with open(pathogen_data, 'r') as f:
-                    content = f.read().strip()
-                    if not content:
-                        print("⚠️ Pathogen data file is empty - no coverage chart to create")
-                        return None
-                    data = json.loads(content)
+                    data = json.load(f)
             elif isinstance(pathogen_data, dict):
                 data = pathogen_data
             else:
                 return None
 
-            # UPDATED: Handle the new BLAST+ML integrated format
-            detections = {}
+            if 'data' in data and isinstance(data['data'], dict):
+                data = data['data']
             
-            # Check for new BLAST+ML integrated format
+            detections = {}
             if 'blast_taxonomy_section' in data:
-                # New BLAST+ML integrated format
+                # For a FASTA+ML report, all taxonomy comes from one method.
                 blast_detections = data.get('blast_taxonomy_section', {}).get('detections', {})
-                
-                # Convert BLAST detections to visualization format
-                for organism, details in blast_detections.items():
-                    detections[organism] = {
-                        'detection_methods': ['blast_taxonomy'],
-                        'detection_sources': ['BLAST Taxonomic Classification']
-                    }
+                for organism in blast_detections:
+                    detections[organism] = {'detection_methods': ['blast_taxonomy']}
             else:
-                # Handle legacy format
-                if 'data' in data and isinstance(data['data'], dict):
-                    detections = data['data'].get('pathogen_detections', {})
-                else:
-                    detections = data.get('pathogen_detections', data)
+                # For a FASTQ report, methods are listed per pathogen.
+                detections = data.get('pathogen_detections', {})
+            # --- END: MODIFIED SECTION ---
 
             if not detections:
-                print("⚠️ No pathogen detections found - skipping coverage chart")
+                print("⚠️ No pathogen detections to analyze for coverage chart.")
                 return None
 
             # Count detection methods
@@ -395,7 +307,7 @@ class PathogenVisualizer(BaseVisualizer):
                 all_methods.extend(methods)
 
             if not all_methods:
-                print("⚠️ No detection methods found")
+                print("⚠️ No detection methods listed in report - skipping coverage chart.")
                 return None
 
             method_counts = Counter(all_methods)
@@ -434,6 +346,9 @@ class PathogenVisualizer(BaseVisualizer):
 
             return self.save_plot(fig, "detection_method_coverage.html")
 
+        except json.JSONDecodeError:
+            print(f"Error creating detection coverage chart: Invalid JSON format in the report file.")
+            return None
         except Exception as e:
             print(f"Error creating detection coverage chart: {e}")
             return None

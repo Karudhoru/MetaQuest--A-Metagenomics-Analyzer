@@ -3,7 +3,7 @@ import os
 import pandas as pd
 from pathlib import Path
 from ..config import *
-from ..io.utils import check_dependencies
+
 
 def run_prokka(fasta_path, output_dir):
     """Run Prokka for gene prediction and annotation"""

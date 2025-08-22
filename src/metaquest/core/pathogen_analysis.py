@@ -10,7 +10,6 @@ import re
 from pathlib import Path
 from collections import Counter
 from ..config import *
-from ..io.utils import check_dependencies
 
 def run_virulence_factor_scan(fasta_path, output_dir):
     """Scan for virulence factors using VFDB"""

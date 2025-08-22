@@ -10,7 +10,6 @@ from Bio.Blast import NCBIWWW, NCBIXML
 from Bio import SeqIO
 import requests
 from ..config import *
-from ..io.utils import check_dependencies
 
 def run_kraken(input_files, output_dir):
     """Run Kraken2 classification for FASTQ files"""

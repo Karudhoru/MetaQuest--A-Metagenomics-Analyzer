@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
 MetaQuest Reporting Module
-Streamlined reporting with redundancy eliminated
-Keeps only the best pathogen report: pathogen_summary.txt
+Streamlined reporting with clear, separated logic for FASTQ and FASTA pipelines.
 """
 
 import json
@@ -501,11 +500,21 @@ class TaxonomicReporter(BaseReportGenerator):
         return json_data
 
 class PathogenReporter(BaseReportGenerator):
-    """Streamlined pathogen detection reporting - ONLY pathogen_summary.txt + JSON for visualizations"""
+    """
+    Handles pathogen reporting for both FASTQ (traditional) and FASTA (integrated) pipelines.
+    """
     
-    def __init__(self, output_dir: Path):
-        super().__init__(output_dir, "Pathogen Detection")
+    def __init__(self, output_dir: Path, analysis_mode: str = 'fastq'):
+        self.analysis_mode = analysis_mode
+        title = "Pathogen Detection (FASTQ)" if analysis_mode == 'fastq' else "Pathogen Detection (FASTA+ML)"
+        super().__init__(output_dir, title)
     
+    # This abstract method is not directly used by the new main functions but is required by the base class.
+    def generate_report(self, **kwargs):
+        """Generic report generator, deferring to specific pipeline methods."""
+        print("Note: Using specific report generation functions for FASTQ or FASTA pipelines.")
+        return {}
+
     def _extract_pathogens_from_bracken(self, bracken_file):
         """Extract pathogenic organisms directly from Bracken data with lowered threshold"""
         try:
@@ -558,10 +567,15 @@ class PathogenReporter(BaseReportGenerator):
         
     def _extract_pathogens_from_blast_taxonomy(self, blast_results_data):
         """Extract pathogenic organisms from BLAST taxonomy results for FASTA analysis"""
+        # --- ADD THIS GUARD CLAUSE ---
+        if not blast_results_data:
+            print("  No BLAST data provided to pathogen extractor.")
+            return []
+
         try:
             taxonomy_pathogens = []
             
-            # Enhanced pathogenic keywords (same as Bracken extraction)
+            # Enhanced pathogenic keywords
             pathogenic_keywords = [
                 'salmonella', 'escherichia coli', 'staphylococcus aureus', 'clostridium tetani',
                 'klebsiella pneumoniae', 'yersinia enterocolitica', 
@@ -570,12 +584,8 @@ class PathogenReporter(BaseReportGenerator):
                 'bacillus anthracis', 'listeria monocytogenes', 'clostridium difficile'
             ]
             
-            # Process BLAST results to find pathogenic organisms
-            if isinstance(blast_results_data, (str, Path)):
-                with open(blast_results_data, 'r') as f:
-                    blast_results = json.load(f)
-            else:
-                blast_results = blast_results_data
+            # The 'blast_results' variable is now guaranteed to be assigned from blast_results_data
+            blast_results = blast_results_data
             
             for result in blast_results:
                 if 'error' in result or not result.get('hits'):
@@ -585,7 +595,6 @@ class PathogenReporter(BaseReportGenerator):
                     organism = hit.get('organism', 'Unknown')
                     organism_lower = organism.lower()
                     
-                    # Check if organism matches pathogenic keywords
                     if any(keyword in organism_lower for keyword in pathogenic_keywords):
                         taxonomy_pathogens.append({
                             'organism': organism,
@@ -595,10 +604,10 @@ class PathogenReporter(BaseReportGenerator):
                             'query_id': result.get('query_id', 'Unknown')
                         })
             
-            print(f"   ✓ Extracted {len(taxonomy_pathogens)} pathogenic organisms from BLAST taxonomy")
+            print(f"   ✓ Extracted {len(taxonomy_pathogens)} pathogenic hits across {len(set(p['organism'] for p in taxonomy_pathogens))} unique organisms")
             if len(taxonomy_pathogens) > 0:
                 unique_organisms = list(set([p['organism'] for p in taxonomy_pathogens]))
-                print(f"   📋 Detected pathogens: {unique_organisms[:5]}")
+                print(f"   📋 Detected organisms: {unique_organisms[:5]}")
             
             return taxonomy_pathogens
             
@@ -607,9 +616,12 @@ class PathogenReporter(BaseReportGenerator):
             return []
 
     
-    def generate_comprehensive_pathogen_report(self, output_dir, bracken_pathogens=None, taxonomy_pathogens=None, sequence_pathogens=None):
-        """Generate ONLY pathogen_summary.txt + JSON - eliminate redundant reports"""
-        print("Generating comprehensive pathogen report...")
+    def generate_fastq_report(self, bracken_pathogens=None, taxonomy_pathogens=None, sequence_pathogens=None):
+        """
+        Generates the comprehensive pathogen report for the FASTQ pipeline.
+        This creates the 'pathogen_summary.txt' and its corresponding JSON.
+        """
+        print("Generating comprehensive pathogen report for FASTQ...")
         
         # Initialize pathogen data structure
         all_pathogens = {}
@@ -797,16 +809,14 @@ class PathogenReporter(BaseReportGenerator):
                 'confidence_score': pathogen['confidence_score']
             }
         
-        # Save ONLY JSON report for visualizations
-        report_file = output_dir / "pathogen_detection_report.json"
-        with open(report_file, 'w') as f:
-            json.dump(pathogen_report, f, indent=2)
+        # Save JSON report for visualizations
+        self._save_json_report(pathogen_report, "pathogen_detection_report.json")
         
-        # Create ONLY the comprehensive pathogen summary (BEST REPORT)
-        self._create_enhanced_pathogen_summary(output_dir, sorted_pathogens, overall_risk, 
+        # Create the comprehensive pathogen summary text file
+        self._create_enhanced_pathogen_summary(sorted_pathogens, overall_risk, 
                                              high_risk_count, medium_risk_count, total_pathogens)
         
-        print(f"✓ Comprehensive pathogen report generated:")
+        print(f"✓ Comprehensive FASTQ pathogen report generated:")
         print(f"  • {total_pathogens} pathogens detected")
         print(f"  • {high_risk_count} high-risk pathogens")
         print(f"  • {medium_risk_count} medium-risk pathogens")
@@ -839,13 +849,13 @@ class PathogenReporter(BaseReportGenerator):
         
         return round(min(score, 1.0), 3)
     
-    def _create_enhanced_pathogen_summary(self, output_dir, sorted_pathogens, overall_risk, 
+    def _create_enhanced_pathogen_summary(self, sorted_pathogens, overall_risk, 
                                         high_risk_count, medium_risk_count, total_pathogens):
-        """Create THE BEST comprehensive pathogen summary - KEEP THIS ONE"""
-        summary_file = output_dir / "pathogen_summary.txt"
+        """Creates the comprehensive text summary for the FASTQ pipeline."""
+        summary_file = self.output_dir / "pathogen_summary.txt"
         
         with open(summary_file, 'w') as f:
-            f.write("COMPREHENSIVE PATHOGEN DETECTION SUMMARY\n")
+            f.write("COMPREHENSIVE PATHOGEN DETECTION SUMMARY (FASTQ)\n")
             f.write("=" * 60 + "\n\n")
             f.write(f"Overall Risk Assessment: {overall_risk}\n")
             f.write(f"Total Pathogens Detected: {total_pathogens}\n")
@@ -931,19 +941,11 @@ class PathogenReporter(BaseReportGenerator):
             f.write("Results should be interpreted in clinical context.\n")
             f.write("Confirmatory testing may be required for clinical decisions.\n")
     
-    def generate_report(self, traditional_results=None, ml_results=None, ml_summary=None, **kwargs) -> Dict[str, str]:
-        """Generate ONLY JSON report for ML integration - NO redundant text reports"""
-        generated_files = {}
-        
-        # KEEP ONLY the JSON report for visualizations and ML integration
-        if ml_results and ml_summary:
-            json_data = self._create_pathogen_json_data(traditional_results, ml_results, ml_summary)
-            generated_files['json_report'] = self._save_json_report(json_data, "pathogen_detection_report.json")
-        
-        return generated_files
-    
-    def generate_blast_ml_integrated_report(self, output_dir, blast_taxonomy_pathogens=None, ml_results=None, ml_summary=None):
-        """Generate properly separated BLAST + ML pathogen report"""
+    def generate_fasta_ml_report(self, blast_taxonomy_pathogens=None, ml_results=None, ml_summary=None):
+        """
+        Generates the integrated report for the FASTA pipeline, combining BLAST and ML results.
+        This creates 'blast_ml_pathogen_summary.txt' and its corresponding JSON.
+        """
         print("Generating integrated BLAST+ML pathogen report...")
         
         # SECTION 1: Process BLAST taxonomy pathogens (separate)
@@ -963,6 +965,10 @@ class PathogenReporter(BaseReportGenerator):
                 blast_pathogens[org_key]['blast_identity'] = max(blast_pathogens[org_key]['blast_identity'], pathogen['identity'])
                 blast_pathogens[org_key]['blast_evalue'] = min(blast_pathogens[org_key]['blast_evalue'], pathogen['evalue'])
                 blast_pathogens[org_key]['blast_hits'] += 1
+        
+        # Assess risk for each BLAST-detected pathogen
+        for pathogen in blast_pathogens.values():
+            self._assess_blast_risk(pathogen)
 
         # SECTION 2: Process ML predictions (separate)
         ml_data = {
@@ -982,47 +988,48 @@ class PathogenReporter(BaseReportGenerator):
             # Add individual protein predictions
             if ml_results:
                 for prediction in ml_results:
-                    ml_data['individual_predictions'].append({
-                        'protein_id': prediction.get('sequence_id', 'Unknown'),
-                        'confidence': prediction.get('confidence', 0),
-                        'is_high_confidence': prediction.get('high_confidence', False)
-                    })
+                    if prediction.get('prediction') == 'Pathogenic':
+                        ml_data['individual_predictions'].append({
+                            'protein_id': prediction.get('sequence_id', 'Unknown'),
+                            'confidence': prediction.get('confidence', 0),
+                            'is_high_confidence': prediction.get('high_confidence', False)
+                        })
 
         # SECTION 3: Overall risk assessment (combined logic)
-        blast_high_risk = len([p for p in blast_pathogens.values() if self._assess_blast_risk(p) == 'HIGH'])
-        ml_pathogenic_ratio = ml_data['pathogenic_predictions'] / max(ml_data['total_proteins'], 1)
+        blast_high_risk = len([p for p in blast_pathogens.values() if p['risk_level'] == 'HIGH'])
+        ml_pathogenic_ratio = (ml_data['pathogenic_predictions'] / max(ml_data['total_proteins'], 1)) if ml_data['total_proteins'] > 0 else 0
         
-        if blast_high_risk >= 2 and ml_pathogenic_ratio > 0.8:
+        if blast_high_risk >= 2 and ml_pathogenic_ratio > 0.5:
             overall_risk = 'CRITICAL'
-        elif blast_high_risk >= 1 and ml_pathogenic_ratio > 0.6:
+        elif blast_high_risk >= 1 or ml_pathogenic_ratio > 0.7:
             overall_risk = 'HIGH'
-        else:
+        elif blast_pathogens or ml_data['pathogenic_predictions'] > 0:
             overall_risk = 'MEDIUM'
+        else:
+            overall_risk = 'LOW'
         
-        # Generate corrected JSON report
-        integrated_report = {
+        # Generate JSON report for visualization
+        integrated_report_data = {
             'analysis_summary': {
-                'analysis_type': 'BLAST_ML_Separated_Integration',
+                'analysis_type': 'BLAST_ML_Integrated',
                 'overall_risk_assessment': overall_risk,
                 'analysis_timestamp': self.timestamp.isoformat()
             },
             'blast_taxonomy_section': {
-                'pathogenic_organisms': len(blast_pathogens),
+                'pathogenic_organisms_detected': len(blast_pathogens),
                 'detections': blast_pathogens
             },
             'ml_prediction_section': ml_data,
             'integrated_assessment': {
-                'risk_justification': f"BLAST: {blast_high_risk} high-risk species, ML: {ml_pathogenic_ratio:.1%} pathogenic proteins"
+                'risk_justification': f"BLAST detected {blast_high_risk} high-risk species. ML predicted {ml_pathogenic_ratio:.1%} of proteins as pathogenic."
             }
         }
         
-        # Save corrected integrated report
-        report_file = output_dir / "blast_ml_integrated_pathogen_report.json"
-        with open(report_file, 'w') as f:
-            json.dump(integrated_report, f, indent=2)
+        # Save integrated report JSON
+        self._save_json_report(integrated_report_data, "blast_ml_integrated_pathogen_report.json")
         
-        # Create corrected text summary
-        self._create_separated_blast_ml_summary(output_dir, blast_pathogens, ml_data, overall_risk)
+        # Create the text summary file
+        self._create_separated_blast_ml_summary(blast_pathogens, ml_data, overall_risk)
         
         print(f"✓ Integrated BLAST+ML pathogen report generated:")
         print(f"  • {len(blast_pathogens)} pathogenic organisms detected (BLAST taxonomy)")
@@ -1030,7 +1037,7 @@ class PathogenReporter(BaseReportGenerator):
         print(f"  • {blast_high_risk} high-risk organisms (BLAST)")
         print(f"  • Overall risk: {overall_risk}")
         
-        return integrated_report
+        return integrated_report_data
 
     
     def _assess_blast_risk(self, pathogen_data):
@@ -1080,12 +1087,12 @@ class PathogenReporter(BaseReportGenerator):
         
         return base_risk
 
-    def _create_separated_blast_ml_summary(self, output_dir, blast_pathogens, ml_data, overall_risk):
+    def _create_separated_blast_ml_summary(self, blast_pathogens, ml_data, overall_risk):
         """Create separated BLAST+ML pathogen summary report"""
-        summary_file = output_dir / "blast_ml_pathogen_summary.txt"
+        summary_file = self.output_dir / "blast_ml_pathogen_summary.txt"
         
         with open(summary_file, 'w') as f:
-            f.write("INTEGRATED BLAST+ML PATHOGEN DETECTION SUMMARY\n")
+            f.write("INTEGRATED BLAST+ML PATHOGEN DETECTION SUMMARY (FASTA)\n")
             f.write("=" * 65 + "\n\n")
             f.write(f"Overall Risk Assessment: {overall_risk}\n")
             f.write(f"Analysis Date: {self.timestamp.strftime('%Y-%m-%d %H:%M:%S')}\n")
@@ -1094,9 +1101,8 @@ class PathogenReporter(BaseReportGenerator):
             # Detection methodology
             f.write("INTEGRATED DETECTION METHODOLOGY:\n")
             f.write("• BLAST taxonomic classification against NCBI database\n")
-            f.write("• Machine learning pathogenicity prediction\n")
-            f.write("• Dual-method validation for enhanced confidence\n")
-            f.write("• Clinical risk stratification with separated analysis\n\n")
+            f.write("• Machine learning pathogenicity prediction on predicted proteins\n")
+            f.write("• Dual-method validation for enhanced confidence\n\n")
             
             # SECTION 1: BLAST TAXONOMIC CLASSIFICATION
             f.write("SECTION 1: BLAST TAXONOMIC CLASSIFICATION\n")
@@ -1106,9 +1112,9 @@ class PathogenReporter(BaseReportGenerator):
             if blast_pathogens:
                 # Calculate total BLAST hits
                 total_blast_hits = sum(p.get('blast_hits', 0) for p in blast_pathogens.values())
-                avg_identity = sum(p.get('blast_identity', 0) for p in blast_pathogens.values()) / len(blast_pathogens)
+                avg_identity = sum(p.get('blast_identity', 0) for p in blast_pathogens.values()) / len(blast_pathogens) if blast_pathogens else 0
                 
-                f.write(f"• Total BLAST hits: {total_blast_hits}\n")
+                f.write(f"• Total pathogenic BLAST hits: {total_blast_hits}\n")
                 f.write(f"• Average identity: {avg_identity:.1f}%\n\n")
                 
                 # Group by risk level for BLAST pathogens
@@ -1120,127 +1126,70 @@ class PathogenReporter(BaseReportGenerator):
                     f.write("-" * 40 + "\n")
                     for pathogen in sorted(high_risk_blast, key=lambda x: x.get('blast_hits', 0), reverse=True):
                         f.write(f"• {pathogen['organism']}\n")
-                        f.write(f"  - BLAST Identity: {pathogen.get('blast_identity', 0):.1f}%\n")
-                        f.write(f"  - BLAST Hits: {pathogen.get('blast_hits', 0)}\n")
-                        f.write(f"  - E-value: {pathogen.get('blast_evalue', 1.0):.2e}\n")
-                        f.write(f"  - Risk Level: HIGH\n")
-                        f.write(f"  - Clinical Priority: IMMEDIATE\n\n")
+                        f.write(f"  - Max Identity: {pathogen.get('blast_identity', 0):.1f}%\n")
+                        f.write(f"  - Total Hits: {pathogen.get('blast_hits', 0)}\n")
+                        f.write(f"  - Best E-value: {pathogen.get('blast_evalue', 1.0):.2e}\n\n")
                 
                 if medium_risk_blast:
                     f.write("⚠️ MEDIUM RISK PATHOGENS (BLAST):\n")
                     f.write("-" * 40 + "\n")
                     for pathogen in sorted(medium_risk_blast, key=lambda x: x.get('blast_hits', 0), reverse=True):
                         f.write(f"• {pathogen['organism']}\n")
-                        f.write(f"  - BLAST Identity: {pathogen.get('blast_identity', 0):.1f}%\n")
-                        f.write(f"  - BLAST Hits: {pathogen.get('blast_hits', 0)}\n")
-                        f.write(f"  - Risk Level: MEDIUM\n\n")
-            
+                        f.write(f"  - Max Identity: {pathogen.get('blast_identity', 0):.1f}%\n")
+                        f.write(f"  - Total Hits: {pathogen.get('blast_hits', 0)}\n\n")
+            else:
+                f.write("  No pathogenic organisms identified via BLAST taxonomy.\n\n")
+
             # SECTION 2: MACHINE LEARNING PREDICTIONS
             f.write("SECTION 2: MACHINE LEARNING PREDICTIONS\n")
             f.write("=" * 50 + "\n")
-            f.write(f"• Total proteins analyzed: {ml_data.get('total_proteins', 0)}\n")
-            f.write(f"• Pathogenic predictions: {ml_data.get('pathogenic_predictions', 0)} ({ml_data.get('pathogenic_predictions', 0)/max(ml_data.get('total_proteins', 1), 1)*100:.1f}%)\n")
-            f.write(f"• High-confidence predictions: {ml_data.get('high_confidence_predictions', 0)} ({ml_data.get('high_confidence_predictions', 0)/max(ml_data.get('pathogenic_predictions', 1), 1)*100:.1f}%)\n")
-            f.write(f"• Average ML confidence: {ml_data.get('average_confidence', 0):.1%}\n\n")
-            
-            if ml_data.get('individual_predictions'):
-                f.write("🤖 ML PATHOGENIC PROTEIN PREDICTIONS:\n")
-                f.write("-" * 40 + "\n")
-                # Sort by confidence
-                sorted_predictions = sorted(ml_data['individual_predictions'], 
-                                        key=lambda x: x.get('confidence', 0), reverse=True)
+            if ml_data['total_proteins'] > 0:
+                pathogenic_ratio = (ml_data.get('pathogenic_predictions', 0) / ml_data.get('total_proteins', 1)) * 100
+                high_conf_ratio = (ml_data.get('high_confidence_predictions', 0) / max(ml_data.get('pathogenic_predictions', 1), 1)) * 100
+                f.write(f"• Total proteins analyzed: {ml_data.get('total_proteins', 0)}\n")
+                f.write(f"• Pathogenic predictions: {ml_data.get('pathogenic_predictions', 0)} ({pathogenic_ratio:.1f}%)\n")
+                f.write(f"• High-confidence pathogenic predictions: {ml_data.get('high_confidence_predictions', 0)} ({high_conf_ratio:.1f}% of pathogenic)\n")
+                f.write(f"• Average ML confidence: {ml_data.get('average_confidence', 0):.1%}\n\n")
                 
-                for pred in sorted_predictions:
-                    confidence = pred.get('confidence', 0)
-                    confidence_level = "High" if pred.get('is_high_confidence', False) else "Medium"
-                    f.write(f"• {pred.get('protein_id', 'Unknown')}: {confidence:.1%} confidence ({confidence_level})\n")
-            
+                if ml_data.get('individual_predictions'):
+                    f.write("🤖 Top 5 High-Confidence Pathogenic Protein Predictions:\n")
+                    f.write("-" * 60 + "\n")
+                    # Sort by confidence
+                    sorted_predictions = sorted(ml_data['individual_predictions'], 
+                                            key=lambda x: x.get('confidence', 0), reverse=True)
+                    
+                    for pred in sorted_predictions[:5]:
+                        f.write(f"• {pred.get('protein_id', 'Unknown'):<30} | Confidence: {pred.get('confidence', 0):.1%}\n")
+            else:
+                f.write("  No ML predictions were generated.\n")
+
             # SECTION 3: INTEGRATED RISK ASSESSMENT
-            f.write(f"\nSECTION 3: INTEGRATED RISK ASSESSMENT\n")
-            f.write("=" * 50 + "\n")
+            f.write(f"\nSECTION 3: INTEGRATED RISK ASSESSMENT & RECOMMENDATIONS\n")
+            f.write("=" * 60 + "\n")
             f.write(f"Overall Risk: {overall_risk}\n\n")
             
-            # Risk justification
-            blast_high_count = len([p for p in blast_pathogens.values() if p.get('risk_level') == 'HIGH'])
-            ml_pathogenic_ratio = ml_data.get('pathogenic_predictions', 0) / max(ml_data.get('total_proteins', 1), 1)
-            
-            f.write("Risk Justification:\n")
-            f.write(f"• BLAST: {blast_high_count} high-risk pathogenic species identified\n")
-            f.write(f"• ML: {ml_pathogenic_ratio:.1%} of proteins predicted as pathogenic\n")
-            f.write(f"• Confidence: Both methods show high reliability\n")
-            f.write(f"• Clinical Impact: Multiple dangerous pathogens present\n\n")
-            
             # Clinical recommendations based on integrated findings
-            f.write("CLINICAL RECOMMENDATIONS:\n")
-            f.write("-" * 30 + "\n")
             if overall_risk == 'CRITICAL':
                 f.write("🚨 CRITICAL RISK - DUAL METHOD VALIDATION\n")
-                f.write("• Multiple high-risk pathogens confirmed by both BLAST and ML\n")
-                f.write("• High-confidence pathogenic signatures detected\n")
-                f.write("• Implement immediate containment protocols\n")
-                f.write("• Emergency infectious disease consultation required\n")
+                f.write("• Multiple high-risk pathogens confirmed by BLAST and supported by a high ratio of pathogenic proteins from ML.\n")
+                f.write("• Implement immediate containment protocols and consult infectious disease specialists.\n")
             elif overall_risk == 'HIGH':
                 f.write("🔴 HIGH RISK - VALIDATED PATHOGENIC PRESENCE\n")
-                f.write("• Significant pathogenic organisms detected\n")
-                f.write("• ML predictions support BLAST taxonomy findings\n")
-                f.write("• Enhanced monitoring and targeted interventions recommended\n")
-                f.write("• Consider confirmatory diagnostics\n")
+                f.write("• Significant pathogenic organisms detected by BLAST and/or a high proportion of proteins flagged by ML.\n")
+                f.write("• Enhanced monitoring and targeted interventions are recommended.\n")
+            elif overall_risk == 'MEDIUM':
+                f.write("🟡 MEDIUM RISK - MONITORING ADVISED\n")
+                f.write("• Some pathogenic indicators detected by BLAST or ML, but without strong corroborating evidence.\n")
+                f.write("• Standard protocols with enhanced vigilance are recommended.\n")
             else:
-                f.write("🟡 STANDARD RISK - CONTINUE MONITORING\n")
-                f.write("• Some pathogenic indicators detected\n")
-                f.write("• Integrated analysis provides moderate confidence\n")
-                f.write("• Standard protocols with enhanced vigilance\n")
-            
-            f.write("\nINTEGRATED ANALYSIS ADVANTAGES:\n")
-            f.write("• BLAST provides taxonomic identification with sequence similarity\n")
-            f.write("• ML provides pathogenicity assessment with confidence scoring\n")
-            f.write("• Separated analysis prevents cross-contamination of evidence\n")
-            f.write("• Dual validation increases clinical confidence in findings\n")
-            
+                f.write("🟢 LOW RISK - ROUTINE MONITORING\n")
+                f.write("• No significant pathogenic signatures detected by either method.\n")
+
             f.write("\nDISCLAIMER:\n")
-            f.write("This integrated analysis combines BLAST taxonomy and ML predictions.\n")
-            f.write("Results should be interpreted in clinical context.\n")
-            f.write("Confirmatory testing may be required for clinical decisions.\n")
+            f.write("This integrated analysis combines BLAST taxonomy and ML predictions for research and decision support.\n")
+            f.write("Results should be interpreted in a clinical context by qualified personnel.\n")
         
         print(f"✓ Separated BLAST+ML pathogen summary created: {summary_file}")
-
-
-    def _calculate_blast_ml_confidence(self, pathogen_data, ml_confidence):
-        """Calculate confidence score for BLAST+ML integrated detection"""
-        score = 0
-        
-        # BLAST quality (50% weight)
-        blast_score = (pathogen_data['blast_identity'] / 100) * 0.5
-        score += blast_score
-        
-        # ML confidence (30% weight)
-        if ml_confidence > 0:
-            ml_score = ml_confidence * 0.3
-            score += ml_score
-        
-        # Multi-method detection bonus (20% weight)
-        method_bonus = len(pathogen_data['detection_methods']) * 0.1
-        score += min(method_bonus, 0.2)
-        
-        return round(min(score, 1.0), 3)
-    
-    def _create_pathogen_json_data(self, traditional_results, ml_results, ml_summary) -> Dict:
-        """Create structured JSON data for pathogen report"""
-        return {
-            'traditional_analysis': traditional_results if isinstance(traditional_results, dict) else None,
-            'ml_analysis': {
-                'summary': ml_summary,
-                'predictions': ml_results
-            } if ml_results and ml_summary else None,
-            'risk_assessment': {
-                'timestamp': datetime.now().isoformat(),
-                'methods_used': ['traditional_detection', 'ml_prediction'] if ml_results else ['traditional_detection'],
-                'confidence_metrics': {
-                    'traditional_confidence': 'database_based',
-                    'ml_confidence': ml_summary.get('average_confidence', 0) if ml_summary else None
-                }
-            }
-        }
 
 class FunctionalReporter(BaseReportGenerator):
     """Functional annotation reporting with quality assessment"""
@@ -1596,27 +1545,37 @@ class FunctionalReporter(BaseReportGenerator):
         
         return json_data
 
-# Main reporting functions for pipeline integration - STREAMLINED
+# Main reporting functions for pipeline integration - STREAMLINED & CORRECTED
 def generate_taxonomic_report(output_dir, bracken_data=None, blast_data=None):
     """Generate comprehensive taxonomic classification report"""
     reporter = TaxonomicReporter(Path(output_dir))
     return reporter.generate_report(bracken_data=bracken_data, blast_data=blast_data)
-
-def generate_pathogen_report(output_dir, traditional_results=None, ml_results=None, ml_summary=None):
-    """Generate ONLY JSON pathogen report for ML integration - NO redundant text"""
-    reporter = PathogenReporter(Path(output_dir))
-    return reporter.generate_report(traditional_results=traditional_results, ml_results=ml_results, ml_summary=ml_summary)
 
 def generate_functional_report(output_dir, prokka_results=None, swissprot_results=None):
     """Generate comprehensive functional annotation report"""
     reporter = FunctionalReporter(Path(output_dir))
     return reporter.generate_report(prokka_results=prokka_results, swissprot_results=swissprot_results)
 
-# THE ONLY COMPREHENSIVE PATHOGEN FUNCTION - replaces all redundant versions
-def generate_pathogen_summary_report(output_dir, bracken_pathogens=None, taxonomy_pathogens=None, sequence_pathogens=None):
+def generate_fastq_pathogen_report(output_dir, bracken_pathogens=None, taxonomy_pathogens=None, sequence_pathogens=None):
     """
-    THE DEFINITIVE pathogen report function - ONLY ONE NEEDED
-    Generates: pathogen_summary.txt (BEST) + pathogen_detection_report.json (for visualizations)
+    Main entry point for generating the FASTQ pathogen report.
+    Generates: pathogen_summary.txt + pathogen_detection_report.json
     """
-    reporter = PathogenReporter(Path(output_dir))
-    return reporter.generate_comprehensive_pathogen_report(output_dir, bracken_pathogens, taxonomy_pathogens, sequence_pathogens)
+    reporter = PathogenReporter(Path(output_dir), analysis_mode='fastq')
+    return reporter.generate_fastq_report(
+        bracken_pathogens=bracken_pathogens,
+        taxonomy_pathogens=taxonomy_pathogens,
+        sequence_pathogens=sequence_pathogens
+    )
+
+def generate_fasta_ml_pathogen_report(output_dir, blast_taxonomy_pathogens=None, ml_results=None, ml_summary=None):
+    """
+    Main entry point for generating the integrated FASTA+ML pathogen report.
+    Generates: blast_ml_pathogen_summary.txt + blast_ml_integrated_pathogen_report.json
+    """
+    reporter = PathogenReporter(Path(output_dir), analysis_mode='fasta')
+    return reporter.generate_fasta_ml_report(
+        blast_taxonomy_pathogens=blast_taxonomy_pathogens,
+        ml_results=ml_results,
+        ml_summary=ml_summary
+    )

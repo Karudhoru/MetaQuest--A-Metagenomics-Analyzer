@@ -1,8 +1,6 @@
 import subprocess
 import datetime
 import os
-if not os.getenv('METAQUEST_QUIET'):
-    print("🧬 MetaQuest ML pathogen predictor ready")
 import pandas as pd
 from pathlib import Path
 from Bio import SeqIO
@@ -13,16 +11,16 @@ from .pathogen_analysis import run_pathogen_scan, run_antimicrobial_resistance_s
 from .functional_analysis import run_prokka, run_swissprot_annotation
 from ..config import *
 from ..io.file_validator import FileValidator
-from ..io.utils import check_dependencies, convert_fastq_to_fasta, split_interleaved
+from ..io.utils import convert_fastq_to_fasta, split_interleaved
 from .taxonomic_analysis import run_kraken, run_bracken, run_fasta_blast_taxonomy
 from .pathogen_analysis import run_pathogen_scan, run_antimicrobial_resistance_scan, run_virulence_factor_scan
 from .functional_analysis import run_prokka, run_swissprot_annotation
 from ..reporting.reporting import (
     PathogenReporter,
     generate_taxonomic_report, 
-    generate_pathogen_report, 
     generate_functional_report,
-    generate_pathogen_summary_report
+    generate_fastq_pathogen_report,
+    generate_fasta_ml_pathogen_report  # <-- Import the new function
 )
 from ..visualization.visualization import (
     create_taxonomic_visualizations,
@@ -35,7 +33,6 @@ ML_PATHOGEN_AVAILABLE = False
 try:
     from ..ml.pathogen_predictor import run_ml_pathogen_prediction
     ML_PATHOGEN_AVAILABLE = True
-    print("✅ PathogenPredictor with integrated ML functionality loaded successfully")
 except ImportError as e:
     ML_PATHOGEN_AVAILABLE = False
     print(f"⚠️ PathogenPredictor not available: {e}")
@@ -252,50 +249,30 @@ def analyze_fastq(reads, output_dir):
     except Exception as e:
         print(f"⚠️ Functional analysis failed: {str(e)}")
     
-    # STREAMLINED pathogen reporting - ONLY ONE COMPREHENSIVE REPORT
+    # STREAMLINED pathogen reporting for FASTQ
     try:
-        print("12. Generating comprehensive pathogen analysis...")
+        print("12. Generating comprehensive pathogen analysis for FASTQ...")
         
         # Extract pathogens directly from Bracken data
         bracken_pathogens = []
-        taxonomy_pathogens = []
-        sequence_pathogens = []
-        
         if bracken_report and Path(bracken_report).exists():
-            try:
-                temp_reporter = PathogenReporter(Path(output_dir))
-                bracken_pathogens = temp_reporter._extract_pathogens_from_bracken(bracken_report)
-                print(f"   ✓ Extracted {len(bracken_pathogens)} pathogens from Bracken classification")
-            except Exception as e:
-                print(f"   ⚠️ Could not extract pathogens from Bracken data: {e}")
+            reporter = PathogenReporter(Path(output_dir), analysis_mode='fastq')
+            bracken_pathogens = reporter._extract_pathogens_from_bracken(bracken_report)
         
-        # Generate THE ONLY comprehensive pathogen report (pathogen_summary.txt + JSON)
-        comprehensive_report = generate_pathogen_summary_report(
+        # Generate the comprehensive FASTQ pathogen report
+        generate_fastq_pathogen_report(
             output_dir, 
             bracken_pathogens=bracken_pathogens,
-            taxonomy_pathogens=taxonomy_pathogens, 
-            sequence_pathogens=sequence_pathogens
+            taxonomy_pathogens=[], 
+            sequence_pathogens=[]
         )
 
         # Generate pathogen visualizations
-        try:
-            comprehensive_report_file = output_dir / "pathogen_detection_report.json"
-            if comprehensive_report_file.exists():
-                create_pathogen_visualizations(output_dir, traditional_data=str(comprehensive_report_file))
-        except Exception as e:
-            print(f"⚠️ Pathogen visualization failed: {e}")
+        report_file = output_dir / "pathogen_detection_report.json"
+        if report_file.exists():
+            create_pathogen_visualizations(output_dir, traditional_data=str(report_file))
         
-        # ONLY generate additional JSON for ML integration when available
-        if ml_results and ml_summary:
-            generate_pathogen_report(
-                output_dir, 
-                traditional_results=comprehensive_report,
-                ml_results=ml_results, 
-                ml_summary=ml_summary
-            )
-            print("✓ Enhanced pathogen analysis with ML integration completed")
-        else:
-            print("✓ Comprehensive pathogen analysis completed")
+        print("✓ Comprehensive FASTQ pathogen analysis completed")
                 
     except Exception as e:
         print(f"⚠️ Pathogen report generation failed: {str(e)}")
@@ -303,14 +280,12 @@ def analyze_fastq(reads, output_dir):
     print(f"\n📁 All results saved to: {output_dir}")
     print("🔍 Key files to review:")
     print(" • taxonomic_classification_report.txt - Species identification and abundance")
-    print(" • pathogen_summary.txt - Comprehensive pathogen analysis with clinical recommendations")  # THE ONLY ONE
+    print(" • pathogen_summary.txt - Comprehensive pathogen analysis with clinical recommendations")
     print(" • functional_annotation_report.txt - Gene prediction and annotation")
-    if ml_results:
-        print(" • pathogen_detection_report.json - Enhanced ML+traditional pathogen analysis")
     print(" • analysis_dashboard.html - Interactive dashboard")
 
 def analyze_fasta(fasta_path, output_dir):
-    """Process FASTA files with BLAST taxonomy + ML only - NO traditional pathogen screening"""
+    """Process FASTA files with BLAST taxonomy + ML only"""
     print("\n=== FASTA Analysis Pipeline ===")
     
     blast_results_data = None
@@ -322,29 +297,23 @@ def analyze_fasta(fasta_path, output_dir):
         blast_results_file = run_fasta_blast_taxonomy(fasta_path, output_dir, database="nt", max_sequences=50)
         
         if blast_results_file and Path(blast_results_file).exists():
-            try:
-                with open(blast_results_file, 'r') as f:
-                    blast_results_data = json.load(f)
-                print(f"✓ Loaded {len(blast_results_data)} BLAST results")
-                
-                print("2. Generating comprehensive taxonomic reports and visualizations...")
-                generated_reports = generate_taxonomic_report(output_dir, blast_data=blast_results_data)
-                print("✓ Comprehensive BLAST taxonomic analysis completed")
-                
-                # Create taxonomic visualizations directly from BLAST data (NO kraken-style report)
-                print("3. Creating BLAST-based taxonomic visualizations...")
-                create_taxonomic_visualizations(output_dir, blast_results_data)
-                print("✓ BLAST taxonomic visualizations created")
-                    
-            except Exception as e:
-                print(f"⚠️ Could not load BLAST results: {e}")
-                
+            with open(blast_results_file, 'r') as f:
+                blast_results_data = json.load(f)
+            print(f"✓ Loaded {len(blast_results_data)} BLAST results")
+            
+            print("2. Generating comprehensive taxonomic reports...")
+            generate_taxonomic_report(output_dir, blast_data=blast_results_data)
+            
+            print("3. Creating BLAST-based taxonomic visualizations...")
+            create_taxonomic_visualizations(output_dir, blast_results_data) # This needs to be fixed to handle BLAST data
+            print("✓ Comprehensive BLAST taxonomic analysis completed")
+        else:
+            print("⚠️ BLAST analysis produced no results file.")
+
     except Exception as e:
         print(f"⚠️ BLAST taxonomic analysis failed: {str(e)}")
     
-    # SKIP TRADITIONAL PATHOGEN SCREENING FOR FASTA
-    print("4. ⏭️ Skipping traditional pathogen screening for FASTA analysis")
-    print("   🎯 Using BLAST taxonomy + ML predictions only")
+    print("4. ⏭️ Skipping traditional pathogen screening for FASTA analysis (using BLAST+ML instead).")
     
     # Functional annotation with ML pathogen prediction
     try:
@@ -352,10 +321,8 @@ def analyze_fasta(fasta_path, output_dir):
         prokka_dir = run_prokka(fasta_path, output_dir)
         
         protein_files = list(Path(prokka_dir).glob("*.faa"))
-        if not protein_files:
-            print("⚠️ Warning: No protein FASTA files found from Prokka. Skipping functional annotation.")
-        elif all(os.path.getsize(pf) == 0 for pf in protein_files):
-            print("⚠️ Warning: All protein files are empty. Skipping functional annotation.")
+        if not protein_files or all(os.path.getsize(pf) == 0 for pf in protein_files):
+            print("⚠️ No valid proteins predicted. Skipping functional and ML analysis.")
         else:
             print("6. Running functional annotation...")
             swissprot_results = run_swissprot_annotation(prokka_dir, output_dir)
@@ -365,74 +332,51 @@ def analyze_fasta(fasta_path, output_dir):
             create_functional_visualizations(output_dir, prokka_results=prokka_dir, swissprot_results=swissprot_results)
             
             # ML pathogen prediction
-            if ML_PATHOGEN_AVAILABLE:
-                if should_use_ml_prediction(prokka_dir):
-                    try:
-                        print("8. Running ML-based pathogen prediction...")
-                        ml_results, ml_summary = run_ml_pathogen_prediction(prokka_dir, output_dir)
-                        
-                        if ml_results and ml_summary:
-                            print(f"✓ ML pathogen prediction completed:")
-                            print(f" 📊 {ml_summary['pathogenic_predictions']}/{ml_summary['total_sequences_analyzed']} proteins predicted as pathogenic")
-                            print(f" ⭐ {ml_summary['high_confidence_predictions']} high-confidence predictions")
-                        else:
-                            print("⚠️ ML pathogen prediction produced no results")
-                            
-                    except Exception as e:
-                        print(f"⚠️ ML pathogen prediction failed: {str(e)}")
-                else:
-                    print("8. ⏭️ Skipping ML prediction - protein sequences too short")
+            if ML_PATHOGEN_AVAILABLE and should_use_ml_prediction(prokka_dir):
+                print("8. Running ML-based pathogen prediction...")
+                ml_results, ml_summary = run_ml_pathogen_prediction(prokka_dir, output_dir)
             else:
-                print("8. ℹ️ ML pathogen predictor not available - skipping ML analysis")
+                print("8. ⏭️ Skipping ML prediction.")
                 
     except Exception as e:
-        print(f"⚠️ Functional analysis failed: {str(e)}")
+        print(f"⚠️ Functional/ML analysis failed: {str(e)}")
     
-    # INTEGRATED BLAST+ML pathogen reporting (REQUIRES MISSING METHODS)
+    # INTEGRATED BLAST+ML pathogen reporting
     try:
         print("9. Generating integrated BLAST+ML pathogen analysis...")
         
-        # Extract pathogens from BLAST taxonomy - REQUIRES _extract_pathogens_from_blast_taxonomy()
+        # Extract pathogenic species from BLAST results
         blast_taxonomy_pathogens = []
         if blast_results_data:
-            try:
-                temp_reporter = PathogenReporter(Path(output_dir))
-                blast_taxonomy_pathogens = temp_reporter._extract_pathogens_from_blast_taxonomy(blast_results_data)
-                print(f"   ✓ Extracted {len(blast_taxonomy_pathogens)} pathogens from BLAST taxonomy")
-            except Exception as e:
-                print(f"   ⚠️ Could not extract pathogens from BLAST taxonomy: {e}")
-        
-        # Generate INTEGRATED BLAST+ML pathogen report - REQUIRES generate_blast_ml_integrated_report()
+            reporter = PathogenReporter(Path(output_dir), analysis_mode='fasta')
+            blast_taxonomy_pathogens = reporter._extract_pathogens_from_blast_taxonomy(blast_results_data)
+
+        # Generate the integrated FASTA+ML pathogen report if we have any evidence
         if blast_taxonomy_pathogens or (ml_results and ml_summary):
-            integrated_report = temp_reporter.generate_blast_ml_integrated_report(
+            generate_fasta_ml_pathogen_report(
                 output_dir, 
                 blast_taxonomy_pathogens=blast_taxonomy_pathogens,
                 ml_results=ml_results,
                 ml_summary=ml_summary
             )
             
-            # Generate visualizations for integrated report
-            try:
-                integrated_report_file = output_dir / "blast_ml_integrated_pathogen_report.json"
-                if integrated_report_file.exists():
-                    create_pathogen_visualizations(output_dir, traditional_data=str(integrated_report_file))
-            except Exception as e:
-                print(f"⚠️ Pathogen visualization failed: {e}")
+            # Generate visualizations for the integrated report
+            report_file = output_dir / "blast_ml_integrated_pathogen_report.json"
+            if report_file.exists():
+                create_pathogen_visualizations(output_dir, traditional_data=str(report_file))
                 
             print("✓ Integrated BLAST+ML pathogen analysis completed")
         else:
-            print("⚠️ No pathogenic evidence found in BLAST or ML analysis")
+            print("⚠️ No pathogenic evidence found from either BLAST or ML analysis. No report generated.")
                 
     except Exception as e:
-        print(f"⚠️ Integrated pathogen analysis failed: {str(e)}")
+        print(f"⚠️ Integrated pathogen report generation failed: {str(e)}")
     
     print(f"\n📁 All results saved to: {output_dir}")
     print("🔍 Key files to review:")
     print(" • taxonomic_classification_report.txt - Comprehensive BLAST-based species identification")
-    print(" • blast_ml_pathogen_summary.txt - Integrated BLAST+ML pathogen analysis")  # INTEGRATED REPORT
+    print(" • blast_ml_pathogen_summary.txt - Integrated BLAST+ML pathogen analysis")
     print(" • functional_annotation_report.txt - Gene prediction and annotation quality")
-    if ml_results:
-        print(" • ml_pathogen_predictions.csv - ML pathogen predictions data")
     print(" • analysis_dashboard.html - Interactive dashboard")
 
 def create_analysis_dashboard(output_dir):
