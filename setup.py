@@ -34,7 +34,7 @@ setup(
     install_requires=requirements,
     entry_points={
         'console_scripts': [
-            'metaquest-cli=metaquest.cli:main',
+            'metaquest=metaquest.cli:main',
         ],
     },
     include_package_data=True,
