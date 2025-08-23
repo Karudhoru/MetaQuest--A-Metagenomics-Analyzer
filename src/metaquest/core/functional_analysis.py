@@ -8,7 +8,7 @@ from ..config import *
 def run_prokka(fasta_path, output_dir):
     """Run Prokka for gene prediction and annotation"""
     prokka_dir = output_dir/"prokka_annotation"
-    cmd = f"prokka --outdir {prokka_dir} --prefix sample --cpus 12 --force {fasta_path}"
+    cmd = f"prokka --outdir {prokka_dir} --prefix sample --cpus 12 --force --metagenome {fasta_path}"
     print(f"Running: {cmd}")
     subprocess.run(cmd, shell=True, check=True)
     return prokka_dir

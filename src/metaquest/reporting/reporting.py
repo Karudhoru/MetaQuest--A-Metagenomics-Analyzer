@@ -2,6 +2,7 @@
 """
 MetaQuest Reporting Module
 Streamlined reporting with clear, separated logic for FASTQ and FASTA pipelines.
+Includes scikit-bio for robust diversity metrics.
 """
 
 import json
@@ -9,12 +10,14 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Any
 import numpy as np
 from collections import Counter
 import re
-import time
 from ..config import *
+
+# Import for diversity calculations
+from skbio.diversity import alpha_diversity
 
 class BaseReportGenerator(ABC):
     """Base class for all MetaQuest report generators"""
@@ -38,7 +41,7 @@ class BaseReportGenerator(ABC):
             "",
             f"Analysis Type: {self.analysis_type}",
             f"Generated: {self.timestamp.strftime('%Y-%m-%d %H:%M:%S')}",
-            f"MetaQuest Pipeline v3.0",
+            f"MetaQuest Pipeline v3.2.2",
             ""
         ]
     
@@ -55,7 +58,7 @@ class BaseReportGenerator(ABC):
             'metadata': {
                 'analysis_type': self.analysis_type,
                 'generation_timestamp': self.timestamp.isoformat(),
-                'pipeline_version': 'MetaQuest v3.0'
+                'pipeline_version': 'MetaQuest v3.2.2'
             },
             'data': data
         }
@@ -71,10 +74,8 @@ class TaxonomicReporter(BaseReportGenerator):
         super().__init__(output_dir, "Taxonomic Classification")
     
     def generate_report(self, bracken_data=None, blast_data=None, **kwargs) -> Dict[str, str]:
-        """Generate comprehensive taxonomic classification report"""
+        # ... (this function is unchanged) ...
         generated_files = {}
-        
-        # Generate text report
         text_content = self._create_report_header("TAXONOMIC CLASSIFICATION REPORT")
         
         if bracken_data:
@@ -83,44 +84,55 @@ class TaxonomicReporter(BaseReportGenerator):
         if blast_data:
             text_content.extend(self._process_blast_data_comprehensive(blast_data))
         
-        # Summary statistics
         text_content.extend(self._generate_taxonomy_summary(bracken_data, blast_data))
-        
-        # Save reports
         generated_files['text_report'] = self._save_text_report(text_content, "taxonomic_classification_report.txt")
         
-        # Generate JSON report
         json_data = self._create_taxonomy_json_data(bracken_data, blast_data)
         generated_files['json_report'] = self._save_json_report(json_data, "taxonomic_classification_report.json")
         
-        # Generate additional detailed BLAST reports if BLAST data available
         if blast_data:
             generated_files.update(self._generate_detailed_blast_reports(blast_data))
         
         return generated_files
-    
+
+    def _calculate_alpha_diversity(self, counts: np.ndarray) -> Dict[str, Any]:
+        """Calculate multiple alpha diversity metrics by calling scikit-bio for each one."""
+        counts = counts.astype(int)
+        if counts.sum() == 0:
+            return {'shannon': 0, 'simpson': 0, 'chao1': 0, 'sobs': 0}
+        
+        metrics_to_calculate = ['shannon', 'simpson', 'chao1', 'sobs']
+        diversity_results = {}
+
+        for metric in metrics_to_calculate:
+            try:
+                result = alpha_diversity(metric, [counts], validate=False)
+                diversity_results[metric] = result.iloc[0]
+            except Exception as e:
+                print(f"  -> Warning: Could not calculate '{metric}' diversity: {e}")
+                diversity_results[metric] = 'N/A'
+        
+        return diversity_results
+
     def _process_bracken_data(self, bracken_data) -> List[str]:
         """Process both Bracken and Kraken data formats"""
         try:
+            # ... (code to load bracken_data into a pandas DataFrame 'df' remains the same) ...
             if isinstance(bracken_data, (str, Path)):
                 df = pd.read_csv(bracken_data, sep='\t')
                 
-                # Detect format - Bracken vs Kraken
                 if 'fraction_total_reads' in df.columns:
-                    # Bracken format
                     abundance_col = 'fraction_total_reads'
                     name_col = 'name'
                     count_col = 'new_est_reads'
                     data_type = "Bracken"
                 else:
-                    # Kraken format
                     df = pd.read_csv(bracken_data, sep='\t', header=None,
                                    names=['percentage', 'clade_reads', 'taxon_reads', 'rank', 'taxid', 'name'])
                     abundance_col = 'percentage'
                     name_col = 'name'
                     count_col = 'clade_reads'
                     data_type = "Kraken2"
-                    # Convert percentage to fraction for consistency
                     df['fraction_total_reads'] = df['percentage'] / 100
             else:
                 df = bracken_data
@@ -129,14 +141,14 @@ class TaxonomicReporter(BaseReportGenerator):
                 count_col = 'new_est_reads'
                 data_type = "Bracken"
             
+            # ... (code for the main text report lines remains the same) ...
             lines = [
                 f"FASTQ TAXONOMIC CLASSIFICATION ({data_type})",
                 "-" * 50,
                 f"Total classified taxa: {len(df)}",
                 ""
             ]
-            
-            # Filter significant taxa and get top 15
+
             if data_type == "Kraken2":
                 significant_taxa = df[(df['percentage'] > 0.01) & 
                                     (~df[name_col].str.contains('unclassified', case=False, na=False))].copy()
@@ -167,14 +179,24 @@ class TaxonomicReporter(BaseReportGenerator):
                     
                     lines.append(f"{i:<4} {taxon_name:<45} {abundance_val:>8.3f}{abundance_unit}  {read_count:>8}")
                 
-                # Add diversity metrics
                 lines.extend([
                     "",
-                    "DIVERSITY METRICS:",
-                    f"• Shannon diversity index (proxy): {self._calculate_shannon_diversity(abundance_values):.3f}",
-                    f"• Dominant taxon: {top_taxa.iloc[0][name_col]} ({abundance_values.iloc[0]:.3f}{abundance_unit})",
-                    f"• Taxa >1% abundance: {len(abundance_values[abundance_values > 1])}"
+                    "DIVERSITY METRICS (scikit-bio):",
                 ])
+                
+                read_counts = significant_taxa[count_col].values
+                alpha_div = self._calculate_alpha_diversity(read_counts)
+                
+                shannon = f"{alpha_div.get('shannon', 'N/A'):.3f}" if isinstance(alpha_div.get('shannon'), (int, float)) else 'N/A'
+                simpson = f"{alpha_div.get('simpson', 'N/A'):.3f}" if isinstance(alpha_div.get('simpson'), (int, float)) else 'N/A'
+                chao1 = f"{alpha_div.get('chao1', 'N/A'):.3f}" if isinstance(alpha_div.get('chao1'), (int, float)) else 'N/A'
+
+                # --- CHANGE alpha_div.get('observed_otus') to alpha_div.get('sobs') HERE ---
+                lines.append(f"• Observed Taxa (Sobs): {alpha_div.get('sobs', 'N/A')}")
+                lines.append(f"• Shannon Diversity Index: {shannon}")
+                lines.append(f"• Simpson's Index: {simpson}")
+                lines.append(f"• Chao1 Richness Estimate: {chao1}")
+                lines.append(f"• Dominant taxon: {top_taxa.iloc[0][name_col]} ({abundance_values.max():.3f}{abundance_unit})")
             else:
                 lines.append("No significant taxa found above threshold")
             
@@ -183,13 +205,6 @@ class TaxonomicReporter(BaseReportGenerator):
             
         except Exception as e:
             return [f"Error processing Bracken/Kraken data: {e}", ""]
-    
-    def _calculate_shannon_diversity(self, abundances):
-        """Calculate Shannon diversity index"""
-        abundances = np.array(abundances)
-        abundances = abundances[abundances > 0]  # Remove zeros
-        proportions = abundances / abundances.sum()
-        return -np.sum(proportions * np.log(proportions))
     
     def _process_blast_data_comprehensive(self, blast_data) -> List[str]:
         """Enhanced BLAST processing with comprehensive organism analysis"""
@@ -789,7 +804,7 @@ class PathogenReporter(BaseReportGenerator):
                 'overall_risk_assessment': overall_risk,
                 'detection_methods_used': ['bracken_taxonomic', 'taxonomy_blast', 'sequence_database_search'],
                 'analysis_timestamp': self.timestamp.isoformat(),
-                'pipeline_version': 'MetaQuest v3.0'
+                'pipeline_version': 'MetaQuest v3.2.2'
             },
             'pathogen_detections': {}
         }
@@ -862,7 +877,7 @@ class PathogenReporter(BaseReportGenerator):
             f.write(f"High Risk Pathogens: {high_risk_count}\n")
             f.write(f"Medium Risk Pathogens: {medium_risk_count}\n")
             f.write(f"Analysis Date: {self.timestamp.strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"Pipeline Version: MetaQuest v3.0\n\n")
+            f.write(f"Pipeline Version: MetaQuest v3.2.2\n\n")
             
             # Detection methodology
             f.write("DETECTION METHODOLOGY:\n")
@@ -1096,7 +1111,7 @@ class PathogenReporter(BaseReportGenerator):
             f.write("=" * 65 + "\n\n")
             f.write(f"Overall Risk Assessment: {overall_risk}\n")
             f.write(f"Analysis Date: {self.timestamp.strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"Pipeline Version: MetaQuest v3.0\n\n")
+            f.write(f"Pipeline Version: MetaQuest v3.2.2\n\n")
             
             # Detection methodology
             f.write("INTEGRATED DETECTION METHODOLOGY:\n")
@@ -1544,6 +1559,76 @@ class FunctionalReporter(BaseReportGenerator):
                 json_data['swissprot_analysis'] = {'error': str(e)}
         
         return json_data
+    
+class SequenceHitsReporter(BaseReportGenerator):
+    """Generates an insightful summary from raw DIAMOND/BLAST TSV output."""
+
+    def __init__(self, output_dir: Path, analysis_type: str):
+        super().__init__(output_dir, analysis_type)
+
+    def generate_report(self, hits_file_path: str, title: str, **kwargs) -> dict:
+        """
+        Parses a TSV hits file and generates a human-readable summary report.
+        """
+        hits_path = Path(hits_file_path)
+        if not hits_path.exists() or hits_path.stat().st_size == 0:
+            return {} # Do nothing if the file is missing or empty
+
+        hits_df = self._parse_hits_file(hits_path)
+        if hits_df.empty:
+            return {}
+
+        text_content = self._create_report_header(title)
+        text_content.extend(self._generate_summary_table(hits_df))
+        text_content.extend(self._generate_insights(hits_df))
+
+        report_filename = f"Pathogenic_Proteins.txt" # e.g., pathogen_results_summary.txt
+        self._save_text_report(text_content, report_filename)
+        return {'text_report': str(self.output_dir / report_filename)}
+
+    def _parse_hits_file(self, file_path: Path) -> pd.DataFrame:
+        """Reads the TSV file and extracts the organism name."""
+        try:
+            df = pd.read_csv(
+                file_path, sep='\t', header=None,
+                names=['query_id', 'subject_id', 'pident', 'length', 'evalue', 'bitscore', 'stitle']
+            )
+            df['organism'] = df['stitle'].str.extract(r'\[([^\[\]]+)\]\s*$').fillna('Unknown')
+            df['protein_name'] = df['stitle'].str.split(' \[', n=1).str[0]
+            df.dropna(subset=['organism'], inplace=True)
+            return df
+        except Exception as e:
+            print(f"Warning: Could not parse hits file {file_path}: {e}")
+            return pd.DataFrame()
+
+    def _generate_summary_table(self, df: pd.DataFrame) -> List[str]:
+        """Creates a clean summary table of the most significant hits."""
+        best_hits = df.sort_values('bitscore', ascending=False).head(10)
+
+        table = [
+            f"Top {len(best_hits)} Significant Hits:",
+            f"{'Your Sequence ID':<25} {'Matched Protein':<50} {'Organism':<30} {'Identity (%)'}",
+            "-" * 120
+        ]
+        for _, row in best_hits.iterrows():
+            table.append(f"{row['query_id']:<25} {row['protein_name'][:49]:<50} {row['organism'][:29]:<30} {row['pident']:>7.1f}")
+        
+        return table
+
+    def _generate_insights(self, df: pd.DataFrame) -> List[str]:
+        """Generates a narrative summary of the findings."""
+        insights = ["\n\nINSIGHTS\n--------"]
+        total_hits = len(df)
+        unique_organisms = df['organism'].nunique()
+        insights.append(f"• A total of {total_hits} significant sequence hits were found, mapping to {unique_organisms} unique organisms.")
+        
+        avg_identity = df['pident'].mean()
+        if avg_identity > 80:
+            insights.append(f"• ✅ High Confidence: The average sequence identity of hits is high ({avg_identity:.1f}%), suggesting accurate matches.")
+        else:
+            insights.append(f"• 🟡 Moderate Confidence: The average sequence identity is ({avg_identity:.1f}%). Some hits may be to related, but not identical, proteins.")
+        
+        return insights
 
 # Main reporting functions for pipeline integration - STREAMLINED & CORRECTED
 def generate_taxonomic_report(output_dir, bracken_data=None, blast_data=None):
@@ -1579,3 +1664,9 @@ def generate_fasta_ml_pathogen_report(output_dir, blast_taxonomy_pathogens=None,
         ml_results=ml_results,
         ml_summary=ml_summary
     )
+
+def generate_sequence_hits_report(output_dir: Path, analysis_type: str, hits_file_path: str, title: str):
+    """Wrapper to generate a summary report from a DIAMOND/BLAST TSV file."""
+    if hits_file_path:
+        reporter = SequenceHitsReporter(output_dir, analysis_type)
+        reporter.generate_report(hits_file_path, title)

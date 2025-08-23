@@ -15,28 +15,36 @@ def _display_header():
     tagline = "A Comprehensive Metagenomics Analysis Pipeline"
     print(f"\n🧬 {__app_name__} v{__version__} | {tagline}\n")
 
-def setup_validation_args(parser):
-    """Helper to add common validation arguments to a parser."""
-    val_group = parser.add_argument_group('Validation Options')
-    val_group.add_argument('-q', '--min-quality', type=int, default=20, help="For FASTQ, the minimum mean quality score (default: 20).")
-    val_group.add_argument('-n', '--min-sequences', type=int, default=100, help="For FASTQ, the minimum number of sequences (default: 100).")
+def setup_fastq_validation_args(parser):
+    """Helper to add FASTQ-specific validation arguments to a parser."""
+    val_group = parser.add_argument_group('FASTQ Validation Options')
+    val_group.add_argument('-q', '--min-quality', type=int, default=20, help="Minimum mean quality score (default: 20).")
+    val_group.add_argument('-n', '--min-sequences', type=int, default=100, help="Minimum number of sequences (default: 100).")
+    val_group.add_argument('--overrep-threshold', type=float, default=0.1, help="Percentage threshold to flag a sequence as overrepresented (default: 0.1).")
 
 def handle_validation(file_paths, file_type, args):
     """Helper function to run the file validator and return validation status."""
     print(f"🧬 {__app_name__} - File Validation")
     validator = FileValidator()
-    validator.quality_threshold = args.min_quality
-    validator.min_sequences = args.min_sequences
+    
+    # Only apply FASTQ-specific settings if the type is fastq
+    if file_type == 'fastq':
+        validator.quality_threshold = args.min_quality
+        validator.min_sequences = args.min_sequences
+        validator.overrep_threshold = args.overrep_threshold
+
     all_valid = True
     for i, file_path in enumerate(file_paths):
         print(f"\n--- Validating file {i+1}/{len(file_paths)}: {file_path} ---")
         is_valid, _ = validator.validate_and_analyze(file_path, file_type)
         if not is_valid:
             all_valid = False
+    
     return all_valid
 
 def main():
     """Main entry point for the MetaQuest CLI."""
+    # Display the header for all commands, except when asking for version or help.
     if not any(arg in sys.argv for arg in ['-v', '--version', '-h', '--help']):
         _display_header()
 
@@ -48,43 +56,40 @@ def main():
     
     subparsers = parser.add_subparsers(dest='command', required=True, help="Available commands")
 
-    # --- Parent parser for shared analysis options ---
-    analysis_options_parser = argparse.ArgumentParser(add_help=False)
-    analysis_options_parser.add_argument('-o', '--output', default='results', help="Output directory name (default: results).")
-    analysis_options_parser.add_argument('--skip-validation', action='store_true', help="Skip input file validation (not recommended).")
-    setup_validation_args(analysis_options_parser)
-
     # --- Command: analyze ---
     parser_analyze = subparsers.add_parser('analyze', help="Run the full analysis pipeline.")
+    parser_analyze.add_argument('-o', '--output', default='results', help="Output directory name (default: results).")
+    parser_analyze.add_argument('--skip-validation', action='store_true', help="Skip input file validation (not recommended).")
     analysis_subparsers = parser_analyze.add_subparsers(dest='type', required=True, help="Input data type")
 
     # analyze fasta
-    analyze_fasta = analysis_subparsers.add_parser('fasta', help='Analyze a single FASTA file.', parents=[analysis_options_parser])
+    analyze_fasta = analysis_subparsers.add_parser('fasta', help='Analyze a single FASTA file.')
     analyze_fasta.add_argument('input_file', help="Path to the input FASTA file.")
-    # The --blast-sample-size argument has been removed.
+    analyze_fasta.add_argument('-s', '--blast-sample-size', type=int, default=50, help="Number of sequences to BLAST for taxonomy (default: 50).")
 
     # analyze fastq
-    analyze_fastq = analysis_subparsers.add_parser('fastq', help='Analyze FASTQ files.', parents=[analysis_options_parser])
+    analyze_fastq = analysis_subparsers.add_parser('fastq', help='Analyze FASTQ files.')
     fastq_mode = analyze_fastq.add_mutually_exclusive_group(required=True)
     fastq_mode.add_argument('--single', metavar='READS.fastq', help="Single-end FASTQ file.")
     fastq_mode.add_argument('--paired', nargs=2, metavar=('R1.fastq', 'R2.fastq'), help="Paired-end FASTQ files (R1 and R2).")
     fastq_mode.add_argument('--interleaved', metavar='INTERLEAVED.fastq', help="Interleaved paired-end FASTQ file.")
+    setup_fastq_validation_args(analyze_fastq) # Add FASTQ options only to the fastq parser
 
     # --- Command: validate ---
     parser_validate = subparsers.add_parser('validate', help="Validate input file(s) without running analysis.")
-    validation_subparsers = parser_validate.add_subparsers(dest='type', required=True, help="Input data type")
-    
-    validation_options_parser = argparse.ArgumentParser(add_help=False)
-    setup_validation_args(validation_options_parser)
+    validate_subparsers = parser_validate.add_subparsers(dest='type', required=True, help="Input data type")
 
-    validate_fasta = validation_subparsers.add_parser('fasta', help='Validate a single FASTA file.')
+    # validate fasta
+    validate_fasta = validate_subparsers.add_parser('fasta', help='Validate a single FASTA file.')
     validate_fasta.add_argument('input_file', help="Path to the input FASTA file.")
 
-    validate_fastq = validation_subparsers.add_parser('fastq', help='Validate FASTQ files.', parents=[validation_options_parser])
+    # validate fastq
+    validate_fastq = validate_subparsers.add_parser('fastq', help='Validate FASTQ files.')
     validate_mode = validate_fastq.add_mutually_exclusive_group(required=True)
     validate_mode.add_argument('--single', metavar='READS.fastq', help="Single-end FASTQ file.")
     validate_mode.add_argument('--paired', nargs=2, metavar=('R1.fastq', 'R2.fastq'), help="Paired-end FASTQ files (R1 and R2).")
     validate_mode.add_argument('--interleaved', metavar='INTERLEAVED.fastq', help="Interleaved paired-end FASTQ file.")
+    setup_fastq_validation_args(validate_fastq) # Add FASTQ options only to the fastq parser
     
     # --- Command: check ---
     parser_check = subparsers.add_parser('check', help="Check all dependencies and database status.")
@@ -97,6 +102,7 @@ def main():
             run_system_check()
             sys.exit(0)
 
+        # Determine file paths based on the command and type
         file_paths = []
         if args.type == 'fasta':
             file_paths = [args.input_file]
@@ -131,7 +137,6 @@ def main():
                 print("\n⚠️ Warning: Skipping file validation (--skip-validation flag used).")
 
             print(f"\n🚀 Starting {args.type.upper()} analysis on: {', '.join(file_paths)}")
-            # The call to run_analysis is now simplified.
             run_analysis(file_paths, args.type, args.output)
 
             print(f"\n🎉 Analysis complete! Results saved to '{args.output}'")

@@ -15,8 +15,13 @@ class FileValidator:
     def __init__(self):
         self.min_sequences = 100
         self.min_length = 50
-        self.max_length = 10000
         self.quality_threshold = 20
+        self.overrep_threshold = 0.1  # <-- NEW: Default threshold
+        self.common_adapters = [
+            "AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC",
+            "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT",
+            "CTGTCTCTTATACACATCT",
+        ]
         
     def validate_and_analyze(self, input_file, file_type):
         """Main validation and analysis function"""
@@ -43,17 +48,21 @@ class FileValidator:
         # Display statistics
         self._display_statistics(stats, file_type)
         
-        # Validate quality
-        is_valid = self._validate_quality(stats, file_type)
+        # --- MODIFIED STATUS LOGIC ---
+        has_errors, has_warnings = self._get_validation_status(stats, file_type)
         
         print(f"\n{'='*60}")
-        if is_valid:
-            print("✅ FILE VALIDATION: PASSED")
-        else:
+        if has_errors:
             print("❌ FILE VALIDATION: FAILED")
+            print("   Please address the critical issues noted in the 'VALIDATION CRITERIA' section.")
+        elif has_warnings:
+            print("⚠️ FILE VALIDATION: PASSED WITH WARNINGS")
+            print("   The file is technically valid, but please review the recommendations before proceeding with analysis.")
+        else: # No errors, no warnings
+            print("✅ FILE VALIDATION: PASSED")
         print(f"{'='*60}\n")
         
-        return is_valid, stats
+        return not has_errors, stats
     
     def _generate_statistics(self, input_file, file_type):
         """Generate comprehensive file statistics"""
@@ -72,90 +81,88 @@ class FileValidator:
             
         return stats
     
+    def _get_validation_status(self, stats, file_type):
+        """Checks for both critical errors and non-critical warnings."""
+        has_errors = False
+        has_warnings = False
+
+        # --- 1. Check for critical errors that should stop the analysis ---
+        if file_type == 'fastq':
+            if stats['total_sequences'] < self.min_sequences:
+                has_errors = True
+            if stats['mean_quality'] < self.quality_threshold:
+                has_errors = True
+        
+        # --- 2. Check for non-critical warnings ---
+        if stats.get('overrepresented_sequences'):
+            has_warnings = True
+        if stats.get('adapter_content_percent', 0) > 5.0: # Flag a warning for >5% adapter content
+            has_warnings = True
+
+        return has_errors, has_warnings
+    
     def _analyze_fastq(self, fastq_file):
-        """Detailed FASTQ analysis"""
+        """Detailed FASTQ analysis with a correct and efficient single-pass algorithm."""
         stats = {
-            'total_sequences': 0,
-            'total_bases': 0,
-            'min_length': float('inf'),
-            'max_length': 0,
-            'mean_length': 0,
-            'median_length': 0,
-            'n50_length': 0,
-            'gc_content': 0,
-            'mean_quality': 0,
-            'min_quality': float('inf'),
-            'max_quality': 0,
-            'q20_bases': 0,
-            'q30_bases': 0,
-            'ambiguous_bases': 0,
+            'total_sequences': 0, 'total_bases': 0, 'min_length': float('inf'),
+            'max_length': 0, 'mean_length': 0, 'median_length': 0,
+            'n50_length': 0, 'gc_content': 0, 'mean_quality': 0,
+            'min_quality': float('inf'), 'max_quality': 0, 'q20_bases': 0,
+            'q30_bases': 0, 'ambiguous_bases': 0,
+            'adapter_content_percent': 0, 'overrepresented_sequences': [],
             'quality_encoding': None,
-            'adapter_contamination': False
+            'top_5_sequences': [],
         }
         
-        # Open file (handle compression)
         handle = gzip.open(fastq_file, 'rt') if fastq_file.endswith('.gz') else open(fastq_file, 'r')
         
-        lengths = []
-        qualities = []
+        lengths, qualities = [], []
         gc_count = 0
-        total_quality = 0
+        sequence_counts = Counter()
+        adapter_hits = 0
         
         try:
-            # Process sequences with progress indicator
             print("  Processing: ", end='', flush=True)
+            # --- NEW SIMPLIFIED SINGLE-PASS LOOP ---
+            # This loop iterates through the entire file and performs all checks.
             for i, record in enumerate(SeqIO.parse(handle, 'fastq')):
-                if i % 10000 == 0:
+                if i > 0 and i % 20000 == 0:
                     print(".", end='', flush=True)
                 
+                stats['total_sequences'] += 1
                 seq_str = str(record.seq)
                 seq_len = len(seq_str)
                 
-                # Update basic stats
-                stats['total_sequences'] += 1
-                stats['total_bases'] += seq_len
+                # Full-file stats
                 lengths.append(seq_len)
-                
-                # Length stats
                 stats['min_length'] = min(stats['min_length'], seq_len)
                 stats['max_length'] = max(stats['max_length'], seq_len)
                 
-                # GC content
-                gc_count += seq_str.count('G') + seq_str.count('C')
-                
-                # Ambiguous bases
-                stats['ambiguous_bases'] += sum(1 for base in seq_str if base not in 'ATCG')
-                
-                # Quality scores
                 qual_scores = record.letter_annotations.get('phred_quality', [])
                 if qual_scores:
                     qualities.extend(qual_scores)
-                    mean_qual = np.mean(qual_scores)
-                    total_quality += mean_qual
-                    
-                    # Q20/Q30 bases
                     stats['q20_bases'] += sum(1 for q in qual_scores if q >= 20)
                     stats['q30_bases'] += sum(1 for q in qual_scores if q >= 30)
+
+                stats['total_bases'] += seq_len
+                gc_count += seq_str.count('G') + seq_str.count('C')
                 
-                # Simple adapter check (first 1000 sequences)
-                if i < 1000:
-                    common_adapters = ['AGATCGGAAGAG', 'CTGTCTCTTATA']
-                    for adapter in common_adapters:
-                        if adapter in seq_str:
-                            stats['adapter_contamination'] = True
-                            break
+                # Duplication and Adapter stats
+                sequence_counts[seq_str] += 1
+                for adapter in self.common_adapters:
+                    if adapter in seq_str:
+                        adapter_hits += 1
+                        break
             
             print(" Done!")
-        
         finally:
             handle.close()
-        
-        # Calculate derived statistics
+
+        # --- Calculate all derived statistics AFTER the loop ---
         if lengths:
             stats['mean_length'] = np.mean(lengths)
             stats['median_length'] = np.median(lengths)
             stats['n50_length'] = self._calculate_n50(lengths)
-        
         if stats['total_bases'] > 0:
             stats['gc_content'] = (gc_count / stats['total_bases']) * 100
         
@@ -163,13 +170,23 @@ class FileValidator:
             stats['mean_quality'] = np.mean(qualities)
             stats['min_quality'] = min(qualities)
             stats['max_quality'] = max(qualities)
-            
-            # Guess quality encoding
-            if min(qualities) < 59:
+            if min(qualities) < 59 and max(qualities) <= 74:
                 stats['quality_encoding'] = 'Sanger/Illumina 1.8+ (Phred+33)'
             else:
-                stats['quality_encoding'] = 'Illumina 1.3+ (Phred+64)'
-        
+                stats['quality_encoding'] = 'Illumina 1.3-1.5 (Phred+64)'
+
+        # Calculate duplication and adapter stats based on the TOTAL sequences
+        if stats['total_sequences'] > 0:
+            stats['adapter_content_percent'] = (adapter_hits / stats['total_sequences']) * 100
+            
+            for seq, count in sequence_counts.most_common(15):
+                percentage = (count / stats['total_sequences']) * 100
+                if len(stats['top_5_sequences']) < 5:
+                    stats['top_5_sequences'].append((seq, count, percentage))
+                
+                if percentage >= self.overrep_threshold:
+                    stats['overrepresented_sequences'].append((seq, count, percentage))
+
         return stats
     
     def _analyze_fasta(self, fasta_file):
@@ -282,21 +299,45 @@ class FileValidator:
         return stats
     
     def _display_statistics(self, stats, file_type):
-        """Display statistics in a beautiful shell format"""
-        # File Information
-        print("\n📁 FILE INFORMATION")
-        print("─" * 40)
-        print(f"  Size:        {stats['file_size_mb']:.2f} MB")
-        print(f"  MD5:         {stats['md5_checksum']}...")
-        print(f"  Compressed:  {'Yes (gzip)' if stats['is_compressed'] else 'No'}")
-        
-        if file_type == 'fastq':
-            self._display_fastq_stats(stats)
-        else:
-            self._display_fasta_stats(stats)
+            """Display statistics in a beautiful shell format"""
+            # File Information
+            print("\n📁 FILE INFORMATION")
+            print("─" * 40)
+            print(f"  Size:        {stats['file_size_mb']:.2f} MB")
+            print(f"  MD5:         {stats['md5_checksum']}...")
+            print(f"  Compressed:  {'Yes (gzip)' if stats['is_compressed'] else 'No'}")
+            
+            if file_type == 'fastq':
+                print("\n🔬 CONTAMINATION & DUPLICATION")
+                print("─" * 40)
+                print(f"  Adapter Content:    {stats['adapter_content_percent']:.2f}% of reads sampled")
+                
+                # Display the flagged sequences in a clean table
+                if stats['overrepresented_sequences']:
+                    print(f"\n  Flagged as Overrepresented (>{self.overrep_threshold:.2f}%) - Top 10:")
+                    print(f"  {'Sequence':<40} {'Percentage'}")
+                    print(f"  {'-'*40:<40} {'-'*10}")
+                    # Loop through the top 10 flagged sequences
+                    for seq, count, percentage in stats['overrepresented_sequences'][:10]:
+                        print(f"  {seq[:37]+'...':<40} {percentage:.4f}%")
+                else:
+                    print("\n  Overrepresented Seq:  None found above threshold.")
+                # --- END OF UPDATED SECTION ---
+
+                # RECOMMENDATIONS
+                if stats['adapter_content_percent'] > 5 or stats['overrepresented_sequences']:
+                    print("\n  RECOMMENDATIONS:")
+                    if stats['adapter_content_percent'] > 5:
+                        print("  - ⚠️ High adapter content detected. Pre-processing with a tool like 'fastp' or 'cutadapt' is strongly recommended.")
+                    if stats['overrepresented_sequences']:
+                        print("  - ℹ️ Overrepresented sequences found. This may indicate PCR duplication. Consider investigating or using a deduplication tool.")
+                
+                self._display_fastq_stats(stats)
+            else:
+                self._display_fasta_stats(stats)
     
     def _display_fastq_stats(self, stats):
-        """Display FASTQ-specific statistics"""
+        """Display FASTQ-specific statistics."""
         # Sequence Statistics
         print("\n🧬 SEQUENCE STATISTICS")
         print("─" * 40)
@@ -323,20 +364,22 @@ class FileValidator:
 
         warnings = []
 
-        if stats['min_quality'] == stats['max_quality']:
-            print(f"  Note: All bases have uniform quality ({stats['min_quality']})")
+        if stats.get('min_quality') == stats.get('max_quality'):
+            print(f"  Note: All bases have uniform quality ({stats.get('min_quality')})")
             
         if stats['mean_quality'] < 20:
             warnings.append(("Low mean quality", f"{stats['mean_quality']:.1f} < 20", "⚠️"))
         
-        if stats['ambiguous_bases'] > stats['total_bases'] * 0.01:
+        if stats.get('ambiguous_bases', 0) > stats.get('total_bases', 1) * 0.01:
             pct = (stats['ambiguous_bases']/stats['total_bases']*100)
             warnings.append(("High ambiguous bases", f"{pct:.2f}%", "⚠️"))
         
-        if stats['adapter_contamination']:
-            warnings.append(("Adapter contamination", "Detected", "⚠️"))
+        # --- THIS IS THE FIX ---
+        # Check against the new percentage metric instead of the old boolean key
+        if stats.get('adapter_content_percent', 0) > 1.0:
+            warnings.append((f"High Adapter Content ({stats['adapter_content_percent']:.2f}%)", "Detected", "⚠️"))
         
-        if (stats['q30_bases']/stats['total_bases']*100) < 80:
+        if (stats.get('q30_bases', 0) / stats.get('total_bases', 1) * 100) < 80:
             pct = (stats['q30_bases']/stats['total_bases']*100)
             warnings.append(("Low Q30 percentage", f"{pct:.1f}% < 80%", "⚠️"))
         

@@ -17,7 +17,6 @@ from collections import Counter
 from ..config import *
 
 class BaseVisualizer:
-    # ... (this class remains the same) ...
     def __init__(self, output_dir: Path):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -180,19 +179,14 @@ class PathogenVisualizer(BaseVisualizer):
         This function is designed to handle both FASTQ and FASTA+ML report formats.
         """
         try:
-            # This function's loading logic is correct and robust.
-            # We will copy it to the other function.
+            # ... (data loading logic is unchanged) ...
             if isinstance(pathogen_data, (str, Path)):
                 if not Path(pathogen_data).exists() or Path(pathogen_data).stat().st_size == 0:
                     print("⚠️ Pathogen data file is missing or empty. Skipping visualization.")
                     return None
                 with open(pathogen_data, 'r') as f:
                     data = json.load(f)
-            elif isinstance(pathogen_data, dict):
-                data = pathogen_data
-            else:
-                print("⚠️ Invalid pathogen data format for visualization.")
-                return None
+            # ... (rest of data loading is unchanged) ...
 
             # Unpack data, which may be nested inside a 'data' key
             if 'data' in data and isinstance(data['data'], dict):
@@ -213,7 +207,22 @@ class PathogenVisualizer(BaseVisualizer):
                 return None
 
             # Convert to DataFrame for visualization
-            df = pd.DataFrame.from_dict(detections, orient='index').reset_index().rename(columns={'index': 'organism'})
+            data_rows = []
+            for organism, details in detections.items():
+                # --- THIS IS THE FIX ---
+                # Intelligently get the identity score from either key
+                identity = details.get('sequence_identity', details.get('blast_identity', 0))
+                
+                data_rows.append({
+                    'organism': organism,
+                    'risk_level': details.get('risk_level', 'Unknown'),
+                    'abundance_percentage': details.get('abundance_percentage', 0),
+                    'sequence_identity': identity, # Use the corrected value
+                    'blast_hits': details.get('blast_hits', 0),
+                    'blast_evalue': details.get('blast_evalue', 1.0)
+                })
+
+            df = pd.DataFrame(data_rows)
             if df.empty:
                 print("⚠️ No pathogen data to visualize.")
                 return None

@@ -35,6 +35,17 @@ def run_bracken(report_path, output_dir, is_fasta=False):
         print("Skipping Bracken for FASTA input (using BLAST API for taxonomic analysis)")
         return report_path
     
+        # --- Robustness Check to wait for the Kraken report file ---
+    report_file = Path(report_path)
+    for i in range(5): # Try for up to 5 seconds
+        if report_file.exists() and report_file.stat().st_size > 0:
+            print(f"✓ Found Kraken2 report file: {report_file}")
+            break
+        print(f"  -> Waiting for Kraken2 report file to be written... (attempt {i+1}/5)")
+        time.sleep(1)
+    else: # This runs if the loop completes without a 'break'
+        raise FileNotFoundError(f"CRITICAL ERROR: Kraken2 report file '{report_file}' was not found after waiting. Cannot run Bracken.")
+
     # Original Bracken code for FASTQ files
     cmd = f"bracken -d {KRAKEN_DB} -i {report_path} -o {bracken_out} -w {output_dir}/bracken_report.txt -r 150 -l S -t 10"
     print(f"Running: {cmd}")
