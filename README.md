@@ -19,7 +19,7 @@ MetaQuest is an integrated bioinformatics pipeline that addresses the complex ch
 - **AMR Analysis**: 🔄 **IN DEVELOPMENT** - Antimicrobial resistance detection needs enhancement and clinical integration
 
 **Major Achievements (August 2025)**: 
-- ✅ **Advanced File Validation**: Comprehensive quality control with detailed statistics, format validation, and quality thresholds
+- ✅ **Advanced File Validation**: Comprehensive quality control with detailed statistics, format validation, quality thresholds, adapter contamination and overrepresented sequences.
 - ✅ **Machine Learning Pipeline**: Complete ML pathogen prediction system with feature extraction, model training, and inference
 - ✅ **Dual-Method Pathogen Detection**: FASTQ uses multi-source traditional screening, FASTA uses integrated BLAST+ML predictions
 - ✅ **Clinical Risk Assessment**: Comprehensive risk stratification with emergency protocols and clinical recommendations
@@ -32,11 +32,9 @@ MetaQuest is an integrated bioinformatics pipeline that addresses the complex ch
 - **File Validation System**: ✅ **COMPLETED** (v3.2.1) - *New major feature*
 - **Machine Learning Integration**: ✅ **COMPLETED** (v3.2.1) - *Major milestone achieved*
 - **Pathogen Detection & Risk Assessment**: ✅ **COMPLETED** (v3.2.0) - *Major milestone achieved*
-- **Taxonomic Classification**: ✅ **COMPLETED** (v3.1.2)
 - **Enhanced Virulence Factor Detection**: Target completion Q3 2025
 - **Integrating "scikit-bio" Package**: Target completion Q4 2025
 - **Comprehensive AMR Analysis**: Target completion Q4 2025
-- **Integrated Clinical Decision Support**: Target completion Q1 2026
 
 **Current Status**: Both FASTQ and FASTA inputs now provide comprehensive analysis with reliable taxonomic classification, advanced pathogen detection, and ML-powered predictions. The pipeline successfully identifies high-risk pathogens (e.g., Salmonella enterica, E. coli, Klebsiella pneumoniae) with proper clinical risk assessment and emergency protocol recommendations. Advanced file validation ensures data quality before analysis begins.
 
@@ -60,100 +58,81 @@ src/metaquest/
 │   ├── pathogen_predictor.py # ML pathogen prediction
 │   └── model_artifacts/      # Pre-trained models
 ├── reporting/                # Report generation
-│   └── reporting.py         # Comprehensive reporting
+│   |── reporting.py         # Comprehensive reporting
+|   ├── dashboard.py         # Comprehensive Dashboard
 └── visualization/            # Data visualization
-└── visualization.py     # Interactive dashboards
+    └── visualization.py     # Interactive dashboards
 
 
 ### Key Features
+**Advanced File Validation:**
 
-- **Advanced File Validation**: 
-  - **FASTQ Quality Control**: Quality score analysis, encoding detection, adapter contamination screening *(Fully operational)*
-  - **FASTA Format Validation**: Sequence type detection, composition analysis, duplicate ID checking *(Fully operational)*
-  - **Comprehensive Statistics**: MD5 checksums, N50/length metrics, GC content analysis *(Fully operational)*
+**FASTQ Quality Control:** Quality score analysis, overrepresented sequence detection, and adapter contamination screening (Fully operational)
 
-- **Machine Learning Integration**:
-  - **Feature Extraction**: Automated extraction of sequence features for ML models *(Fully operational)*
-  - **Pathogen Prediction**: Pre-trained models for pathogen classification *(Fully operational)*
-  - **Model Artifacts**: Complete set of trained models, scalers, and feature selectors *(Fully operational)*
+**FASTA Format Validation:** Sequence type detection, composition analysis, duplicate ID checking (Fully operational)
 
-- **Taxonomic Profiling**: Species-level identification and abundance estimation *(Fully supported for both FASTQ and FASTA)*
+**Comprehensive Statistics:** MD5 checksums, N50/length metrics, GC content analysis (Fully operational)
 
-- **Advanced Pathogen Screening**: 
-  - **FASTQ**: Multi-source traditional screening with Bracken integration *(Fully operational)*
-  - **FASTA**: Integrated BLAST taxonomy + ML pathogen predictions *(Fully operational)*
+#### Machine Learning Integration:
 
-- **Clinical Risk Assessment**: Comprehensive risk stratification with clinical recommendations *(Fully operational)*
+**Feature Extraction:** Automated extraction of sequence features for ML models (Fully operational)
 
-- **Antimicrobial Resistance (AMR) Analysis**: Basic resistance gene detection *(Under enhancement)*
+**Pathogen Prediction:** Pre-trained models for pathogen classification (Fully operational)
 
-- **Virulence Factor Assessment**: Basic pathogenicity determinant identification *(Under development)*
+**Model Artifacts:** Complete set of trained models, scalers, and feature selectors (Fully operational)
 
-- **Functional Annotation**: Gene prediction and functional characterization *(Fully supported for both formats)*
+**Taxonomic Profiling:** Species-level identification and abundance estimation with robust scikit-bio diversity metrics (Fully supported for both FASTQ and FASTA)
 
-- **Interactive Dashboards**: Analysis-specific HTML reports with dynamic visualizations *(Fully operational)*
+#### Advanced Pathogen Screening:
 
-- **Quality Assessment**: Statistical analysis and quality metrics *(Fully operational)*
+**FASTQ:** Multi-source traditional screening with Bracken integration (Fully operational)
 
-## Recent Updates
+**FASTA:** Integrated BLAST taxonomy + ML pathogen predictions (Fully operational)
 
-### Machine Learning Integration (v3.2.1) - August 2025
+**Clinical Risk Assessment:** Comprehensive risk stratification with clinical recommendations (Fully operational)
 
-#### ✅ **Complete ML Pipeline**
-- **Feature Extraction Module**: Automated extraction of sequence-based features for pathogen prediction
-- **Pathogen Prediction Engine**: Pre-trained machine learning models for accurate pathogen classification
-- **Model Artifacts**: Complete set of trained models including:
-  - `best_model.pkl`: Primary classification model
-  - `scaler.pkl`: Feature scaling transformation
-  - `feature_selector.pkl`: Feature selection model
-  - `feature_names.pkl`: Selected feature names
-  - `all_feature_names.pkl`: Complete feature vocabulary
+**Antimicrobial Resistance (AMR) Analysis:** Basic resistance gene detection (In Development)
 
-#### ✅ **Enhanced Analysis Workflows**
-- **FASTA ML Integration**: Seamless integration of ML predictions with BLAST-based taxonomy
-- **Feature Engineering**: Advanced sequence feature extraction including composition, k-mer, and structural features
-- **Model Inference**: Real-time pathogen prediction during analysis pipeline
-- **Confidence Scoring**: Prediction confidence scores for clinical decision support
+**Virulence Factor Assessment:** Basic virulence factor identification (In Development)
 
-### Advanced File Validation System (v3.2.1) - August 2025
+**Functional Annotation:** Gene prediction and functional characterization (Fully supported for both formats)
 
-#### ✅ **Comprehensive Quality Control**
-- **Pre-Analysis Validation**: Thorough file format and quality checking before analysis begins
-- **FASTQ Analysis**: Quality encoding detection, Q20/Q30 statistics, adapter contamination screening, sequence length distribution
-- **FASTA Analysis**: Sequence type detection (protein/nucleotide), composition analysis, duplicate ID detection, GC content variance
-- **Statistical Reporting**: N50 calculations, coefficient of variation, MD5 checksums, file size analysis
+**Interactive Dashboards:** Sleek, professional, and analysis-specific HTML reports with dynamic visualizations (Fully operational)
 
-#### ✅ **Intelligent Quality Thresholds**
-- **Customizable Criteria**: User-defined minimum quality scores and sequence counts
-- **Analysis-Specific Validation**: Different validation rules for FASTQ vs FASTA inputs
-- **Quality Warnings**: Clear identification of potential issues with actionable recommendations
-- **Validation-Only Mode**: Standalone file analysis without running full pipeline
+**Quality Assessment:** Statistical analysis and quality metrics (Fully operational)
 
-#### ✅ **Enhanced User Experience**
-- **Beautiful Terminal Output**: Color-coded statistics with progress indicators and clear pass/fail status
-- **Detailed Diagnostics**: Comprehensive file statistics including sequence diversity, quality metrics, and composition analysis
-- **Skip Validation Option**: Advanced users can bypass validation when needed
-- **Integration with CLI**: Seamless validation integrated into main analysis workflow
+### Recent Updates
 
-### Major Pathogen Analysis Completion (v3.2.0) - July 2025
+#### CLI Revamp & Reporting Polish (v3.2.2) - August 2025
+##### ✅ Professional Command-Line Interface
+**New Subcommand Structure:** The CLI is now organized into clear, intuitive commands: analyze, validate, and check.
 
-#### ✅ **Comprehensive Pathogen Detection System**
-- **Dual-Method Architecture**: Separate optimized workflows for FASTQ and FASTA inputs
-- **FASTQ Pathogen Analysis**: Multi-source traditional screening using Bracken taxonomy, custom databases, AMR/VF scanning
-- **FASTA Pathogen Analysis**: Integrated BLAST taxonomy + Machine Learning predictions with separated reporting sections
-- **Clinical Risk Assessment**: Emergency protocol recommendations for CRITICAL/HIGH risk samples
+**Streamlined Arguments:** Input for FASTQ is handled with explicit flags (--single, --paired, --interleaved) for clarity.
 
-#### ✅ **Enhanced Reporting & Visualization**
-- **Streamlined Reports**: Single definitive pathogen report per analysis type (pathogen_summary.txt for FASTQ, blast_ml_pathogen_summary.txt for FASTA)
-- **Analysis-Specific Dashboards**: Green-themed FASTQ dashboard vs. Blue-themed FASTA dashboard with optimized layouts
-- **Fixed Visualizations**: Proper pathogen risk detection charts and method coverage analysis
-- **Redundancy Elimination**: Removed all duplicate and overlapping report files
+**Convenience Features:** Added short-form arguments (-o, -s, etc.) and a professional header for all commands.
 
-#### ✅ **Production-Ready Pipeline**
-- **Error-Free Execution**: Resolved all analysis failures and missing method issues
-- **Proper File Detection**: Fixed dashboard generation with correct analysis type identification
-- **Clean Output Structure**: Users receive exactly the reports they need without confusion
-- **Validated Results**: Successfully detects dangerous pathogens with proper CRITICAL risk classification
+##### ✅ Advanced Reporting & Insights
+**scikit-bio Integration:** Upgraded alpha diversity reporting to include robust metrics like Shannon, Simpson, and Chao1 for more rigorous ecological analysis.
+
+**Sequence Hit Summaries:** Added a new, dedicated reporter that transforms raw DIAMOND output (e.g., from AMR or pathogen screens) into human-readable summary tables and insights.
+
+**Sleek Dashboards:** Completely redesigned the HTML dashboard with a modern, professional, and animated interface with distinct themes for FASTQ and FASTA results.
+
+#### Machine Learning Integration (v3.2.1) - August 2025
+##### ✅ Complete ML Pipeline
+**Feature Extraction Module:** Automated extraction of sequence-based features for pathogen prediction.
+
+**Pathogen Prediction Engine:** Pre-trained machine learning models for accurate pathogen classification.
+
+**Model Artifacts:** Complete set of trained models including best_model.pkl, scaler.pkl, feature_selector.pkl, and feature name files.
+
+#### Advanced File Validation System (v3.2.1) - August 2025
+##### ✅ Comprehensive Quality Control
+**Pre-Analysis Validation:** Thorough file format and quality checking before analysis begins.
+
+**Contamination & Duplication Checks:** Added robust detection for adapter contamination and overrepresented sequences, with actionable recommendations.
+
+**Intelligent Quality Thresholds:** Implemented customizable criteria for all key validation metrics via CLI flags.
 
 ## Installation
 
