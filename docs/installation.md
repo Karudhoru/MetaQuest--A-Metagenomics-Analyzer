@@ -151,6 +151,8 @@ chmod +x scripts/setup_databases.sh
 
 # Run database setup (this may take 60-120 minutes depending on connection)
 ./scripts/setup_databases.sh
+
+python .scripts/custom_pathogen_db.py
 ```
 
 ### What gets downloaded:
@@ -162,17 +164,9 @@ chmod +x scripts/setup_databases.sh
 - **Custom Pathogen Database**: Built from CARD and pathogen-specific sequences
 - **ML Model Files** (~1GB): Pre-trained pathogen prediction models
 - **SwissProt Database** (~2GB): For functional protein annotation
+- **Custom Pathogen Database** (~1GBG): For Pathogen detection
 
 ### Enhanced Database Setup Features
-
-#### Automatic Database Validation
-```bash
-# The setup script now includes validation
-./scripts/setup_databases.sh --validate
-
-# Check database integrity
-./scripts/check_databases.sh
-```
 
 #### Selective Database Installation
 ```bash
@@ -501,4 +495,5 @@ If you encounter issues during installation:
 For additional help:
 - **GitHub Issues**: Report bugs and installation problems
 - **Documentation**: Check the usage guide for detailed examples
+
 - **Community**: Join discussions for installation tips and troubleshooting
