@@ -37,22 +37,15 @@ logger = logging.getLogger(__name__)
 
 class PathogenPredictor:
     """
-    Production pathogen predictor with trained voting ensemble model
-    Designed for MetaQuest analysis pipeline integration
+    Production pathogen predictor with robust feature alignment.
     """
-    
     def __init__(self):
-        """Initialize predictor with trained model artifacts"""
         self.model_dir = Path(MODEL_ARTIFACTS_DIR)
         self.scaler = None
         self.model = None
         self.feature_selector = None
-        
-        # NEW: Add feature name tracking
-        self.selected_feature_names = None  # Features after selection
-        self.all_feature_names = None       # All features before selection
-        
-        # Initialize MetaQuest feature extractor
+        self.training_columns = None # This is the correct attribute for storing feature names
+
         print("🔧 Initializing MetaQuest Feature Extractor...")
         self.feature_extractor = MetaQuestProteinFeatureExtractor()
         self.feature_extractor.fit()
@@ -62,71 +55,31 @@ class PathogenPredictor:
         self._load_model_artifacts()
     
     def _load_model_artifacts(self):
-        """Load trained model artifacts (scaler, model, feature_selector, feature_names)"""
+        """Load trained model artifacts."""
         try:
             print("📊 Loading trained model artifacts...")
+            self.scaler = joblib.load(self.model_dir / "scaler.pkl")
+            model_data = joblib.load(self.model_dir / "best_model.pkl")
+            self.model = model_data['model']
+            self.feature_selector = joblib.load(self.model_dir / "feature_selector.pkl")
+            self.training_columns = joblib.load(self.model_dir / "all_feature_names.pkl")
             
-            # Load scaler
-            scaler_path = self.model_dir / "scaler.pkl"
-            if scaler_path.exists():
-                self.scaler = joblib.load(scaler_path)
-                print("✅ Loaded scaler successfully")
-            else:
-                raise FileNotFoundError(f"Scaler not found at: {scaler_path}")
-            
-            # Load voting ensemble model
-            model_path = self.model_dir / "best_model.pkl"
-            if model_path.exists():
-                model_data = joblib.load(model_path)
-                # Handle both old format (direct model) and new format (dict with metadata)
-                if isinstance(model_data, dict):
-                    self.model = model_data['model']
-                    print(f"✅ Loaded model: {model_data.get('model_type', 'Unknown')}")
-                    print(f"   Training date: {model_data.get('training_date', 'Unknown')}")
-                    print(f"   Feature count: {model_data.get('feature_count', 'Unknown')}")
-                else:
-                    self.model = model_data
-                    print(f"✅ Loaded model: {type(self.model).__name__}")
-            else:
-                raise FileNotFoundError(f"Model not found at: {model_path}")
-            
-            # Load feature selector
-            selector_path = self.model_dir / "feature_selector.pkl"
-            if selector_path.exists():
-                self.feature_selector = joblib.load(selector_path)
-                print("✅ Loaded feature selector successfully")
-            else:
-                raise FileNotFoundError(f"Feature selector not found at: {selector_path}")
-            
-            # 🔧 NEW: Load feature name lists (CRITICAL FOR FIXING FEATURE MISMATCH)
-            feature_names_path = self.model_dir / "feature_names.pkl"
-            all_feature_names_path = self.model_dir / "all_feature_names.pkl"
-            
-            if feature_names_path.exists() and all_feature_names_path.exists():
-                self.selected_feature_names = joblib.load(feature_names_path)
-                self.all_feature_names = joblib.load(all_feature_names_path)
-                print(f"✅ Loaded feature name lists:")
-                print(f"   Selected features: {len(self.selected_feature_names)}")
-                print(f"   All features: {len(self.all_feature_names)}")
-            else:
-                print("⚠️ Feature name files not found - using feature extractor defaults")
-                print(f"   Looking for: {feature_names_path}")
-                print(f"   Looking for: {all_feature_names_path}")
-                self.selected_feature_names = None
-                self.all_feature_names = None
-            
+            print(f"✅ Loaded scaler, model, and selector.")
+            print(f"✅ Loaded training feature order ({len(self.training_columns)} features).")
             print("🎯 Complete ML pipeline loaded successfully!")
             
         except Exception as e:
             logger.error(f"❌ Error loading model artifacts from {self.model_dir}: {e}")
             raise RuntimeError(f"Failed to load required ML artifacts: {e}")
     
+    
     def check_capabilities(self) -> Dict[str, bool]:
-        """Check and return current system capabilities"""
+        """Check and return current system capabilities."""
+        # The check now correctly verifies the 'training_columns' attribute.
         capabilities = {
             'feature_extractor_available': True,
             'ml_pipeline_complete': all([self.scaler, self.model, self.feature_selector]),
-            'feature_names_available': all([self.selected_feature_names, self.all_feature_names]),
+            'feature_names_available': self.training_columns is not None,
             'voting_ensemble_loaded': 'voting' in str(type(self.model)).lower(),
             'model_type': type(self.model).__name__ if self.model else 'None'
         }
@@ -269,87 +222,29 @@ class PathogenPredictor:
     
     def _make_ml_prediction(self, features: Dict, seq_id: str, seq_type: str) -> Optional[Dict]:
         try:
-            # Prepare features for ML model
             feature_df = pd.DataFrame([features])
             
-            # Remove non-feature columns
-            non_feature_cols = [
-                'sequence_id', 'extraction_method', 'timestamp',
-                'feature_count', 'batch_number', 'sequence_length'
-            ]
-            feature_df = feature_df.drop(
-                columns=[col for col in non_feature_cols if col in feature_df.columns],
-                errors='ignore'
-            )
-            
-            print(f"🔧 Feature count check for {seq_id}")
-            print(f"📊 Current extractor produces: {len(feature_df.columns)} features")
-            
-            # 🔧 CRITICAL FIX: Use exactly the features that the selector expects
-            if self.all_feature_names is not None:
-                expected_features = self.all_feature_names
-                print(f"📚 Selector expects: {len(expected_features)} features")
-                
-                # If there's a mismatch, we need to align to the selector's expectations
-                if len(expected_features) != len(feature_df.columns):
-                    print(f"⚠️ Feature count mismatch detected!")
-                    print(f"   Selector expects: {len(expected_features)}")
-                    print(f"   Current extractor: {len(feature_df.columns)}")
-                    
-                    # Use only the features that were present during training
-                    aligned_features = pd.DataFrame(index=feature_df.index)
-                    for expected_feature in expected_features:
-                        if expected_feature in feature_df.columns:
-                            aligned_features[expected_feature] = feature_df[expected_feature]
-                        else:
-                            aligned_features[expected_feature] = 0.0  # Default for missing features
-                            print(f"   🔧 Adding missing feature: {expected_feature}")
-                    
-                    print(f"✅ Features aligned: {aligned_features.shape[1]} features")
-                else:
-                    # Reorder to match training order
-                    aligned_features = feature_df[expected_features]
-            else:
-                print("⚠️ No saved feature names - using current extractor output")
-                aligned_features = feature_df
-            
-            # Convert to numpy arrays to bypass any remaining sklearn validation
+            # --- THIS BLOCK REPLACES THE OLD, COMPLEX "PATCH" ---
+            if self.training_columns is None:
+                raise RuntimeError("Training column order not loaded. Cannot proceed with prediction.")
+
+            # Reindex the new data to match the training data's column order exactly.
+            # - Missing columns will be added and filled with 0.
+            # - Extra columns not in the training data will be dropped.
+            aligned_features = feature_df.reindex(columns=self.training_columns, fill_value=0.0)
+            # --- END OF FIX ---
+
+            # Convert to numpy array for the model
             features_numpy = aligned_features.values.astype(np.float64)
             
-            
-            # Verify feature count matches selector expectation
-            if features_numpy.shape[1] != 90:  # Your selector expects 90
-                print(f"❌ Feature count still mismatched: {features_numpy.shape[1]} != 90")
-                # Emergency fix: truncate or pad to exactly 90 features
-                if features_numpy.shape[1] > 90:
-                    print("🔧 Truncating to 90 features")
-                    features_numpy = features_numpy[:, :90]
-                else:
-                    print("🔧 Padding to 90 features")
-                    padding = np.zeros((features_numpy.shape[0], 90 - features_numpy.shape[1]))
-                    features_numpy = np.concatenate([features_numpy, padding], axis=1)
-            
-            print(f"📊 Features shape before selector: {features_numpy.shape}")
-            
-            # Apply feature selection
+            # Apply feature selection and scaling (as before)
             features_selected = self.feature_selector.transform(features_numpy)
-            
-            # Scale features
             features_scaled = self.scaler.transform(features_selected)
-            print(f"📊 Features shape after scaling: {features_scaled.shape}")
             
-            # Make prediction
+            # Make prediction (as before)
             prediction = self.model.predict(features_scaled)[0]
-            print(f"🎯 Prediction made successfully: {prediction}")
-            
-            # Get probabilities
-            if hasattr(self.model, 'predict_proba'):
-                probabilities = self.model.predict_proba(features_scaled)[0]
-                confidence = float(max(probabilities))
-                pathogenic_prob = float(probabilities[1]) if len(probabilities) > 1 else float(probabilities[0])
-            else:
-                confidence = 0.85
-                pathogenic_prob = float(prediction)
+            probabilities = self.model.predict_proba(features_scaled)[0]
+            confidence = float(max(probabilities))
             
             # Apply confidence threshold
             confidence_threshold = self.ml_config.get('confidence_threshold', 0.7)
@@ -360,7 +255,7 @@ class PathogenPredictor:
                 'sequence_type': seq_type,
                 'prediction': 'Pathogenic' if prediction == 1 else 'Non-pathogenic',
                 'confidence': confidence,
-                'pathogenic_probability': pathogenic_prob,
+                'pathogenic_probability': confidence,
                 'high_confidence': is_high_confidence,
                 'confidence_threshold': confidence_threshold,
                 'sequence_length': features.get('sequence_length', 0),
@@ -383,34 +278,21 @@ class PathogenPredictor:
 
 
     def save_results(self, results: List[Dict], output_file: Path, format_type: str = "csv"):
-        """Save prediction results with comprehensive metadata"""
+        """Save prediction results with comprehensive metadata."""
         if not results:
-            logger.warning("⚠️ No results to save")
             return
         
         try:
             if format_type.lower() == "json":
-                # Add comprehensive metadata to JSON
-                capabilities = self.check_capabilities()
+                # --- FIX #1: Use the correct attribute name here ---
                 output_data = {
                     'metadata': {
                         'total_predictions': len(results),
-                        'pathogenic_count': len([r for r in results if r['prediction'] == 'Pathogenic']),
-                        'high_confidence_count': len([r for r in results if r.get('high_confidence', False)]),
-                        'voting_ensemble_used': capabilities['voting_ensemble_loaded'],
-                        'model_type': capabilities['model_type'],
-                        'feature_names_available': capabilities['feature_names_available'],
-                        'ml_config': self.ml_config,
-                        'model_artifacts_dir': str(self.model_dir),
-                        'pathogen_colors': PATHOGEN_COLORS,
-                        'system_capabilities': capabilities,
+                        'feature_alignment_method': 'saved_feature_names' if self.training_columns is not None else 'extractor_defaults',
                         'generation_timestamp': datetime.now().isoformat(),
-                        'methods_used': list(set(r.get('method', 'Unknown') for r in results)),
-                        'feature_alignment_method': 'saved_feature_names' if self.all_feature_names else 'extractor_defaults'
                     },
                     'predictions': results
                 }
-                
                 with open(output_file, 'w') as f:
                     json.dump(output_data, f, indent=2)
             else:
@@ -422,9 +304,9 @@ class PathogenPredictor:
         except Exception as e:
             logger.error(f"❌ Error saving results: {e}")
             raise
-    
+
     def get_prediction_summary(self, results: List[Dict]) -> Dict:
-        """Generate comprehensive prediction summary"""
+        """Generate comprehensive prediction summary."""
         if not results:
             return {}
         
@@ -434,7 +316,7 @@ class PathogenPredictor:
         # Calculate statistics
         confidence_scores = [r['confidence'] for r in results if 'confidence' in r]
         pathogenic_scores = [r.get('pathogenic_probability', 0) for r in pathogenic_sequences]
-        
+
         summary = {
             'total_sequences_analyzed': len(results),
             'pathogenic_predictions': len(pathogenic_sequences),
@@ -452,7 +334,7 @@ class PathogenPredictor:
             'ml_config_used': self.ml_config,
             'model_artifacts_dir': str(self.model_dir),
             'voting_ensemble_used': 'voting' in str(type(self.model)).lower(),
-            'feature_alignment_used': 'saved_feature_names' if self.all_feature_names else 'extractor_defaults',
+            'feature_alignment_used': 'saved_feature_names' if self.training_columns is not None else 'extractor_defaults',  # FIX #2: Use correct attribute
             'system_capabilities': self.check_capabilities(),
             'pathogen_colors': PATHOGEN_COLORS,
             'top_pathogenic_sequences': sorted(pathogenic_sequences, key=lambda x: x['confidence'], reverse=True)[:10],
@@ -512,8 +394,6 @@ def run_ml_pathogen_prediction(prokka_dir, output_dir, batch_size=None):
             print(f" 📊 {summary['pathogenic_predictions']}/{summary['total_sequences_analyzed']} sequences predicted as pathogenic ({summary['pathogenic_percentage']:.1f}%)")
             print(f" ⭐ {summary['high_confidence_predictions']} high-confidence predictions")
             print(f" 🤖 Model: {summary['model_type']}")
-            print(f" 🎲 Voting ensemble: {'✅ Used' if summary['voting_ensemble_used'] else '❌ Not used'}")
-            print(f" 🔧 Feature alignment: {summary['feature_alignment_used']}")
             
             return results, summary
         else:
@@ -523,4 +403,3 @@ def run_ml_pathogen_prediction(prokka_dir, output_dir, batch_size=None):
     except Exception as e:
         print(f"❌ MetaQuest pathogen prediction failed: {e}")
         raise
-

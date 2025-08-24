@@ -12,6 +12,7 @@ import numpy as np
 import pickle
 import joblib
 import os
+from collections import Counter
 import json
 from pathlib import Path
 from tqdm import tqdm
@@ -34,8 +35,9 @@ class MetaQuestProteinFeatureExtractor(BaseEstimator, TransformerMixin):
     Environment-agnostic pathogen detection
     """
     
-    def __init__(self):
+    def __init__(self, k_values=[2,3]):
         self.is_fitted = False
+        self.k_values = k_values
         # Store precomputed lookup tables and patterns
         self.pathogen_motifs = {}
         self.virulence_patterns = {}
@@ -189,6 +191,27 @@ class MetaQuestProteinFeatureExtractor(BaseEstimator, TransformerMixin):
             }
         }
     
+    def _kmer_features(self, sequence: str) -> dict:
+        """
+        Calculate k-mer (dipeptide, tripeptide, etc.) frequencies.
+        """
+        features = {}
+        seq_len = len(sequence)
+        
+        for k in self.k_values:
+            if seq_len < k: continue
+            
+            kmers = Counter()
+            for i in range(seq_len - k + 1):
+                kmer = sequence[i:i+k]
+                kmers[kmer] += 1
+            
+            total_kmers = sum(kmers.values())
+            for kmer, count in kmers.items():
+                features[f'kmer_{kmer}'] = count / total_kmers
+                
+        return features
+    
     def _build_virulence_pattern_library(self):
         """Build virulence factor pattern library"""
         self.virulence_patterns = {
@@ -262,6 +285,9 @@ class MetaQuestProteinFeatureExtractor(BaseEstimator, TransformerMixin):
             
             # 6. Advanced Pathogen-Specific Features
             features.update(self._advanced_pathogen_signatures(cleaned_sequence))
+
+            # 7. K-mer Frequency Features
+            features.update(self._kmer_features(cleaned_sequence))
             
             return features
             
