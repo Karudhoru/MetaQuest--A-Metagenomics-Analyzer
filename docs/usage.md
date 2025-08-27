@@ -363,19 +363,17 @@ metaquest check
 ```
 🧬 MetaQuest v3.3.0 | A Comprehensive Metagenomics Analysis Pipeline
 
-🔧 System Check
+Performing system-wide checks...
+  -> Checking command-line tools...
+  -> Checking Python packages...
+  -> Checking ML model artifacts...
+  -> Checking database files...
 
-✅ Checking Python environment...
-✅ Checking required packages...
-✅ Checking external tools...
-   • Kraken2: Found
-   • Bracken: Found  
-   • BLAST+: Found
-   • Prokka: Found
-✅ Checking databases...
-   • Kraken2 database: Available
-   • BLAST database: Available
-✅ All dependencies satisfied!
+==================================================
+          SYSTEM CHECK COMPLETE
+==================================================
+
+✅  Success! All dependencies and databases are correctly configured.
 ```
 
 ---
@@ -758,5 +756,6 @@ metaquest compare --help
 - **Documentation**: Check README.md for overview
 
 ---
+
 
 *For technical support and updates, visit the MetaQuest GitHub repository.*
