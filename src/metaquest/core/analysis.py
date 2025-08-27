@@ -100,9 +100,13 @@ def analyze_fastq(reads, output_dir: Path, args):
     
     try:
         # Handle interleaved files
-        if len(reads) == 1 and reads[0].endswith(('.fq', '.fastq')):
+        if hasattr(args, 'interleaved') and args.interleaved:
             print("Splitting interleaved FASTQ...")
             reads = split_interleaved(reads[0], output_dir)
+        elif hasattr(args, 'single') and args.single:
+            print("Processing single-end FASTQ...")
+            # Ensure reads is a list for consistency
+            reads = [reads] if isinstance(reads, str) else reads
         
         # --- 1. Taxonomic classification (Always runs) ---
         print("\n--- Running Taxonomic Analysis ---")
@@ -358,7 +362,7 @@ def analyze_fasta(fasta_path: Path, output_dir: Path, args):
         print("\n--skip-annotation flag detected. Skipping functional and ML pathogen analysis.")
         print("  -> Only BLAST taxonomic classification will be performed for faster analysis.")
     
-    # --- 3. Generate visualizations (Always runs) ---
+    # --- 3. Generate visualizations ---
     print("\n--- Generating Visualizations ---")
     if blast_results_data:
         create_taxonomic_visualizations(output_dir, blast_results_data)
