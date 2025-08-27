@@ -358,24 +358,6 @@ metaquest check
 ```bash
 metaquest check
 ```
-
-**Sample Output:**
-```
-🧬 MetaQuest v3.3.0 | A Comprehensive Metagenomics Analysis Pipeline
-
-Performing system-wide checks...
-  -> Checking command-line tools...
-  -> Checking Python packages...
-  -> Checking ML model artifacts...
-  -> Checking database files...
-
-==================================================
-          SYSTEM CHECK COMPLETE
-==================================================
-
-✅  Success! All dependencies and databases are correctly configured.
-```
-
 ---
 
 ## 📁 Output Structure
@@ -759,3 +741,4 @@ metaquest compare --help
 
 
 *For technical support and updates, visit the MetaQuest GitHub repository.*
+
