@@ -1,230 +1,309 @@
 # MetaQuest
 
-> **A comprehensive metagenomics analysis pipeline for taxonomic classification, pathogen detection, and functional annotation of microbial communities.**
+**A Comprehensive Metagenomics Analysis Pipeline**
 
 ---
 
-## 📋 Table of Contents
-
-- [Overview](#overview)
-- [Development Status](#development-status)
-- [Architecture & Features](#architecture--features)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Output Structure](#output-structure)
-- [Contributing](#contributing)
-- [Support & Contact](#support--contact)
-
----
-
-## 🔬 Overview
+## Overview
 
 MetaQuest is an integrated bioinformatics pipeline that addresses the complex challenges of metagenomic data analysis. By combining state-of-the-art tools and databases, MetaQuest provides researchers with a streamlined workflow for understanding microbial community composition, identifying potential pathogens, and assessing antimicrobial resistance profiles from sequencing data.
 
+**Key Capabilities:**
+- Taxonomic classification and pathogen detection
+- Machine learning-enhanced pathogen prediction
+- Comparative analysis across multiple samples
+- Comprehensive file validation and quality control
+- Interactive visualizations and reporting
+
 ---
 
-## ⚠️ Development Status
+## Table of Contents
 
-**MetaQuest is currently under active development** with core functionality operational and major improvements completed across all processing capabilities.
+- [Development Status](#development-status)
+- [Features](#features)
+- [System Architecture](#system-architecture)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [Support](#support)
 
-### ✅ Completed Components
+---
+
+## Development Status
+
+**Current Version:** 3.3.0 (August 2025)
+
+MetaQuest is under active development with core functionality operational and major improvements completed across all processing capabilities.
+
+### Completed Features
 
 | Component | Status | Description |
 |-----------|---------|-------------|
-| **File Validation & Quality Control** | ✅ Complete | Comprehensive validation with detailed statistics for both FASTQ and FASTA inputs |
-| **Taxonomic Classification** | ✅ Complete | Both FASTQ and FASTA taxonomic profiling are accurate and fully functional |
-| **Pathogenicity Assessment** | ✅ Complete | Comprehensive pathogen detection workflows with clinical risk assessment |
-| **Machine Learning Integration** | ✅ Complete | Advanced ML-based pathogen prediction with feature extraction and model artifacts |
+| **File Validation & Quality Control** | Complete | Comprehensive validation with detailed statistics for both FASTQ and FASTA inputs |
+| **Taxonomic Classification** | Complete | Both FASTQ and FASTA taxonomic profiling are accurate and fully functional |
+| **Pathogen Detection** | Complete | Comprehensive pathogen detection workflows with clinical risk assessment |
+| **Machine Learning Integration** | Complete | Advanced ML-based pathogen prediction with feature extraction and model artifacts |
+| **Comparative Analysis** | Complete | Statistical comparison across multiple samples with differential abundance testing and visualization |
 
-### 🔄 In Development
+### In Development
 
 | Component | Status | Target Completion |
 |-----------|---------|-------------------|
-| **Virulence Factor Analysis** | 🔄 In Progress | Q3 2025 |
-| **AMR Analysis** | 🔄 In Progress | Q4 2025 |
-| **scikit-bio Integration** | 🔄 Planned | Q4 2025 |
+| **Virulence Factor Analysis** | In Progress | Q3 2025 |
+| **AMR Analysis** | In Progress | Q4 2025 |
 
-### 🎉 Major Achievements (August 2025)
+### Recent Releases
 
-- ✅ **Advanced File Validation**: Comprehensive quality control with contamination detection
-- ✅ **Machine Learning Pipeline**: Complete ML pathogen prediction system
-- ✅ **Dual-Method Pathogen Detection**: Optimized workflows for FASTQ and FASTA inputs
-- ✅ **Clinical Risk Assessment**: Comprehensive risk stratification with emergency protocols
-- ✅ **Analysis-Specific Dashboards**: Separate optimized interfaces with themed visualizations
-- ✅ **Modular Architecture**: Clean separation of concerns with dedicated modules
-- ✅ **Enhanced Visualization**: Interactive dashboards with comprehensive analysis reports
-
-### 📈 Recent Version History
-
-| Version | Release | Key Features |
-|---------|---------|-------------|
+| Version | Date | Key Features |
+|---------|------|-------------|
+| **v3.3.0** | Aug 2025 | Comparative analysis pipeline, statistical testing, beta diversity visualization, alpha diversity visualization |
 | **v3.2.2** | Aug 2025 | Professional CLI revamp, advanced reporting with scikit-bio integration |
-| **v3.2.1** | Aug 2025 | Complete ML pipeline, advanced file validation system |
-| **v3.2.0** | Aug 2025 | Pathogen detection & clinical risk assessment |
+| **v3.2.1** | Jul 2025 | Complete ML pipeline, advanced file validation system |
+| **v3.2.0** | Jun 2025 | Pathogen detection & clinical risk assessment |
 
 ---
 
-## 🏗️ Architecture & Features
+## Features
 
-### System Architecture
+### Core Analysis Capabilities
+
+**Advanced File Validation**
+- FASTQ quality control with quality score analysis and contamination detection
+- FASTA format validation with sequence type detection and composition analysis
+- Comprehensive statistics including MD5 checksums and N50 metrics
+
+**Machine Learning Integration**
+- Automated feature extraction for ML models
+- Pre-trained pathogen classification models
+- Complete model artifacts with scalers and feature selectors
+
+**Pathogen Screening**
+- FASTQ processing with multi-source screening and Bracken integration
+- FASTA processing with integrated BLAST taxonomy and ML predictions
+- Clinical risk assessment with comprehensive risk stratification
+
+**Analysis & Reporting**
+- Species-level taxonomic profiling with diversity metrics
+- Interactive HTML dashboards with dynamic visualizations
+- Statistical analysis and quality assessment
+- Functional annotation with gene prediction
+- Multi-sample comparative analysis with differential abundance testing
+
+### Analysis Workflows
+
+**FASTQ Analysis (Clinical Focus)**
+- Rapid Kraken2/Bracken classification
+- Pathogen screening with clinical recommendations
+- Quality control and contamination detection
+
+**FASTA Analysis (Research Focus)**
+- High-accuracy BLAST classification
+- Machine learning pathogen prediction
+- Comprehensive taxonomic profiling
+
+**Comparative Analysis**
+- Statistical comparison across sample groups
+- Beta diversity analysis with PCoA visualization
+- Differential abundance testing with multiple correction
+- Interactive heatmaps and volcano plots
+
+---
+
+## System Architecture
 
 ```
 src/metaquest/
-├── cli.py                    # Command-line interface
-├── config.py                 # Configuration management
-├── core/                     # Core analysis modules
-│   ├── analysis.py          # Main analysis orchestration
-│   ├── taxonomic_analysis.py # Taxonomic classification
-│   ├── pathogen_analysis.py  # Pathogen detection
-│   └── functional_analysis.py # Functional annotation
-├── io/                       # Input/Output handling
-│   ├── file_validator.py     # File validation & QC
-│   └── utils.py             # I/O utilities
-├── ml/                       # Machine Learning components
-│   ├── feature_extractor.py  # Feature extraction for ML
-│   ├── pathogen_predictor.py # ML pathogen prediction
-│   └── model_artifacts/      # Pre-trained models
-├── reporting/                # Report generation
-│   ├── reporting.py         # Comprehensive reporting
-│   └── dashboard.py         # Interactive dashboards
-└── visualization/            # Data visualization
-    └── visualization.py     # Interactive visualizations
+├── cli.py                          # Command-line interface
+├── config.py                       # Configuration management
+├── core/                           # Core analysis modules
+│   ├── analysis.py                 # Main analysis orchestration
+│   ├── taxonomic_analysis.py       # Taxonomic classification
+│   ├── pathogen_analysis.py        # Pathogen detection
+│   ├── comparative_analysis.py     # Multi-sample comparison
+│   └── functional_analysis.py      # Functional annotation
+├── io/                             # Input/Output handling
+│   ├── file_validator.py           # File validation & QC
+│   └── utils.py                    # I/O utilities
+├── ml/                             # Machine Learning components
+│   ├── feature_extractor.py        # Feature extraction for ML
+│   ├── pathogen_predictor.py       # ML pathogen prediction
+│   └── model_artifacts/            # Pre-trained models
+├── reporting/                      # Report generation
+│   ├── reporting.py               # Comprehensive reporting
+│   └── dashboard.py               # Interactive dashboards
+└── visualization/                  # Data visualization
+    ├── visualization.py           # Interactive visualizations
+    └── compare_visuals.py         # Comparative analysis plots
 ```
-
-### 🔑 Key Features
-
-#### 🔍 Advanced File Validation
-- **FASTQ Quality Control**: Quality score analysis, overrepresented sequence detection, adapter contamination screening
-- **FASTA Format Validation**: Sequence type detection, composition analysis, duplicate ID checking
-- **Comprehensive Statistics**: MD5 checksums, N50/length metrics, GC content analysis
-
-#### 🤖 Machine Learning Integration
-- **Feature Extraction**: Automated extraction of sequence features for ML models
-- **Pathogen Prediction**: Pre-trained models for pathogen classification
-- **Model Artifacts**: Complete set of trained models, scalers, and feature selectors
-
-#### 🦠 Advanced Pathogen Screening
-- **FASTQ Processing**: Multi-source traditional screening with Bracken integration
-- **FASTA Processing**: Integrated BLAST taxonomy + ML pathogen predictions
-- **Clinical Risk Assessment**: Comprehensive risk stratification with clinical recommendations
-
-#### 📊 Analysis & Reporting
-- **Taxonomic Profiling**: Species-level identification with scikit-bio diversity metrics
-- **Interactive Dashboards**: Analysis-specific HTML reports with dynamic visualizations
-- **Quality Assessment**: Statistical analysis and quality metrics
-- **Functional Annotation**: Gene prediction and functional characterization
-
-#### 🔬 Specialized Analysis (In Development)
-- **Antimicrobial Resistance (AMR)**: Resistance gene detection
-- **Virulence Factor Assessment**: Virulence factor identification
 
 ---
 
-## 🚀 Installation
+## Installation
 
 MetaQuest requires a Linux/macOS environment with conda package manager.
 
-**📖 For detailed installation instructions, see [installation.md](installation.md)**
+**For detailed installation instructions, see [installation.md](installation.md)**
 
----
+### System Requirements
 
-## 💻 Usage
+- Linux/macOS operating system
+- Conda package manager
+- Minimum 8GB RAM (16GB recommended)
+- 50GB available disk space for databases
 
-MetaQuest supports optimized workflows for both FASTQ and FASTA inputs with advanced validation and ML integration.
+### Quick Installation
 
-### Command Structure
 ```bash
-# Analyze samples
-metaquest analyze [options]
+# Clone repository
+git clone https://github.com/your-org/metaquest.git
+cd metaquest
 
-# Validate files
-metaquest validate [options]
+# Create conda environment
+conda env create -f environment.yml
+conda activate metaquest
 
-# System check
+# Install MetaQuest
+pip install -e .
+
+# Verify installation
 metaquest check
 ```
 
-**📖 For comprehensive usage examples and validation options, see [usage.md](usage.md)**
+---
+
+## Quick Start
+
+### 1. Verify Installation
+```bash
+metaquest check
+```
+
+### 2. Validate Input Files
+```bash
+# FASTQ validation
+metaquest validate fastq --single sample.fastq.gz
+
+# FASTA validation  
+metaquest validate fasta genome.fasta
+```
+
+### 3. Run Analysis
+```bash
+# FASTQ analysis (clinical focus)
+metaquest analyze fastq --single sample.fastq.gz -o results/
+
+# FASTA analysis (research focus)
+metaquest analyze fasta genome.fasta -o results/ -s 100
+
+# Skip annotation for faster analysis
+metaquest analyze fastq --single sample.fastq.gz --skip-annotation -o fast_results/
+```
+
+### 4. Compare Multiple Samples
+```bash
+# Create metadata file (metadata.tsv)
+# sample_id    group
+# sample1      Healthy
+# sample2      Diseased
+
+# Run comparative analysis
+metaquest compare -i sample1_results/ sample2_results/ -m metadata.tsv -o comparison/
+```
 
 ---
 
-## 📁 Output Structure
+## Documentation
 
-MetaQuest generates comprehensive outputs organized by analysis type:
+### Core Documentation
+- **[Usage Guide](usage.md)** - Comprehensive usage examples and command reference
+- **[Installation Guide](installation.md)** - Detailed installation instructions
+- **API Documentation** - Coming soon
 
-### FASTQ Analysis Outputs
-```
-results/
-├── analysis_dashboard.html              # Interactive green-themed dashboard
-├── pathogen_summary.txt                 # Definitive pathogen report
-├── taxonomic_classification_report.txt  # Kraken2/Bracken results
-├── quality_stats.txt                    # File validation statistics
-├── functional_annotation/               # Gene prediction results
-└── ... (additional reports and visualizations)
-```
+### Analysis Outputs
 
-### FASTA Analysis Outputs
-```
-results/
-├── analysis_dashboard.html              # Interactive blue-themed dashboard
-├── blast_ml_pathogen_summary.txt        # BLAST+ML pathogen report
-├── ml_pathogen_predictions.csv          # Detailed ML predictions
-├── taxonomic_classification_report.txt  # BLAST taxonomy results
-├── quality_stats.txt                    # File validation statistics
-├── functional_annotation/               # Gene prediction results
-└── ... (additional reports and visualizations)
-```
+**FASTQ Results**
+- Interactive dashboard with pathogen risk assessment
+- Taxonomic classification reports
+- Pathogen detection summaries
+- Functional annotation results
+
+**FASTA Results**  
+- BLAST+ML integrated pathogen reports
+- High-accuracy taxonomic classification
+- Machine learning predictions
+- Organism comparison data
+
+**Comparative Results**
+- Differential abundance analysis
+- Beta diversity visualization
+- Statistical comparison reports
+- Interactive heatmaps and plots
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
-We welcome contributions from the scientific community! 
+We welcome contributions from the scientific community.
 
-### 🎯 Priority Areas
+### Priority Areas
 
 | Area | Description | Impact |
 |------|-------------|---------|
 | **Machine Learning Enhancement** | Improve ML models with additional training data | High |
-| **Advanced Validation** | Enhance file validation with quality metrics | Medium |
+| **Clinical Validation** | Real-world testing of pathogen detection | Critical |
 | **Virulence Factor Analysis** | Optimize VF detection workflows | High |
 | **AMR Enhancement** | Improve antimicrobial resistance detection | High |
-| **Clinical Validation** | Real-world testing of pathogen detection | Critical |
 | **Documentation** | User guides and clinical interpretation | Medium |
 
-### 📋 How to Contribute
+### How to Contribute
+
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
-5. Participate in code review
+2. Create a feature branch (`git checkout -b feature/new-analysis`)
+3. Make your changes with appropriate tests
+4. Submit a pull request with detailed description
+5. Participate in code review process
+
+### Development Guidelines
+
+- Follow existing code style and structure
+- Include comprehensive tests for new features
+- Update documentation for user-facing changes
+- Ensure compatibility with existing workflows
 
 ---
 
-## 📞 Support & Contact
+## Support
 
-### 📚 Documentation
+### Documentation Resources
 - **Installation Guide**: [installation.md](installation.md)
 - **Usage Examples**: [usage.md](usage.md)
+- **GitHub Wiki**: Additional tutorials and examples
 
-### 🐛 Issues & Support
-- **Bug Reports**: Submit via GitHub issues
-- **Feature Requests**: Use GitHub discussions
-- **Community Forum**: Join our discussion forum
+### Getting Help
+- **Bug Reports**: Submit via GitHub issues with detailed reproduction steps
+- **Feature Requests**: Use GitHub discussions for new feature proposals
+- **Community Support**: Join our discussion forum for user questions
 
-### 👥 Development Team
+### Development Team
 **MetaQuest Development Team**  
 *Advancing metagenomics through integrated computational solutions*
 
 ---
 
-## 📄 License & Citation
+## Citation
 
-*Documentation and citation information will be added upon publication*
+*Citation information will be provided upon publication*
 
 ---
 
-**Last Updated**: August 2025 - Machine learning integration with comprehensive pathogen prediction capabilities
+## License
+
+*License information will be added upon publication*
+
+---
+
+**Last Updated**: August 2025 - Version 3.3.0 with comparative analysis integration
 
 ---
 
