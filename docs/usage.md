@@ -1,6 +1,6 @@
 # MetaQuest Usage Guide
 
-**Version 3.3.0** | Metagenomics Analysis Pipeline
+**Version 3.5.0** | Metagenomics Analysis Pipeline
 
 ---
 
@@ -28,7 +28,7 @@ MetaQuest provides **analysis-specific workflows** optimized for different input
 |---------------|---------------|-------------|
 | **FASTQ Analysis** | Clinical samples | Rapid Kraken2/Bracken classification, pathogen screening |
 | **FASTA Analysis** | Research applications | High-accuracy BLAST classification, ML pathogen prediction |
-| **Comparative Analysis** | Multi-sample studies | Statistical comparison, differential abundance, beta diversity |
+| **Comparative Analysis** | Multi-sample studies | Advanced statistical testing, ML biomarker discovery, publication-ready visualizations |
 | **File Validation** | Quality control | Comprehensive validation with detailed statistics |
 
 ---
@@ -73,7 +73,7 @@ metaquest compare -i sample1_results/ sample2_results/ sample3_results/ -m metad
 |---------|---------|-------------|
 | `metaquest analyze` | Full analysis pipeline | FASTQ, FASTA |
 | `metaquest validate` | File validation only | FASTQ, FASTA |
-| `metaquest compare` | Multi-sample comparison | MetaQuest results |
+| `metaquest compare` | Multi-sample comparison with advanced statistics | MetaQuest results |
 | `metaquest check` | System dependencies | None |
 | `metaquest --version` | Version information | None |
 | `metaquest --help` | General help | None |
@@ -290,7 +290,7 @@ FASTQ Validation Options:
 
 ## `compare` Command
 
-**Purpose**: Perform comparative analysis across multiple MetaQuest results to identify differential abundance and community patterns.
+**Purpose**: Perform advanced comparative analysis across multiple MetaQuest results with statistical testing, machine learning biomarker discovery, and publication-ready visualizations.
 
 ### Command Syntax
 ```bash
@@ -302,6 +302,12 @@ metaquest compare -i <dir1> <dir2> ... -m <metadata.tsv> -o <output_dir>
 - `-m, --metadata` *(required)*: Path to metadata file (TSV format)
 - `-o, --output`: Comparison results directory (default: `comparison_results`)
 
+**Statistical Analysis Features:**
+- **Alpha Diversity**: Shannon, Simpson, Chao1, and Observed Species metrics with Mann-Whitney U tests
+- **Beta Diversity**: Bray-Curtis dissimilarity with PERMANOVA and ANOSIM tests
+- **Differential Abundance**: Multiple testing correction (FDR, Bonferroni) with volcano plot visualization
+- **Machine Learning**: Random Forest biomarker discovery with cross-validation and feature importance
+
 **Examples:**
 ```bash
 # Basic comparison
@@ -309,6 +315,9 @@ metaquest compare -i sample1/ sample2/ sample3/ -m metadata.tsv -o comparison/
 
 # Multiple samples with custom output
 metaquest compare -i healthy_1/ healthy_2/ diseased_1/ diseased_2/ -m clinical_metadata.tsv -o clinical_comparison/
+
+# Large cohort comparison (12+ samples)
+metaquest compare -i healthy_*/healthy_*/ diseased_*/diseased_*/ -m large_study_metadata.tsv -o cohort_comparison/
 ```
 
 **Help Output:**
@@ -316,7 +325,7 @@ metaquest compare -i healthy_1/ healthy_2/ diseased_1/ diseased_2/ -m clinical_m
 $ metaquest compare --help
 usage: metaquest compare [-h] -i INPUTS [INPUTS ...] -m METADATA [-o OUTPUT]
 
-Perform comparative analysis across multiple samples.
+Perform comparative analysis across multiple samples with advanced statistical testing.
 
 options:
   -h, --help            show this help message and exit
@@ -342,6 +351,26 @@ healthy_sample2	Healthy	Control group
 diseased_sample1	Diseased	Treatment group
 diseased_sample2	Diseased	Treatment group
 ```
+
+### Statistical Test Interpretations
+
+**Alpha Diversity p-values:**
+- p < 0.001: Highly significant (***)
+- p < 0.01: Significant (**)
+- p < 0.05: Significant (*)
+- p < 0.1: Trend/marginally significant (†)
+
+**ANOSIM R-values:**
+- R > 0.75: Well separated groups
+- R > 0.5: Overlapping but clearly different
+- R > 0.25: Barely separable
+- R ≈ 0: Indistinguishable groups
+
+**Machine Learning Cross-validation:**
+- >90% accuracy: Excellent separation
+- 80-90% accuracy: Good separation
+- 70-80% accuracy: Moderate separation
+- <70% accuracy: Poor separation
 
 ---
 
@@ -434,16 +463,22 @@ results/
 ```
 
 ### Comparative Analysis Results
+*Advanced statistical analysis outputs*
 
 ```
 comparison_results/
 ├── taxonomic_abundance_table.tsv        # Species abundance matrix across all samples
-├── differential_abundance_report.tsv    # Statistically significant species differences
-├── alpha_diversity_results.tsv          # Alpha diversity metrics for each sample
-├── alpha_diversity_boxplot.html         # Alpha diversity group comparison
-├── beta_diversity_pcoa.html             # Interactive PCoA plot
+├── differential_abundance_report.tsv    # Statistical significance testing results
+├── alpha_diversity_metrics.tsv          # Alpha diversity calculations per sample
+├── alpha_diversity_statistics.tsv       # Statistical test results for alpha diversity
+├── permanova_results.txt                # PERMANOVA test details
+├── anosim_results.txt                   # ANOSIM test details
+├── random_forest_feature_importance.tsv # ML biomarker discovery results
+├── beta_diversity_pcoa.html             # Interactive PCoA plot with variance explained
+├── alpha_diversity_boxplot.html         # Multi-metric alpha diversity comparison
 ├── taxonomic_heatmap.html               # Interactive species abundance heatmap
-└── volcano_plot.html                    # Differential abundance volcano plot
+├── volcano_plot.html                    # Differential abundance visualization
+└── abundance_barplot.html               # Mean relative abundance by group
 ```
 
 ---
@@ -461,8 +496,20 @@ metaquest analyze fastq --paired patient1_R1.fastq.gz patient1_R2.fastq.gz -o pa
 metaquest analyze fastq --paired patient2_R1.fastq.gz patient2_R2.fastq.gz -o patient2_results/
 metaquest analyze fastq --paired control1_R1.fastq.gz control1_R2.fastq.gz -o control1_results/
 
-# 3. Compare groups
+# 3. Compare groups with statistical testing
 metaquest compare -i patient1_results/ patient2_results/ control1_results/ -m clinical_metadata.tsv -o clinical_comparison/
+```
+
+### Large Cohort Study
+
+```bash
+# Process multiple samples efficiently
+for sample in healthy_{1..6} diseased_{1..6}; do
+    metaquest analyze fastq --single ${sample}.fastq.gz -o ${sample}_results/
+done
+
+# Comprehensive statistical comparison
+metaquest compare -i healthy_*_results/ diseased_*_results/ -m cohort_metadata.tsv -o cohort_comparison/
 ```
 
 ### Environmental Metagenomics
@@ -472,7 +519,7 @@ metaquest compare -i patient1_results/ patient2_results/ control1_results/ -m cl
 metaquest analyze fastq --single soil_sample1.fastq.gz -o soil1_results/
 metaquest analyze fastq --single water_sample1.fastq.gz -o water1_results/
 
-# 2. Compare environments
+# 2. Compare environments with ML biomarker discovery
 metaquest compare -i soil1_results/ water1_results/ -m environment_metadata.tsv -o environment_comparison/
 ```
 
@@ -487,22 +534,6 @@ metaquest analyze fasta assembled_genome.fasta -s 200 -o genome_results/
 
 # 3. Quick taxonomic-only analysis
 metaquest analyze fasta genome.fasta --skip-annotation -o quick_results/
-```
-
-### Batch Processing Example
-
-```bash
-#!/bin/bash
-# Process multiple samples
-
-samples=("sample1" "sample2" "sample3")
-for sample in "${samples[@]}"; do
-    echo "Processing $sample..."
-    metaquest analyze fastq --single ${sample}.fastq.gz -o ${sample}_results/
-done
-
-# Compare all results
-metaquest compare -i sample1_results/ sample2_results/ sample3_results/ -m batch_metadata.tsv -o batch_comparison/
 ```
 
 ---
@@ -543,12 +574,23 @@ metaquest check
 metaquest analyze fasta genome.fasta -s 25  # Reduce from default 50
 ```
 
+#### Comparative Analysis Issues
+```bash
+# Error: Sample ID mismatch
+# Solution: Ensure metadata sample_id matches directory names exactly
+cat metadata.tsv  # Check sample IDs
+ls *_results/     # Check directory names
+
+# Error: Insufficient samples for statistics
+# Solution: Ensure at least 3 samples per group for robust statistics
+```
+
 ### Sample Command Outputs
 
 #### System Check Output
 ```bash
 $ metaquest check
-🧬 MetaQuest v3.3.0 | A Comprehensive Metagenomics Analysis Pipeline
+🧬 MetaQuest v3.5.0 | A Comprehensive Metagenomics Analysis Pipeline
 
 Performing system-wide checks...
   -> Checking command-line tools...
@@ -562,160 +604,76 @@ Performing system-wide checks...
 ✅  Success! All dependencies and databases are correctly configured.
 ```
 
-#### FASTQ Validation Output
+#### Enhanced Comparative Analysis Output
 ```bash
-$ metaquest validate fastq --interleaved gut.fastq.gz
-🧬 MetaQuest v3.3.0 | A Comprehensive Metagenomics Analysis Pipeline
-
-🧬 MetaQuest - File Validation
-
---- Validating file 1/1: gut.fastq.gz ---
-
-============================================================
-🔍 METAQUEST FILE VALIDATION
-============================================================
-File: gut.fastq.gz
-Type: FASTQ
-Time: 2025-08-27 14:08:30
-============================================================
-
-⏳ Analyzing file contents...
-  Processing: Done!
-
-📁 FILE INFORMATION
-────────────────────────────────────────
-  Size:        5.33 MB
-  MD5:         212808449d188c0b...
-  Compressed:  Yes (gzip)
-
-🔬 CONTAMINATION & DUPLICATION
-────────────────────────────────────────
-  Adapter Content:    0.00% of reads sampled
-
-  Flagged as Overrepresented (>0.10%) - Top 10:
-  Sequence                                 Percentage
-  ---------------------------------------- ----------
-  ACTCCTACGGGAGGCAGCAGTAGGGAATCTTCCACAA... 13.8187%
-  ACTCCTACGGGAGGCAGCAGTAGGGAATCTTCCACAA... 9.5217%
-  ACTCCTACGGGAGGCAGCAGTAGGGAATCTTCCACAA... 5.7296%
-  ACTCCTACGGGAGGCAGCAGTAGGGAATCTTCCACAA... 2.4509%
-  ACTCCTACGGGAGGCAGCAGTAGGGAATCTTCGGCAA... 1.4007%
-
-  RECOMMENDATIONS:
-  - ℹ️ Overrepresented sequences found. This may indicate PCR duplication.
-    Consider investigating or using a deduplication tool.
-
-🧬 SEQUENCE STATISTICS
-────────────────────────────────────────
-  Total Sequences:  235,304
-  Total Bases:      58,120,088
-  Length Range:     243 - 251 bp
-  Mean Length:      247.0 bp
-  Median Length:    247.0 bp
-  N50 Length:       251.0 bp
-  GC Content:       52.4%
-
-📊 QUALITY STATISTICS
-────────────────────────────────────────
-  Encoding:         Sanger/Illumina 1.8+ (Phred+33)
-  Mean Quality:     30.0
-  Quality Range:    30 - 30
-  Q20 Bases:        100.0%
-  Q30 Bases:        100.0%
-
-🔍 QUALITY ASSESSMENT
-────────────────────────────────────────
-  Note: All bases have uniform quality (30)
-  ✅ All quality metrics passed
-
-============================================================
-⚠️ FILE VALIDATION: PASSED WITH WARNINGS
-   The file is technically valid, but please review the 
-   recommendations before proceeding with analysis.
-============================================================
-
-✅ File validation successful. Ready for analysis.
-```
-
-#### FASTA Validation Output
-```bash
-$ metaquest validate fasta sequence.fasta
-🧬 MetaQuest v3.3.0 | A Comprehensive Metagenomics Analysis Pipeline
-
-🧬 MetaQuest - File Validation
-
---- Validating file 1/1: sequence.fasta ---
-
-============================================================
-🔍 METAQUEST FILE VALIDATION
-============================================================
-File: sequence.fasta
-Type: FASTA
-Time: 2025-08-27 14:09:18
-============================================================
-
-⏳ Analyzing file contents...
-  Processing: . Done!
-
-📁 FILE INFORMATION
-────────────────────────────────────────
-  Size:        0.01 MB
-  MD5:         42e1352c3ae16582...
-  Compressed:  No
-
-🧬 SEQUENCE STATISTICS
-────────────────────────────────────────
-  Type:             Single sequence (likely genome/chromosome)
-  Total Sequences:  1
-  Total Bases:      6,477
-  Length Range:     6,477 - 6,477
-  Mean Length:      6477.0
-  Median Length:    6477.0
-
-🧪 COMPOSITION ANALYSIS
-────────────────────────────────────────
-  GC Content:       61.2%
-
-🔍 QUALITY ASSESSMENT
-────────────────────────────────────────
-  ✅ All quality checks passed
-
-============================================================
-✅ FILE VALIDATION: PASSED
-============================================================
-
-✅ File validation successful. Ready for analysis.
-```
-
-#### Comparative Analysis Output
-```bash
-$ metaquest compare -i results/healthy* results/diseased* -m metadata.tsv -o final_comparison
-🧬 MetaQuest v3.3.0 | A Comprehensive Metagenomics Analysis Pipeline
+$ metaquest compare -i healthy_*/ diseased_*/ -m metadata.tsv -o final_comparison
+🧬 MetaQuest v3.5.0 | A Comprehensive Metagenomics Analysis Pipeline
 
 🔬 Initializing Comparative Analysis...
+🔬 Starting Enhanced Comparative Microbiome Analysis
+============================================================
 -> Loading metadata from: metadata.tsv
--> Found 6 samples in metadata.
+-> Found 12 samples in metadata.
 -> Aggregating taxonomic profiles...
   ✓ Processed: healthy_1
   ✓ Processed: healthy_2
   ✓ Processed: healthy_3
+  ✓ Processed: healthy_4
+  ✓ Processed: healthy_5
+  ✓ Processed: healthy_6
   ✓ Processed: diseased_1
   ✓ Processed: diseased_2
   ✓ Processed: diseased_3
+  ✓ Processed: diseased_4
+  ✓ Processed: diseased_5
+  ✓ Processed: diseased_6
+
 -> Cleaning and validating abundance table...
-✅ Cleaned abundance table created with 819 species across 6 samples.
+✅ Cleaned abundance table: 1053 species × 12 samples
+
 -> Calculating Alpha Diversity...
-  -> Alpha diversity calculations complete.
+-> Running Alpha Diversity Statistical Tests...
+  ✓ shannon: p = 0.0050 (significant **)
+  ✓ simpson: p = 0.0050 (significant **)
+  ✓ chao1: p = 0.0450 (significant *)
+  ✓ sobs: p = 0.0450 (significant *)
+  ✓ Alpha diversity calculations complete.
+
 -> Calculating Beta Diversity (Bray-Curtis)...
--> Running statistical tests for differential abundance...
-  ✓ Found 40 significantly different species (p < 0.1).
-    -> Full report saved to: final_comparison/differential_abundance_report.tsv
--> Performing Principal Coordinate Analysis (PCoA)...
--> Generating Visualizations...
+-> Running Beta Diversity Statistical Tests...
+  ✓ PERMANOVA: F = 5.418, p = 0.0040 (significant **)
+  ✓ ANOSIM: R = 0.496, p = 0.0180 (overlapping but clearly different)
+
+-> Running differential abundance analysis...
+  -> Comparing Healthy (n=6) vs Diseased (n=6)
+  ✓ Differential abundance results:
+    • FDR significant (q < 0.05): 0
+    • Bonferroni significant: 0
+    • Nominally significant (p < 0.05): 150
+    • Trend level (p < 0.10): 241
+  -> Top candidates (p < 0.10):
+    • Porphyromonas asaccharolytica: p = 0.0027, FC = 1663833334.33 ↑
+    • Filifactor alocis: p = 0.0027, FC = 36333334.33 ↑
+    • Streptococcus canis: p = 0.0027, FC = 64333334.33 ↑
+    • Alicyclobacillus ferrooxydans: p = 0.0027, FC = 38666667.67 ↑
+    • Treponema sp. RCC2812: p = 0.0036, FC = 61.38 ↑
+
+-> Running Machine Learning for Biomarker Discovery...
+  ✓ Random Forest 3-fold CV Accuracy: 0.83 ± 0.12
+  ✓ Top discriminative species:
+    -> 'Lachnoanaerobaculum umeaense' - Importance: 0.0300
+    -> 'Butyrivibrio proteoclasticus' - Importance: 0.0300
+-> Feature importance report saved to: final_comparison/random_forest_feature_importance.tsv
+
+-> Generating enhanced visualizations...
   ✓ PCoA plot created: beta_diversity_pcoa.html
   ✓ Heatmap visualization created: taxonomic_heatmap.html
   ✓ Alpha diversity box plot created: alpha_diversity_boxplot.html
   ✓ Volcano plot created: volcano_plot.html
+  ✓ Abundance bar plot created: abundance_barplot.html
+
+🎉 Enhanced comparative analysis completed!
+📁 Results saved to: final_comparison
 ```
 
 ### Getting Help
@@ -739,7 +697,4 @@ metaquest compare --help
 
 ---
 
-
 *For technical support and updates, visit the MetaQuest GitHub repository.*
-
-
