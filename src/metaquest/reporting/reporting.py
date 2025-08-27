@@ -41,7 +41,7 @@ class BaseReportGenerator(ABC):
             "",
             f"Analysis Type: {self.analysis_type}",
             f"Generated: {self.timestamp.strftime('%Y-%m-%d %H:%M:%S')}",
-            f"MetaQuest Pipeline v3.2.2",
+            f"MetaQuest Pipeline v3.5.0",
             ""
         ]
     
@@ -58,7 +58,7 @@ class BaseReportGenerator(ABC):
             'metadata': {
                 'analysis_type': self.analysis_type,
                 'generation_timestamp': self.timestamp.isoformat(),
-                'pipeline_version': 'MetaQuest v3.2.2'
+                'pipeline_version': 'MetaQuest v3.5.0'
             },
             'data': data
         }
@@ -804,7 +804,7 @@ class PathogenReporter(BaseReportGenerator):
                 'overall_risk_assessment': overall_risk,
                 'detection_methods_used': ['bracken_taxonomic', 'taxonomy_blast', 'sequence_database_search'],
                 'analysis_timestamp': self.timestamp.isoformat(),
-                'pipeline_version': 'MetaQuest v3.2.2'
+                'pipeline_version': 'MetaQuest v3.5.0'
             },
             'pathogen_detections': {}
         }
@@ -877,7 +877,7 @@ class PathogenReporter(BaseReportGenerator):
             f.write(f"High Risk Pathogens: {high_risk_count}\n")
             f.write(f"Medium Risk Pathogens: {medium_risk_count}\n")
             f.write(f"Analysis Date: {self.timestamp.strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"Pipeline Version: MetaQuest v3.2.2\n\n")
+            f.write(f"Pipeline Version: MetaQuest v3.5.0\n\n")
             
             # Detection methodology
             f.write("DETECTION METHODOLOGY:\n")
@@ -1111,7 +1111,7 @@ class PathogenReporter(BaseReportGenerator):
             f.write("=" * 65 + "\n\n")
             f.write(f"Overall Risk Assessment: {overall_risk}\n")
             f.write(f"Analysis Date: {self.timestamp.strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"Pipeline Version: MetaQuest v3.2.2\n\n")
+            f.write(f"Pipeline Version: MetaQuest v3.5.0\n\n")
             
             # Detection methodology
             f.write("INTEGRATED DETECTION METHODOLOGY:\n")
