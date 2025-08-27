@@ -3,11 +3,12 @@ import sys
 import os
 from pathlib import Path
 from .core.analysis import run_analysis
+from .core.comparative_analysis import run_comparison 
 from .io.file_validator import FileValidator
 from .io.utils import run_system_check
 
 # Version information
-__version__ = "3.2.2"
+__version__ = "3.3.0" 
 __app_name__ = "MetaQuest"
 
 def _display_header():
@@ -54,27 +55,24 @@ def main():
     
     subparsers = parser.add_subparsers(dest='command', required=True, help="Available commands")
 
-    # --- Parent parser for options common to both FASTA and FASTQ analysis ---
+    # --- Command: analyze ---
+    parser_analyze = subparsers.add_parser('analyze', help="Run the full analysis pipeline on a single sample.")
     analysis_parent_parser = argparse.ArgumentParser(add_help=False)
     analysis_parent_parser.add_argument('-o', '--output', default='results', help="Output directory name (default: results).")
-    analysis_parent_parser.add_argument('--skip-validation', action='store_true', help="Skip input file validation (not recommended).")
-
-    # --- Command: analyze ---
-    parser_analyze = subparsers.add_parser('analyze', help="Run the full analysis pipeline.")
+    analysis_parent_parser.add_argument('--skip-validation', action='store_true', help="Skip input file validation.")
+    analysis_parent_parser.add_argument('--skip-annotation', action='store_true', help="Skip functional and pathogen annotation steps for a faster taxonomic-only analysis.")
+    
     analysis_subparsers = parser_analyze.add_subparsers(dest='type', required=True, help="Input data type")
-
-    # analyze fasta (inherits common options)
     analyze_fasta = analysis_subparsers.add_parser('fasta', help='Analyze a single FASTA file.', parents=[analysis_parent_parser])
     analyze_fasta.add_argument('input_file', help="Path to the input FASTA file.")
-    analyze_fasta.add_argument('-s', '--blast-sample-size', type=int, default=50, help="Number of sequences to BLAST for taxonomy (default: 50).")
-
-    # analyze fastq (inherits common options, adds its own)
+    analyze_fasta.add_argument('-s', '--blast-sample-size', type=int, default=50, help="Number of sequences to BLAST (default: 50).")
+    
     analyze_fastq = analysis_subparsers.add_parser('fastq', help='Analyze FASTQ files.', parents=[analysis_parent_parser])
+    setup_fastq_validation_args(analyze_fastq)
     fastq_mode = analyze_fastq.add_mutually_exclusive_group(required=True)
     fastq_mode.add_argument('--single', metavar='READS.fastq', help="Single-end FASTQ file.")
-    fastq_mode.add_argument('--paired', nargs=2, metavar=('R1.fastq', 'R2.fastq'), help="Paired-end FASTQ files (R1 and R2).")
+    fastq_mode.add_argument('--paired', nargs=2, metavar=('R1.fastq', 'R2.fastq'), help="Paired-end FASTQ files.")
     fastq_mode.add_argument('--interleaved', metavar='INTERLEAVED.fastq', help="Interleaved paired-end FASTQ file.")
-    setup_fastq_validation_args(analyze_fastq)
 
     # --- Command: validate ---
     parser_validate = subparsers.add_parser('validate', help="Validate input file(s) without running analysis.")
@@ -89,9 +87,16 @@ def main():
     validate_mode.add_argument('--paired', nargs=2, metavar=('R1.fastq', 'R2.fastq'), help="Paired-end FASTQ files (R1 and R2).")
     validate_mode.add_argument('--interleaved', metavar='INTERLEAVED.fastq', help="Interleaved paired-end FASTQ file.")
     setup_fastq_validation_args(validate_fastq)
-    
+
     # --- Command: check ---
     parser_check = subparsers.add_parser('check', help="Check all dependencies and database status.")
+    
+    # --- NEW: Command: compare ---
+    parser_compare = subparsers.add_parser('compare', help="Perform comparative analysis across multiple samples.")
+    parser_compare.add_argument('-i', '--inputs', nargs='+', required=True, help="Space-separated list of MetaQuest output directories to compare.")
+    parser_compare.add_argument('-m', '--metadata', required=True, help="Path to the metadata file (TSV) linking samples to groups.")
+    parser_compare.add_argument('-o', '--output', default='comparison_results', help="Directory to save comparison results (default: comparison_results).")
+
 
     args = parser.parse_args()
 
@@ -101,18 +106,19 @@ def main():
             run_system_check()
             sys.exit(0)
 
-        # Determine file paths based on the command and type
-        file_paths = []
-        if args.type == 'fasta':
-            file_paths = [args.input_file]
-        elif args.type == 'fastq':
-            if args.single: file_paths = [args.single]
-            elif args.paired: file_paths = args.paired
-            elif args.interleaved: file_paths = [args.interleaved]
+        # Logic for 'analyze' and 'validate' commands (now handles file paths)
+        if args.command in ['analyze', 'validate']:
+            file_paths = []
+            if args.type == 'fasta':
+                file_paths = [args.input_file]
+            elif args.type == 'fastq':
+                if args.single: file_paths = [args.single]
+                elif args.paired: file_paths = args.paired
+                elif args.interleaved: file_paths = [args.interleaved]
 
-        for f in file_paths:
-            if not Path(f).exists():
-                parser.error(f"Input file not found: {f}")
+            for f in file_paths:
+                if not Path(f).exists():
+                    parser.error(f"Input file not found: {f}")
 
         if args.command == 'validate':
             is_valid = handle_validation(file_paths, args.type, args)
@@ -139,6 +145,10 @@ def main():
             run_analysis(file_paths, args.type, args.output)
 
             print(f"\n🎉 Analysis complete! Results saved to '{args.output}'")
+
+        elif args.command == 'compare':
+            print("🔬 Initializing Comparative Analysis...")
+            run_comparison(args.inputs, args.metadata, args.output)
 
     except SystemExit as e:
         if e.code != 0:
