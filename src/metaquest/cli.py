@@ -142,7 +142,7 @@ def main():
                 print("\n⚠️ Warning: Skipping file validation (--skip-validation flag used).")
 
             print(f"\n🚀 Starting {args.type.upper()} analysis on: {', '.join(file_paths)}")
-            run_analysis(file_paths, args.type, args.output)
+            run_analysis(file_paths, args.type, args.output,args)
 
             print(f"\n🎉 Analysis complete! Results saved to '{args.output}'")
 
