@@ -13,7 +13,7 @@ from ..config import *
 from ..io.file_validator import FileValidator
 from ..io.utils import convert_fastq_to_fasta, split_interleaved
 from ..visualization.dashboard import create_dashboard
-from ..reporting.reporting import (
+from ..reporting.main_reporter import (
     PathogenReporter,
     generate_taxonomic_report, 
     generate_functional_report,
@@ -167,6 +167,8 @@ def analyze_fastq(reads, output_dir: Path, args):
             try:
                 print("7. Running gene prediction...")
                 prokka_dir = run_prokka(fasta_path, output_dir)
+                protein_file = prokka_dir / "sample.faa"
+                gff_file = prokka_dir / "sample.gff"
                 
                 protein_files = list(Path(prokka_dir).glob("*.faa"))
                 if not protein_files:
