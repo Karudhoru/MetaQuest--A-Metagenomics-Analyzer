@@ -169,18 +169,32 @@ def convert_fastq_to_fasta(fastq_path, output_dir):
 
 def split_interleaved(interleaved_fastq: str, output_dir: Path) -> list:
     """
-    Split a single interleaved FASTQ into two files (R1, R2) using seqkit.
-    Requires seqkit in your PATH.
+    Splits a single interleaved FASTQ into two gzipped files (R1, R2)
+    using the reformat.sh utility from the BBTools suite.
     """
-    r1 = output_dir / "split_R1.fastq"
-    r2 = output_dir / "split_R2.fastq"
-    cmd = (
-        f"seqkit split2 -1 {r1} -2 {r2} "
-        f"--by-pair {interleaved_fastq}"
-    )
-    print(f"Running: {cmd}")
-    subprocess.run(cmd, shell=True, check=True)
-    return [str(r1), str(r2)]
+    
+    r1 = output_dir / "split_R1.fastq.gz"
+    r2 = output_dir / "split_R2.fastq.gz"
+
+    cmd = [
+        "reformat.sh",
+        f"in={interleaved_fastq}",
+        f"out1={r1}",
+        f"out2={r2}"
+    ]
+    
+    try:
+        print(f"Running: {' '.join(cmd)}")
+        # Using a list of args is safer than shell=True
+        subprocess.run(cmd, check=True, capture_output=True)
+        return [str(r1), str(r2)]
+    except FileNotFoundError:
+        print("❌ ERROR: 'reformat.sh' not found. Please install BBTools via 'conda install -c bioconda bbmap'.")
+        raise
+    except subprocess.CalledProcessError as e:
+        print(f"❌ reformat.sh failed. Please ensure your input file is a valid FASTQ file.")
+        print(f"Error details: {e.stderr.decode()}")
+        raise
 
 def parse_prokka_gff(gff_file):
     """Parse Prokka GFF file to count features"""
