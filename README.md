@@ -129,27 +129,31 @@ MetaQuest is under active development with core functionality operational and ma
 
 ```
 src/metaquest/
-├── cli.py                          # Command-line interface
-├── config.py                       # Configuration management
-├── core/                           # Core analysis modules
+├── cli.py                          # Command-line interface logic
+├── config.py                       # Central configuration management
+├── core/                           # Core analysis modules (the "engine")
 │   ├── analysis.py                 # Main analysis orchestration
 │   ├── taxonomic_analysis.py       # Taxonomic classification
 │   ├── pathogen_analysis.py        # Pathogen detection
 │   ├── comparative_analysis.py     # Multi-sample comparison
 │   └── functional_analysis.py      # Functional annotation
-├── io/                             # Input/Output handling
+├── io/                             # Input/Output and validation
 │   ├── file_validator.py           # File validation & QC
 │   └── utils.py                    # I/O utilities
 ├── ml/                             # Machine Learning components
 │   ├── feature_extractor.py        # Feature extraction for ML
 │   ├── pathogen_predictor.py       # ML pathogen prediction
 │   └── model_artifacts/            # Pre-trained models
-├── reporting/                      # Report generation
-│   ├── reporting.py               # Comprehensive reporting
-│   └── dashboard.py               # Interactive dashboards
+├── reporting/                      # MODIFIED: Modular reporting engine
+│   ├── main_reporter.py            # Orchestrator: calls other reporters
+│   ├── base_reporter.py            # Base class with common reporting functions
+│   ├── taxonomic_reporter.py       # Creates the taxonomic section of the report
+│   ├── pathogen_reporter.py        # Creates the pathogen section of the report
+│   └── functional_reporter.py      # Creates the functional section of the report
 └── visualization/                  # Data visualization
-    ├── visualization.py           # Interactive visualizations
-    └── compare_visuals.py         # Comparative analysis plots
+    ├── dashboard.py                # Generates the main interactive dashboard
+    ├── visualization.py            # Creates standard plots (e.g., heatmaps, bar charts)
+    └── compare_visuals.py          # Creates comparative plots (e.g., PCoA, boxplots)
 ```
 
 ---
@@ -348,5 +352,6 @@ We welcome contributions from the scientific community.
 **Last Updated**: August 2025 - Version 3.5.0 with enhanced statistical testing and ML biomarker discovery
 
 ---
+
 
 *MetaQuest is actively developed with regular updates and improvements. Check our GitHub repository for the latest releases and features.*
