@@ -16,6 +16,7 @@ dependencies:
   - atk-1.0=2.38.0=h04ea711_2
   - attr=2.5.1=h166bdaf_1
   - barrnap=0.9=hdfd78af_4
+  - bbmap=39.26=he5f24ec_0
   - beautifulsoup4=4.12.3=pyha770c72_0
   - bedtools=2.31.1=hf5e1c6e_2
   - bio=1.8.0=pyhdfd78af_0
@@ -53,7 +54,7 @@ dependencies:
   - cuda-cudart=12.9.79=h5888daf_0
   - cuda-cudart_linux-64=12.9.79=h3f2d84a_0
   - cuda-version=12.9=h4f385c5_3
-  - curl=8.9.1=hdbd6064_0
+  - curl=8.15.0=h14366f7_0
   - cycler=0.12.1=pyhd8ed1ab_0
   - cyrus-sasl=2.1.27=h9033bb2_6
   - dbus=1.13.18=hb2f20db_0
@@ -66,6 +67,7 @@ dependencies:
   - exceptiongroup=1.3.0=pyhd8ed1ab_0
   - expat=2.7.0=h5888daf_0
   - famsa=2.2.3=h9948957_1
+  - fastqc=0.12.1=hdfd78af_0
   - fasttree=2.1.11=h7b50bb2_5
   - firefox=138.0.4=h3e4d06c_0
   - font-ttf-dejavu-sans-mono=2.37=hab24e00_0
@@ -80,6 +82,7 @@ dependencies:
   - fribidi=1.0.10=h36c2ea0_0
   - frozendict=2.4.6=py310ha75aee5_0
   - gawk=5.3.1=hcd3d067_0
+  - gdbm=1.18=h0a1914f_2
   - gdk-pixbuf=2.42.10=h05c8ddd_0
   - gettext=0.24.1=h5888daf_0
   - gettext-tools=0.24.1=h5888daf_0
@@ -118,6 +121,7 @@ dependencies:
   - kalign2=2.04=h7b50bb2_8
   - keyutils=1.6.1=h166bdaf_0
   - kiwisolver=1.4.8=py310h3788b33_1
+  - kofamscan=1.3.0=hdfd78af_2
   - kraken2=2.1.3=pl5321hdcf5f25_3
   - krb5=1.20.1=h81ceb04_0
   - krona=2.8.1=pl5321hdfd78af_1
@@ -138,7 +142,7 @@ dependencies:
   - libclang-cpp15=15.0.7=default_h127d8a8_5
   - libclang13=14.0.6=default_h9986a30_1
   - libcups=2.3.3=h36d4200_3
-  - libcurl=8.9.1=h251f7ec_0
+  - libcurl=8.15.0=hc1efc7f_0
   - libdb=6.2.32=h9c3ff4c_0
   - libdeflate=1.22=hb9d3cd8_0
   - libedit=3.1.20250104=pl5321h7949ede_0
@@ -183,7 +187,7 @@ dependencies:
   - librsvg=2.58.0=hadf69e7_1
   - libsndfile=1.2.2=hc60ed4a_1
   - libsqlite=3.46.0=hde9e2c9_0
-  - libssh2=1.11.0=h0841786_0
+  - libssh2=1.11.1=h251f7ec_0
   - libstdcxx=15.1.0=h8f9b012_2
   - libstdcxx-ng=15.1.0=h4852527_2
   - libsystemd0=256.9=h2774228_0
@@ -221,6 +225,7 @@ dependencies:
   - mysql-common=8.3.0=hf1915f5_4
   - mysql-libs=8.3.0=hca2cd23_4
   - natsort=8.4.0=pyh29332c3_1
+  - ncbi-amrfinderplus=4.0.23=hf69ffd2_0
   - ncbi-datasets-cli=18.2.0=ha770c72_0
   - ncbi-vdb=3.2.1=h9948957_0
   - nccl=2.27.6.1=h49b9d9a_1
@@ -404,6 +409,7 @@ dependencies:
   - rich=14.1.0=pyhe01879c_0
   - rpsbproc=0.5.0=h6a68c12_1
   - rsync=3.3.0=he6cb5fe_0
+  - ruby=3.2.2=h983345b_1
   - samtools=1.21=h50ea8bc_0
   - sap=1.1.3=h7b50bb2_5
   - scikit-bio=0.7.0=py310hf779ad0_0
