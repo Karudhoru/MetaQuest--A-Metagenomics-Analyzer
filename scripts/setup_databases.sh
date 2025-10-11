@@ -70,7 +70,7 @@ show_help() {
     echo "Options:"
     echo "  --kraken       Download and set up the Kraken2/Bracken database."
     echo "  --pathogen     Download and set up the CARD and VFDB pathogen databases."
-    echo "  --swissprot    Download and set up the SwissProt database for functional annotation."
+    echo "  --swissprot    Download and set up the SwissProt+COG combined database for functional annotation."
     echo "  --all          Download and set up all available databases."
     echo "  --help         Show this help message."
 }
@@ -115,19 +115,48 @@ setup_pathogen_dbs() {
 }
 
 setup_swissprot_db() {
-    echo -e "\n--- Setting up SwissProt Database ---"
-    if [ -f "$DB_DIR/swissprot.dmnd" ]; then
-        echo "✅ SwissProt DIAMOND database already exists. Skipping."
+    echo -e "\n--- Setting up SwissProt + COG Combined Database ---"
+    
+    # Final combined database name matching config.py
+    COMBINED_DB="$DB_DIR/SwissProt_COG_db.dmnd"
+    
+    if [ -f "$COMBINED_DB" ]; then
+        echo "✅ SwissProt+COG combined DIAMOND database already exists. Skipping."
     else
-        echo "Downloading SwissProt FASTA file..."
-        wget -q --show-progress -nc -P "$DB_DIR" https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/uniprot_sprot.fasta.gz
-        echo "Decompressing..."
-        gunzip "$DB_DIR/uniprot_sprot.fasta.gz"
+        # Download SwissProt
+        if [ ! -f "$DB_DIR/uniprot_sprot.fasta" ]; then
+            echo "Downloading SwissProt FASTA file..."
+            wget -q --show-progress -nc -P "$DB_DIR" https://ftp.uniprot.org/pub/databases/uniprot/knowledgebase/uniprot_sprot.fasta.gz
+            echo "Decompressing SwissProt..."
+            gunzip "$DB_DIR/uniprot_sprot.fasta.gz"
+        else
+            echo "✅ SwissProt FASTA already exists."
+        fi
         
-        echo "Formatting SwissProt with DIAMOND (this may take a few minutes)..."
-        diamond makedb --in "$DB_DIR/uniprot_sprot.fasta" -d "$DB_DIR/swissprot"
-        rm "$DB_DIR/uniprot_sprot.fasta"
-        echo "✅ SwissProt setup complete."
+        # Download COG
+        if [ ! -f "$DB_DIR/cog.fasta" ]; then
+            echo "Downloading COG database..."
+            wget -q --show-progress -nc -P "$DB_DIR" https://ftp.ncbi.nih.gov/pub/COG/COG2020/data/cog-20.fa.gz
+            echo "Decompressing COG..."
+            gunzip "$DB_DIR/cog-20.fa.gz"
+            mv "$DB_DIR/cog-20.fa" "$DB_DIR/cog.fasta"
+        else
+            echo "✅ COG FASTA already exists."
+        fi
+        
+        # Combine both databases
+        echo "Combining SwissProt and COG databases..."
+        cat "$DB_DIR/uniprot_sprot.fasta" "$DB_DIR/cog.fasta" > "$DB_DIR/combined_swissprot_cog.fasta"
+        
+        # Format combined database with DIAMOND
+        echo "Formatting combined database with DIAMOND (this may take several minutes)..."
+        diamond makedb --in "$DB_DIR/combined_swissprot_cog.fasta" -d "$DB_DIR/SwissProt_COG_db"
+        
+        # Cleanup intermediate files
+        echo "Cleaning up intermediate files..."
+        rm "$DB_DIR/uniprot_sprot.fasta" "$DB_DIR/cog.fasta" "$DB_DIR/combined_swissprot_cog.fasta"
+        
+        echo "✅ SwissProt+COG combined database setup complete."
     fi
 }
 
