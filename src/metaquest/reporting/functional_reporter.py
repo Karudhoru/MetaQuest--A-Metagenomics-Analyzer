@@ -1,542 +1,804 @@
 #!/usr/bin/env python3
 """
-MetaQuest FunctionalReporter Module - Professional Scientific Reporting
-Updated with comprehensive functional annotation reporting following scientific standards.
+MetaQuest Professional Functional Annotation Reporting Module
+Author: MetaQuest Metagenomics Team
+
+Provides comprehensive functional annotation reporting with gene prediction analysis,
+protein annotation coverage, and functional category profiling.
 """
 
 import json
 import pandas as pd
-from pathlib import Path
-from datetime import datetime
-from abc import ABC, abstractmethod
-from typing import Dict, List, Any
 import numpy as np
+from pathlib import Path
+from typing import Dict, List, Optional, Any
 from collections import Counter
-import re
 from Bio import SeqIO
-from Bio.SeqUtils import gc_fraction
-from Bio import BiopythonWarning
 import warnings
+warnings.filterwarnings('ignore')
+
 from .base_reporter import BaseReportGenerator
+
 
 class FunctionalReporter(BaseReportGenerator):
     """
-    Professional functional annotation reporting with comprehensive analysis
-    following scientific standards for gene prediction and protein annotation.
+    Professional functional annotation reporting following scientific standards.
+    
+    Analyzes:
+    - Gene prediction results (Prokka)
+    - Protein functional annotation (SwissProt/UniProt)
+    - Functional category distribution
+    - Annotation quality and coverage metrics
     """
     
-    # Functional category mappings for enhanced analysis
+    # Functional category keywords for automated classification
     FUNCTIONAL_CATEGORIES = {
-        'Antimicrobial Resistance': [
-            'beta-lactamase', 'carbapenemase', 'penicillinase', 'cephalosporinase',
-            'efflux pump', 'multidrug resistance', 'antibiotic resistance',
-            'vancomycin resistance', 'methicillin resistance', 'fluoroquinolone resistance'
-        ],
-        'Virulence Factors': [
-            'virulence', 'toxin', 'adhesin', 'invasin', 'hemolysin', 'enterotoxin',
-            'cytotoxin', 'secretion system', 'pathogenicity', 'colonization'
-        ],
-        'Metabolism': [
-            'kinase', 'synthase', 'dehydrogenase', 'reductase', 'oxidase', 'transferase',
-            'hydrolase', 'lyase', 'isomerase', 'ligase', 'metabolic pathway'
-        ],
-        'Transport Systems': [
-            'transporter', 'permease', 'channel', 'pump', 'abc transporter',
-            'efflux', 'influx', 'ion transport', 'substrate transport'
-        ],
-        'Transcriptional Regulation': [
-            'transcriptional regulator', 'repressor', 'activator', 'two-component',
-            'response regulator', 'sensor', 'sigma factor', 'dna-binding'
-        ],
-        'Cell Wall Synthesis': [
-            'peptidoglycan', 'murein', 'cell wall', 'penicillin-binding protein',
-            'transpeptidase', 'transglycosylase', 'autolysis'
-        ],
-        'Stress Response': [
-            'heat shock', 'cold shock', 'oxidative stress', 'osmotic stress',
-            'acid resistance', 'alkali resistance', 'survival', 'adaptation'
-        ],
-        'DNA Repair/Replication': [
-            'dna polymerase', 'helicase', 'primase', 'ligase', 'topoisomerase',
-            'recombination', 'repair', 'proofreading', 'mismatch repair'
-        ]
+        'Antimicrobial Resistance': {
+            'keywords': [
+                'beta-lactamase', 'carbapenemase', 'penicillinase', 'cephalosporinase',
+                'efflux pump', 'multidrug resistance', 'antibiotic resistance',
+                'vancomycin resistance', 'methicillin resistance', 'fluoroquinolone resistance',
+                'aminoglycoside resistance', 'tetracycline resistance'
+            ],
+            'priority': 'critical'
+        },
+        'Virulence Factors': {
+            'keywords': [
+                'virulence', 'toxin', 'adhesin', 'invasin', 'hemolysin', 'enterotoxin',
+                'cytotoxin', 'secretion system', 'pathogenicity', 'colonization factor',
+                'fimbrial', 'pilus', 'capsule biosynthesis'
+            ],
+            'priority': 'high'
+        },
+        'Central Metabolism': {
+            'keywords': [
+                'glycolysis', 'tca cycle', 'citric acid cycle', 'pentose phosphate',
+                'gluconeogenesis', 'oxidative phosphorylation', 'atp synthase',
+                'electron transport', 'respiration'
+            ],
+            'priority': 'medium'
+        },
+        'Amino Acid Metabolism': {
+            'keywords': [
+                'amino acid biosynthesis', 'amino acid degradation', 'aminotransferase',
+                'decarboxylase', 'amino acid transporter'
+            ],
+            'priority': 'medium'
+        },
+        'Nucleotide Metabolism': {
+            'keywords': [
+                'nucleotide biosynthesis', 'purine', 'pyrimidine', 'ribonucleotide reductase',
+                'thymidylate synthase'
+            ],
+            'priority': 'medium'
+        },
+        'Lipid Metabolism': {
+            'keywords': [
+                'fatty acid biosynthesis', 'fatty acid degradation', 'lipid biosynthesis',
+                'phospholipid', 'lipopolysaccharide'
+            ],
+            'priority': 'medium'
+        },
+        'Transport Systems': {
+            'keywords': [
+                'abc transporter', 'permease', 'channel protein', 'membrane transporter',
+                'ion transport', 'substrate transport', 'drug efflux'
+            ],
+            'priority': 'medium'
+        },
+        'Transcriptional Regulation': {
+            'keywords': [
+                'transcriptional regulator', 'repressor', 'activator', 'two-component system',
+                'response regulator', 'sensor kinase', 'sigma factor', 'dna-binding protein'
+            ],
+            'priority': 'medium'
+        },
+        'Cell Wall Synthesis': {
+            'keywords': [
+                'peptidoglycan', 'murein', 'cell wall biosynthesis', 'penicillin-binding protein',
+                'transpeptidase', 'transglycosylase', 'murein hydrolase'
+            ],
+            'priority': 'medium'
+        },
+        'Stress Response': {
+            'keywords': [
+                'heat shock protein', 'cold shock protein', 'oxidative stress', 'chaperone',
+                'acid resistance', 'osmotic stress', 'universal stress protein'
+            ],
+            'priority': 'medium'
+        },
+        'DNA Replication & Repair': {
+            'keywords': [
+                'dna polymerase', 'helicase', 'primase', 'ligase', 'topoisomerase',
+                'recombination', 'dna repair', 'mismatch repair', 'nucleotide excision'
+            ],
+            'priority': 'medium'
+        },
+        'Protein Synthesis': {
+            'keywords': [
+                'ribosomal protein', 'translation factor', 'aminoacyl-trna synthetase',
+                'peptidyl transferase', 'elongation factor'
+            ],
+            'priority': 'medium'
+        }
     }
     
     def __init__(self, output_dir: Path):
+        """Initialize functional reporter."""
         super().__init__(output_dir, "Functional Annotation")
+        self._gene_stats = None
+        self._annotation_stats = None
     
-    def generate_report(self, prokka_results=None, swissprot_results=None, **kwargs) -> Dict[str, str]:
-        """Generate comprehensive functional annotation report following professional standards"""
-        print("Generating professional functional annotation report...")
+    def generate_report(self, prokka_results: Optional[str] = None, 
+                       swissprot_results: Optional[str] = None, **kwargs) -> Dict[str, str]:
+        """
+        Generate comprehensive functional annotation report.
         
-        # Analyze gene prediction results
-        gene_analysis = self._analyze_gene_prediction(prokka_results) if prokka_results else None
+        Args:
+            prokka_results: Path to Prokka output directory
+            swissprot_results: Path to SwissProt annotation TSV file
+            
+        Returns:
+            Dictionary with paths to generated reports and summary statistics
+        """
+        print(f"[{self.timestamp.strftime('%H:%M:%S')}] Initiating functional annotation report generation...")
         
-        # Analyze functional annotation results
-        annotation_analysis = self._analyze_functional_annotation(swissprot_results) if swissprot_results else None
+        # Parse input data
+        gene_data = self._parse_gene_prediction(prokka_results) if prokka_results else None
+        annotation_data = self._parse_functional_annotation(swissprot_results) if swissprot_results else None
         
-        # Calculate annotation coverage metrics
-        coverage_metrics = self._calculate_annotation_coverage(gene_analysis, annotation_analysis)
+        # Calculate coverage metrics
+        coverage_metrics = self._calculate_coverage_metrics(gene_data, annotation_data)
         
-        # Generate professional text report
-        self._generate_professional_functional_report(gene_analysis, annotation_analysis, coverage_metrics)
+        # Generate text report
+        text_content = self._generate_text_report(gene_data, annotation_data, coverage_metrics)
+        text_file = self._save_text_report(text_content, "functional_annotation_report.txt")
         
-        # Generate structured JSON report
-        json_report = self._create_functional_json_report(gene_analysis, annotation_analysis, coverage_metrics)
-        json_file = self._save_json_report(json_report, "functional_annotation_report.json")
+        # Generate JSON report
+        json_data = self._generate_json_report(gene_data, annotation_data, coverage_metrics)
+        json_file = self._save_json_report(json_data, "functional_annotation_report.json")
+        
+        print(f"[{self.timestamp.strftime('%H:%M:%S')}] Report generation complete.")
+        print(f"  ✓ Text report: {text_file}")
+        print(f"  ✓ JSON report: {json_file}")
         
         return {
-            'text_report': str(self.output_dir / "functional_annotation_report.txt"),
+            'text_report': text_file,
             'json_report': json_file,
-            'total_genes': gene_analysis.get('total_proteins', 0) if gene_analysis else 0,
+            'total_genes': gene_data.get('total_proteins', 0) if gene_data else 0,
             'annotation_rate': coverage_metrics.get('annotation_rate', 0),
             'functional_categories': len(coverage_metrics.get('functional_distribution', {}))
         }
-
-    def _analyze_gene_prediction(self, prokka_dir):
-        """Analyze Prokka gene prediction results with quality assessment"""
+    
+    def _parse_gene_prediction(self, prokka_dir: str) -> Optional[Dict]:
+        """
+        Parse Prokka gene prediction results.
+        
+        Args:
+            prokka_dir: Path to Prokka output directory
+            
+        Returns:
+            Dictionary containing gene prediction statistics
+        """
         try:
             prokka_path = Path(prokka_dir)
             
-            # Find protein sequence files
+            # Find output files
             faa_files = list(prokka_path.glob("*.faa"))
             ffn_files = list(prokka_path.glob("*.ffn"))
             gff_files = list(prokka_path.glob("*.gff"))
             
-            analysis_results = {
+            if not faa_files:
+                print("  ✗ No protein sequence files (.faa) found in Prokka directory")
+                return None
+            
+            # Parse protein sequences
+            protein_file = faa_files[0]
+            proteins = list(SeqIO.parse(protein_file, "fasta"))
+            
+            if not proteins:
+                print("  ✗ No proteins found in file")
+                return None
+            
+            # Calculate statistics
+            lengths = [len(seq.seq) for seq in proteins]
+            
+            # Length distribution
+            length_dist = {
+                'very_short': sum(1 for l in lengths if l < 50),
+                'short': sum(1 for l in lengths if 50 <= l < 100),
+                'medium': sum(1 for l in lengths if 100 <= l < 300),
+                'long': sum(1 for l in lengths if l >= 300)
+            }
+            
+            # Quality metrics
+            very_short_ratio = length_dist['very_short'] / len(proteins)
+            mean_length = np.mean(lengths)
+            
+            quality_flag = 'Pass' if very_short_ratio < 0.3 and mean_length > 150 else 'Review'
+            
+            gene_data = {
                 'prokka_directory': str(prokka_path),
+                'total_proteins': len(proteins),
                 'output_files': {
                     'protein_files': len(faa_files),
                     'gene_files': len(ffn_files),
                     'annotation_files': len(gff_files)
                 },
-                'total_proteins': 0,
-                'length_statistics': {},
-                'quality_metrics': {}
-            }
-            
-            # Analyze protein sequences
-            if faa_files:
-                protein_file = faa_files[0]
-                proteins = list(SeqIO.parse(protein_file, "fasta"))
-                
-                if proteins:
-                    lengths = [len(seq.seq) for seq in proteins]
-                    
-                    analysis_results.update({
-                        'total_proteins': len(proteins),
-                        'length_statistics': {
-                            'mean': np.mean(lengths),
-                            'median': np.median(lengths),
-                            'std': np.std(lengths),
-                            'min': min(lengths),
-                            'max': max(lengths),
-                            'range': max(lengths) - min(lengths)
-                        },
-                        'length_distribution': {
-                            'very_short': len([l for l in lengths if l < 50]),
-                            'short': len([l for l in lengths if 50 <= l < 100]),
-                            'medium': len([l for l in lengths if 100 <= l < 300]),
-                            'long': len([l for l in lengths if l >= 300])
-                        }
-                    })
-                    
-                    # Quality assessment
-                    very_short_ratio = analysis_results['length_distribution']['very_short'] / len(proteins)
-                    mean_length = analysis_results['length_statistics']['mean']
-                    
-                    analysis_results['quality_metrics'] = {
-                        'very_short_ratio': very_short_ratio,
-                        'mean_length_assessment': 'Normal' if mean_length > 200 else 'Short',
-                        'coding_density_estimate': self._estimate_coding_density(lengths),
-                        'quality_flag': 'Pass' if very_short_ratio < 0.3 and mean_length > 150 else 'Review'
-                    }
-            
-            return analysis_results
-            
-        except Exception as e:
-            return {'error': f"Error analyzing gene prediction: {e}"}
-
-    def _analyze_functional_annotation(self, swissprot_file):
-        """Analyze SwissProt functional annotation with comprehensive metrics"""
-        try:
-            if not Path(swissprot_file).exists():
-                return {'error': "SwissProt annotation file not found"}
-            
-            # Read annotation results
-            df = pd.read_csv(swissprot_file, sep='\t')
-            
-            if df.empty:
-                return {'error': "No SwissProt annotations found"}
-            
-            analysis_results = {
-                'total_matches': len(df),
-                'unique_proteins': df['qseqid'].nunique(),
-                'identity_statistics': {
-                    'mean': df['pident'].mean(),
-                    'median': df['pident'].median(),
-                    'std': df['pident'].std(),
-                    'min': df['pident'].min(),
-                    'max': df['pident'].max()
+                'length_statistics': {
+                    'mean': float(np.mean(lengths)),
+                    'median': float(np.median(lengths)),
+                    'std': float(np.std(lengths)),
+                    'min': int(min(lengths)),
+                    'max': int(max(lengths)),
+                    'q25': float(np.percentile(lengths, 25)),
+                    'q75': float(np.percentile(lengths, 75))
                 },
-                'quality_distribution': {
-                    'excellent': len(df[df['pident'] >= 95]),
-                    'very_good': len(df[(df['pident'] >= 90) & (df['pident'] < 95)]),
-                    'good': len(df[(df['pident'] >= 80) & (df['pident'] < 90)]),
-                    'moderate': len(df[(df['pident'] >= 70) & (df['pident'] < 80)]),
-                    'low': len(df[df['pident'] < 70])
-                },
-                'evalue_statistics': {
-                    'mean': df['evalue'].mean(),
-                    'median': df['evalue'].median(),
-                    'highly_significant': len(df[df['evalue'] < 1e-50]),
-                    'significant': len(df[(df['evalue'] >= 1e-50) & (df['evalue'] < 1e-10)]),
-                    'marginal': len(df[df['evalue'] >= 1e-10])
+                'length_distribution': length_dist,
+                'quality_metrics': {
+                    'very_short_ratio': float(very_short_ratio),
+                    'mean_length': float(mean_length),
+                    'quality_flag': quality_flag,
+                    'coding_density_estimate': self._estimate_coding_density(lengths)
                 }
             }
             
-            # Functional category analysis
-            if 'stitle' in df.columns:
-                analysis_results['functional_analysis'] = self._analyze_functional_categories(df['stitle'])
+            self._gene_stats = gene_data
             
-            return analysis_results
+            print(f"  ✓ Parsed gene prediction data: {len(proteins):,} proteins identified")
+            
+            return gene_data
             
         except Exception as e:
-            return {'error': f"Error analyzing functional annotation: {e}"}
-
-    def _analyze_functional_categories(self, descriptions):
-        """Analyze functional categories from protein descriptions"""
+            print(f"  ✗ Error parsing gene prediction data: {e}")
+            return None
+    
+    def _parse_functional_annotation(self, swissprot_file: str) -> Optional[Dict]:
+        """
+        Parse SwissProt functional annotation results.
+        
+        Args:
+            swissprot_file: Path to SwissProt BLAST TSV file
+            
+        Returns:
+            Dictionary containing annotation statistics
+        """
+        try:
+            swissprot_path = Path(swissprot_file)
+            
+            if not swissprot_path.exists():
+                print(f"  ✗ SwissProt annotation file not found: {swissprot_file}")
+                return None
+            
+            # Read annotation file
+            df = pd.read_csv(swissprot_file, sep='\t')
+            
+            if df.empty:
+                print("  ✗ No annotations found in SwissProt file")
+                return None
+            
+            # Calculate statistics
+            identity_stats = {
+                'mean': float(df['pident'].mean()),
+                'median': float(df['pident'].median()),
+                'std': float(df['pident'].std()),
+                'min': float(df['pident'].min()),
+                'max': float(df['pident'].max())
+            }
+            
+            # Quality distribution
+            quality_dist = {
+                'excellent': len(df[df['pident'] >= 95]),
+                'very_good': len(df[(df['pident'] >= 90) & (df['pident'] < 95)]),
+                'good': len(df[(df['pident'] >= 80) & (df['pident'] < 90)]),
+                'moderate': len(df[(df['pident'] >= 70) & (df['pident'] < 80)]),
+                'low': len(df[df['pident'] < 70])
+            }
+            
+            # E-value statistics
+            evalue_stats = {
+                'mean': float(df['evalue'].mean()),
+                'median': float(df['evalue'].median()),
+                'highly_significant': len(df[df['evalue'] < 1e-50]),
+                'significant': len(df[(df['evalue'] >= 1e-50) & (df['evalue'] < 1e-10)]),
+                'marginal': len(df[df['evalue'] >= 1e-10])
+            }
+            
+            # Functional category analysis
+            functional_analysis = {}
+            if 'stitle' in df.columns:
+                functional_analysis = self._analyze_functional_categories(df['stitle'])
+            
+            annotation_data = {
+                'total_matches': len(df),
+                'unique_proteins': df['qseqid'].nunique(),
+                'identity_statistics': identity_stats,
+                'quality_distribution': quality_dist,
+                'evalue_statistics': evalue_stats,
+                'functional_analysis': functional_analysis
+            }
+            
+            self._annotation_stats = annotation_data
+            
+            print(f"  ✓ Parsed annotation data: {len(df):,} matches for {df['qseqid'].nunique():,} unique proteins")
+            
+            return annotation_data
+            
+        except Exception as e:
+            print(f"  ✗ Error parsing functional annotation data: {e}")
+            return None
+    
+    def _analyze_functional_categories(self, descriptions: pd.Series) -> Dict[str, int]:
+        """
+        Analyze functional categories from protein descriptions.
+        
+        Args:
+            descriptions: Series of protein descriptions
+            
+        Returns:
+            Dictionary mapping categories to protein counts
+        """
         category_counts = {}
         descriptions_lower = descriptions.str.lower().fillna('')
         
-        for category, keywords in self.FUNCTIONAL_CATEGORIES.items():
+        for category, config in self.FUNCTIONAL_CATEGORIES.items():
             count = 0
-            for keyword in keywords:
-                count += descriptions_lower.str.contains(keyword, na=False).sum()
+            for keyword in config['keywords']:
+                count += descriptions_lower.str.contains(keyword, regex=False, na=False).sum()
             
             if count > 0:
                 category_counts[category] = count
         
         return category_counts
-
-    def _estimate_coding_density(self, protein_lengths):
-        """Estimate coding density based on protein length distribution"""
+    
+    def _estimate_coding_density(self, protein_lengths: List[int]) -> float:
+        """
+        Estimate coding density from protein length distribution.
+        
+        Args:
+            protein_lengths: List of protein lengths in amino acids
+            
+        Returns:
+            Estimated coding density percentage
+        """
         total_aa = sum(protein_lengths)
-        total_nucleotides = total_aa * 3  # Approximate
+        total_nucleotides = total_aa * 3
         
         # Rough genome size estimate (assumes typical bacterial genome)
-        estimated_genome_size = total_nucleotides * 1.2  # Account for non-coding regions
+        estimated_genome_size = total_nucleotides * 1.15  # Account for non-coding
         coding_density = (total_nucleotides / estimated_genome_size) * 100
         
         return round(coding_density, 1)
-
-    def _calculate_annotation_coverage(self, gene_analysis, annotation_analysis):
-        """Calculate comprehensive annotation coverage metrics"""
+    
+    def _calculate_coverage_metrics(self, gene_data: Optional[Dict], 
+                                    annotation_data: Optional[Dict]) -> Dict[str, Any]:
+        """
+        Calculate annotation coverage metrics.
+        
+        Args:
+            gene_data: Gene prediction statistics
+            annotation_data: Annotation statistics
+            
+        Returns:
+            Dictionary of coverage metrics
+        """
         metrics = {
-            'annotation_rate': 0,
+            'annotation_rate': 0.0,
             'coverage_assessment': 'No data',
+            'total_predicted': 0,
+            'total_annotated': 0,
+            'unannotated': 0,
             'functional_distribution': {},
             'quality_assessment': 'Incomplete analysis'
         }
         
-        if gene_analysis and annotation_analysis and 'error' not in gene_analysis and 'error' not in annotation_analysis:
-            total_proteins = gene_analysis.get('total_proteins', 0)
-            annotated_proteins = annotation_analysis.get('unique_proteins', 0)
+        if not gene_data or not annotation_data:
+            return metrics
+        
+        total_proteins = gene_data.get('total_proteins', 0)
+        annotated_proteins = annotation_data.get('unique_proteins', 0)
+        
+        if total_proteins > 0:
+            annotation_rate = (annotated_proteins / total_proteins) * 100
             
-            if total_proteins > 0:
-                annotation_rate = (annotated_proteins / total_proteins) * 100
-                metrics.update({
-                    'annotation_rate': round(annotation_rate, 1),
-                    'total_predicted': total_proteins,
-                    'total_annotated': annotated_proteins,
-                    'unannotated': total_proteins - annotated_proteins
-                })
-                
-                # Coverage assessment
-                if annotation_rate >= 85:
-                    metrics['coverage_assessment'] = 'Excellent'
-                elif annotation_rate >= 70:
-                    metrics['coverage_assessment'] = 'Good'
-                elif annotation_rate >= 50:
-                    metrics['coverage_assessment'] = 'Moderate'
-                else:
-                    metrics['coverage_assessment'] = 'Limited'
-                
-                # Functional distribution
-                if 'functional_analysis' in annotation_analysis:
-                    metrics['functional_distribution'] = annotation_analysis['functional_analysis']
-                
-                # Quality assessment
-                high_quality_annotations = annotation_analysis.get('quality_distribution', {}).get('excellent', 0)
-                quality_ratio = high_quality_annotations / max(annotated_proteins, 1)
-                
-                if quality_ratio >= 0.7:
-                    metrics['quality_assessment'] = 'High-quality annotations predominate'
-                elif quality_ratio >= 0.5:
-                    metrics['quality_assessment'] = 'Good annotation quality'
-                else:
-                    metrics['quality_assessment'] = 'Mixed annotation quality'
+            metrics.update({
+                'annotation_rate': round(annotation_rate, 2),
+                'total_predicted': total_proteins,
+                'total_annotated': annotated_proteins,
+                'unannotated': total_proteins - annotated_proteins
+            })
+            
+            # Coverage assessment
+            if annotation_rate >= 85:
+                metrics['coverage_assessment'] = 'Excellent'
+            elif annotation_rate >= 70:
+                metrics['coverage_assessment'] = 'Good'
+            elif annotation_rate >= 50:
+                metrics['coverage_assessment'] = 'Moderate'
+            else:
+                metrics['coverage_assessment'] = 'Limited'
+            
+            # Functional distribution
+            metrics['functional_distribution'] = annotation_data.get('functional_analysis', {})
+            
+            # Quality assessment
+            quality_dist = annotation_data.get('quality_distribution', {})
+            high_quality = quality_dist.get('excellent', 0) + quality_dist.get('very_good', 0)
+            quality_ratio = high_quality / max(annotated_proteins, 1)
+            
+            if quality_ratio >= 0.7:
+                metrics['quality_assessment'] = 'High-quality annotations predominate'
+            elif quality_ratio >= 0.5:
+                metrics['quality_assessment'] = 'Good annotation quality'
+            elif quality_ratio >= 0.3:
+                metrics['quality_assessment'] = 'Mixed annotation quality'
+            else:
+                metrics['quality_assessment'] = 'Lower confidence annotations'
         
         return metrics
-
-    def _generate_professional_functional_report(self, gene_analysis, annotation_analysis, coverage_metrics):
-        """Generate professional functional annotation report"""
-        content = self._create_professional_header(
-            "Functional Annotation Report",
-            "Prokka v1.14.6 + SwissProt BLAST v2.13.0"
-        )
+    
+    def _generate_text_report(self, gene_data: Optional[Dict], 
+                             annotation_data: Optional[Dict],
+                             coverage_metrics: Dict) -> List[str]:
+        """Generate comprehensive text report."""
+        content = []
+        
+        # Header
+        content.extend(self._create_header(
+            "FUNCTIONAL ANNOTATION REPORT",
+            "Prokka v1.14.6 + SwissProt BLAST v2.14.0",
+            "SwissProt Release 2024_05"
+        ))
         
         # Executive Summary
-        content.extend([
-            "EXECUTIVE SUMMARY:",
-            self._generate_functional_executive_summary(gene_analysis, annotation_analysis, coverage_metrics),
-            ""
-        ])
+        content.extend(self._create_section_header("EXECUTIVE SUMMARY", level=1))
+        content.extend(self._generate_executive_summary(gene_data, annotation_data, coverage_metrics))
         
-        # Gene Prediction Summary
-        if gene_analysis and 'error' not in gene_analysis:
-            content.extend(self._generate_gene_prediction_section(gene_analysis))
+        # Gene Prediction Section
+        if gene_data:
+            content.extend(self._create_section_header("GENE PREDICTION ANALYSIS", level=1))
+            content.extend(self._generate_gene_prediction_section(gene_data))
         
-        # Functional Annotation Coverage
-        if annotation_analysis and 'error' not in annotation_analysis:
-            content.extend(self._generate_annotation_coverage_section(annotation_analysis, coverage_metrics))
+        # Functional Annotation Section
+        if annotation_data:
+            content.extend(self._create_section_header("FUNCTIONAL ANNOTATION ANALYSIS", level=1))
+            content.extend(self._generate_annotation_section(annotation_data, coverage_metrics))
         
-        # Functional Category Analysis
+        # Functional Category Section
         if coverage_metrics.get('functional_distribution'):
+            content.extend(self._create_section_header("FUNCTIONAL CATEGORY PROFILING", level=1))
             content.extend(self._generate_functional_category_section(coverage_metrics['functional_distribution']))
         
-        # Quality Assessment and Recommendations
-        content.extend(self._generate_quality_assessment_section(coverage_metrics))
+        # Quality Assessment
+        content.extend(self._create_section_header("QUALITY ASSESSMENT", level=1))
+        content.extend(self._generate_quality_assessment_section(gene_data, annotation_data, coverage_metrics))
         
-        # Technical Specifications
-        content.extend(self._generate_technical_specifications())
+        # Recommendations
+        content.extend(self._create_section_header("RECOMMENDATIONS", level=1))
+        content.extend(self._generate_recommendations_section(coverage_metrics))
         
-        # Save report
-        self._save_text_report(content, "functional_annotation_report.txt")
-
-    def _generate_functional_executive_summary(self, gene_analysis, annotation_analysis, coverage_metrics):
-        """Generate executive summary for functional report"""
-        if not gene_analysis or 'error' in gene_analysis:
-            return "Gene prediction analysis could not be completed due to data availability issues."
-        
-        total_genes = gene_analysis.get('total_proteins', 0)
-        annotation_rate = coverage_metrics.get('annotation_rate', 0)
-        coverage_assessment = coverage_metrics.get('coverage_assessment', 'Unknown')
-        
-        summary = f"Comprehensive functional analysis identified {total_genes:,} protein-coding genes with "
-        
-        if annotation_rate > 0:
-            summary += f"{coverage_assessment.lower()} annotation coverage ({annotation_rate:.1f}%). "
-        else:
-            summary += "limited annotation coverage due to analysis constraints. "
-        
-        functional_categories = len(coverage_metrics.get('functional_distribution', {}))
-        if functional_categories > 0:
-            summary += f"Functional profile indicates diverse metabolic capabilities across {functional_categories} "
-            summary += "major functional categories, including essential cellular processes and specialized functions."
-        else:
-            summary += "Functional categorization requires additional annotation data for comprehensive analysis."
-        
-        return summary
-
-    def _generate_gene_prediction_section(self, gene_analysis):
-        """Generate gene prediction summary section"""
-        content = [
-            "Gene Prediction Summary (Prokka)",
-            "-" * 35,
-            f"Total Predicted Genes: {gene_analysis['total_proteins']:,}",
-            f"Protein-Coding Genes: {gene_analysis['total_proteins']:,} (100.0%)",
-            f"Analysis Source: {Path(gene_analysis['prokka_directory']).name}",
-            ""
-        ]
-        
-        if 'length_statistics' in gene_analysis:
-            stats = gene_analysis['length_statistics']
-            content.extend([
-                "Protein Length Distribution:",
-                f"Average Length: {stats['mean']:.0f} ± {stats['std']:.0f} amino acids",
-                f"Median Length: {stats['median']:.0f} amino acids",
-                f"Range: {stats['min']:.0f} - {stats['max']:.0f} amino acids",
-                ""
-            ])
-        
-        if 'length_distribution' in gene_analysis:
-            dist = gene_analysis['length_distribution']
-            total = gene_analysis['total_proteins']
-            content.extend([
-                "Length Category Distribution:",
-                f"Very short (<50 aa): {dist['very_short']:,} ({dist['very_short']/total*100:.1f}%)",
-                f"Short (50-99 aa): {dist['short']:,} ({dist['short']/total*100:.1f}%)",
-                f"Medium (100-299 aa): {dist['medium']:,} ({dist['medium']/total*100:.1f}%)",
-                f"Long (≥300 aa): {dist['long']:,} ({dist['long']/total*100:.1f}%)",
-                ""
-            ])
-        
-        if 'quality_metrics' in gene_analysis:
-            quality = gene_analysis['quality_metrics']
-            content.extend([
-                "Quality Assessment:",
-                f"Coding Density Estimate: {quality.get('coding_density_estimate', 'N/A')}%",
-                f"Length Distribution: {quality.get('mean_length_assessment', 'Unknown')}",
-                f"Overall Quality: {quality.get('quality_flag', 'Unknown')}",
-                ""
-            ])
+        # Footer
+        content.extend(self._create_footer())
         
         return content
-
-    def _generate_annotation_coverage_section(self, annotation_analysis, coverage_metrics):
-        """Generate functional annotation coverage section"""
-        content = [
-            "Functional Annotation Coverage (SwissProt)",
-            "-" * 45,
-            f"Total Protein Matches: {annotation_analysis['total_matches']:,}",
-            f"Unique Proteins Annotated: {annotation_analysis['unique_proteins']:,}",
-            f"Annotation Rate: {coverage_metrics.get('annotation_rate', 0):.1f}%",
-            f"Coverage Assessment: {coverage_metrics.get('coverage_assessment', 'Unknown')}",
-            ""
-        ]
+    
+    def _generate_executive_summary(self, gene_data: Optional[Dict], 
+                                    annotation_data: Optional[Dict],
+                                    coverage_metrics: Dict) -> List[str]:
+        """Generate executive summary."""
+        summary_items = []
         
-        if 'identity_statistics' in annotation_analysis:
-            stats = annotation_analysis['identity_statistics']
-            content.extend([
-                "Sequence Identity Statistics:",
-                f"Average Identity: {stats['mean']:.1f}%",
-                f"Median Identity: {stats['median']:.1f}%",
-                f"Identity Range: {stats['min']:.1f}% - {stats['max']:.1f}%",
-                ""
-            ])
+        if gene_data:
+            total_genes = gene_data['total_proteins']
+            mean_length = gene_data['length_statistics']['mean']
+            quality_flag = gene_data['quality_metrics']['quality_flag']
+            
+            summary_items.append(
+                f"Gene prediction analysis identified {total_genes:,} protein-coding genes with an average "
+                f"length of {mean_length:.0f} amino acids. Quality assessment: {quality_flag}."
+            )
         
-        if 'quality_distribution' in annotation_analysis:
-            qual = annotation_analysis['quality_distribution']
-            total = annotation_analysis['total_matches']
-            content.extend([
-                "Annotation Quality Distribution:",
-                f"Excellent (≥95% identity): {qual['excellent']:,} ({qual['excellent']/total*100:.1f}%)",
-                f"Very Good (90-94% identity): {qual['very_good']:,} ({qual['very_good']/total*100:.1f}%)",
-                f"Good (80-89% identity): {qual['good']:,} ({qual['good']/total*100:.1f}%)",
-                f"Moderate (70-79% identity): {qual['moderate']:,} ({qual['moderate']/total*100:.1f}%)",
-                ""
-            ])
+        if annotation_data and coverage_metrics.get('annotation_rate', 0) > 0:
+            annotation_rate = coverage_metrics['annotation_rate']
+            coverage_assessment = coverage_metrics['coverage_assessment']
+            total_annotated = coverage_metrics['total_annotated']
+            
+            summary_items.append(
+                f"Functional annotation achieved {coverage_assessment.lower()} coverage with {annotation_rate:.1f}% "
+                f"of proteins annotated ({total_annotated:,} proteins assigned to known functions)."
+            )
+            
+            # Functional categories
+            func_dist = coverage_metrics.get('functional_distribution', {})
+            if func_dist:
+                top_category = max(func_dist.items(), key=lambda x: x[1])
+                summary_items.append(
+                    f"Functional profiling identified {len(func_dist)} major functional categories, with "
+                    f"{top_category[0]} being the most represented ({top_category[1]} annotations)."
+                )
         
-        return content
-
-    def _generate_functional_category_section(self, functional_distribution):
-        """Generate functional category analysis section"""
-        content = [
-            "Functional Category Analysis",
-            "-" * 30,
-            ""
-        ]
+        if not summary_items:
+            summary_items.append("Functional annotation analysis requires input data for comprehensive assessment.")
         
-        # Sort categories by protein count
-        sorted_categories = sorted(functional_distribution.items(), key=lambda x: x[1], reverse=True)
-        total_categorized = sum(functional_distribution.values())
+        return self._create_summary_box("Key Findings", summary_items)
+    
+    def _generate_gene_prediction_section(self, gene_data: Dict) -> List[str]:
+        """Generate gene prediction analysis section."""
+        lines = []
         
-        content.extend([
-            f"{'Category':<30} {'Proteins':<10} {'Percentage':<12}",
-            "-" * 54
-        ])
-        
-        for category, count in sorted_categories:
-            percentage = (count / total_categorized) * 100 if total_categorized > 0 else 0
-            content.append(f"{category:<30} {count:<10} {percentage:<12.1f}%")
-        
-        content.extend([
-            "",
-            f"Total Categorized Functions: {total_categorized:,}",
-            "Note: Proteins with multiple functions may be counted in multiple categories",
+        # Overview
+        lines.extend(self._create_section_header("Prediction Overview", level=2))
+        lines.extend([
+            f"Gene Prediction Tool: Prokka v1.14.6",
+            f"Total Genes Identified: {gene_data['total_proteins']:,}",
+            f"Protein-Coding Genes: {gene_data['total_proteins']:,} (100%)",
+            f"Analysis Directory: {Path(gene_data['prokka_directory']).name}",
             ""
         ])
         
-        return content
-
-    def _generate_quality_assessment_section(self, coverage_metrics):
-        """Generate quality assessment and recommendations section"""
-        content = [
-            "Quality Assessment & Recommendations",
-            "-" * 40,
-            f"Overall Assessment: {coverage_metrics.get('quality_assessment', 'Incomplete')}",
-            f"Annotation Coverage: {coverage_metrics.get('coverage_assessment', 'Unknown')}",
-            "",
-            "Interpretation Guidelines:"
+        # Length statistics
+        lines.extend(self._create_section_header("Protein Length Statistics", level=2))
+        stats = gene_data['length_statistics']
+        
+        lines.extend([
+            f"Mean Length: {stats['mean']:.1f} ± {stats['std']:.1f} amino acids",
+            f"Median Length: {stats['median']:.0f} amino acids",
+            f"Length Range: {stats['min']} - {stats['max']} amino acids",
+            f"25th Percentile: {stats['q25']:.0f} amino acids",
+            f"75th Percentile: {stats['q75']:.0f} amino acids",
+            ""
+        ])
+        
+        # Length distribution table
+        lines.extend(self._create_section_header("Length Category Distribution", level=2))
+        
+        dist = gene_data['length_distribution']
+        total = gene_data['total_proteins']
+        
+        headers = ["Category", "Range (aa)", "Count", "Percentage"]
+        rows = [
+            ["Very Short", "<50", f"{dist['very_short']:,}", f"{dist['very_short']/total*100:.2f}%"],
+            ["Short", "50-99", f"{dist['short']:,}", f"{dist['short']/total*100:.2f}%"],
+            ["Medium", "100-299", f"{dist['medium']:,}", f"{dist['medium']/total*100:.2f}%"],
+            ["Long", "≥300", f"{dist['long']:,}", f"{dist['long']/total*100:.2f}%"]
         ]
         
+        lines.extend(self._format_table(headers, rows, alignments=['left', 'left', 'right', 'right']))
+        lines.append("")
+        
+        # Quality metrics
+        lines.extend(self._create_section_header("Quality Metrics", level=2))
+        quality = gene_data['quality_metrics']
+        
+        lines.extend([
+            f"Very Short Protein Ratio: {quality['very_short_ratio']:.3f}",
+            f"Mean Length Assessment: {'Normal' if quality['mean_length'] > 200 else 'Short'}",
+            f"Estimated Coding Density: {quality['coding_density_estimate']}%",
+            f"Overall Quality Flag: {quality['quality_flag']}",
+            ""
+        ])
+        
+        return lines
+    
+    def _generate_annotation_section(self, annotation_data: Dict, 
+                                     coverage_metrics: Dict) -> List[str]:
+        """Generate functional annotation analysis section."""
+        lines = []
+        
+        # Coverage overview
+        lines.extend(self._create_section_header("Annotation Coverage", level=2))
+        lines.extend([
+            f"Annotation Database: SwissProt Release 2024_05",
+            f"Total Protein Matches: {annotation_data['total_matches']:,}",
+            f"Unique Proteins Annotated: {annotation_data['unique_proteins']:,}",
+            f"Annotation Rate: {coverage_metrics['annotation_rate']:.2f}%",
+            f"Coverage Assessment: {coverage_metrics['coverage_assessment']}",
+            ""
+        ])
+        
+        # Identity statistics
+        lines.extend(self._create_section_header("Sequence Identity Statistics", level=2))
+        stats = annotation_data['identity_statistics']
+        
+        lines.extend([
+            f"Average Identity: {stats['mean']:.2f}%",
+            f"Median Identity: {stats['median']:.2f}%",
+            f"Standard Deviation: {stats['std']:.2f}%",
+            f"Identity Range: {stats['min']:.1f}% - {stats['max']:.1f}%",
+            ""
+        ])
+        
+        # Quality distribution
+        lines.extend(self._create_section_header("Annotation Quality Distribution", level=2))
+        
+        qual = annotation_data['quality_distribution']
+        total = annotation_data['total_matches']
+        
+        headers = ["Quality Level", "Identity Range", "Count", "Percentage"]
+        rows = [
+            ["Excellent", "≥95%", f"{qual['excellent']:,}", f"{qual['excellent']/total*100:.2f}%"],
+            ["Very Good", "90-94%", f"{qual['very_good']:,}", f"{qual['very_good']/total*100:.2f}%"],
+            ["Good", "80-89%", f"{qual['good']:,}", f"{qual['good']/total*100:.2f}%"],
+            ["Moderate", "70-79%", f"{qual['moderate']:,}", f"{qual['moderate']/total*100:.2f}%"],
+            ["Low", "<70%", f"{qual['low']:,}", f"{qual['low']/total*100:.2f}%"]
+        ]
+        
+        lines.extend(self._format_table(headers, rows, alignments=['left', 'left', 'right', 'right']))
+        lines.append("")
+        
+        # E-value statistics
+        lines.extend(self._create_section_header("Statistical Significance (E-values)", level=2))
+        evalue = annotation_data['evalue_statistics']
+        
+        lines.extend([
+            f"Mean E-value: {evalue['mean']:.2e}",
+            f"Median E-value: {evalue['median']:.2e}",
+            f"Highly Significant (E < 1e-50): {evalue['highly_significant']:,} ({evalue['highly_significant']/total*100:.1f}%)",
+            f"Significant (1e-50 ≤ E < 1e-10): {evalue['significant']:,} ({evalue['significant']/total*100:.1f}%)",
+            f"Marginal (E ≥ 1e-10): {evalue['marginal']:,} ({evalue['marginal']/total*100:.1f}%)",
+            ""
+        ])
+        
+        return lines
+    
+    def _generate_functional_category_section(self, functional_dist: Dict[str, int]) -> List[str]:
+        """Generate functional category profiling section."""
+        lines = []
+        
+        # Sort categories by count
+        sorted_categories = sorted(functional_dist.items(), key=lambda x: x[1], reverse=True)
+        total_categorized = sum(functional_dist.values())
+        
+        lines.extend(self._create_section_header("Functional Category Overview", level=2))
+        lines.extend([
+            f"Total Functional Categories Detected: {len(functional_dist)}",
+            f"Total Categorized Annotations: {total_categorized:,}",
+            f"Note: Proteins with multiple functions may be counted in multiple categories",
+            ""
+        ])
+        
+        # Category table
+        lines.extend(self._create_section_header("Category Distribution", level=2))
+        
+        headers = ["Rank", "Functional Category", "Protein Count", "Percentage"]
+        rows = []
+        
+        for i, (category, count) in enumerate(sorted_categories, 1):
+            percentage = (count / total_categorized * 100) if total_categorized > 0 else 0
+            rows.append([
+                str(i),
+                category,
+                f"{count:,}",
+                f"{percentage:.2f}%"
+            ])
+        
+        lines.extend(self._format_table(headers, rows, alignments=['left', 'left', 'right', 'right']))
+        lines.append("")
+        
+        # Priority annotations
+        priority_categories = {
+            k: v for k, v in functional_dist.items() 
+            if self.FUNCTIONAL_CATEGORIES.get(k, {}).get('priority') in ['critical', 'high']
+        }
+        
+        if priority_categories:
+            lines.extend(self._create_section_header("High-Priority Functional Categories", level=2))
+            lines.extend([
+                "The following categories warrant special attention:",
+                ""
+            ])
+            
+            for category, count in sorted(priority_categories.items(), key=lambda x: x[1], reverse=True):
+                priority = self.FUNCTIONAL_CATEGORIES[category]['priority']
+                lines.append(f"• {category} ({priority.upper()} priority): {count:,} proteins")
+            
+            lines.append("")
+        
+        return lines
+    
+    def _generate_quality_assessment_section(self, gene_data: Optional[Dict], 
+                                             annotation_data: Optional[Dict],
+                                             coverage_metrics: Dict) -> List[str]:
+        """Generate quality assessment section."""
+        lines = []
+        
+        # Overall assessment
+        lines.extend(self._create_section_header("Overall Quality Assessment", level=2))
+        lines.extend([
+            f"Annotation Coverage: {coverage_metrics['coverage_assessment']}",
+            f"Annotation Quality: {coverage_metrics['quality_assessment']}",
+            ""
+        ])
+        
+        # Interpretation
         annotation_rate = coverage_metrics.get('annotation_rate', 0)
         
         if annotation_rate >= 85:
-            content.extend([
-                "- Excellent annotation coverage provides reliable functional insights",
-                "- High-quality matches support confident functional assignments",
-                "- Comprehensive functional analysis is well-supported"
-            ])
+            interpretation = ("Excellent annotation coverage provides high confidence in functional assignments. "
+                            "The majority of predicted proteins have reliable functional annotations, enabling "
+                            "comprehensive pathway analysis and functional interpretation.")
         elif annotation_rate >= 70:
-            content.extend([
-                "- Good annotation coverage enables robust functional analysis",
-                "- Most essential functions likely captured in analysis",
-                "- Minor gaps may exist for specialized or novel functions"
-            ])
+            interpretation = ("Good annotation coverage supports robust functional analysis. Most essential "
+                            "metabolic functions are likely well-represented, though some specialized or novel "
+                            "functions may lack annotations.")
         elif annotation_rate >= 50:
-            content.extend([
-                "- Moderate annotation coverage provides basic functional insights",
-                "- Essential metabolic pathways likely represented",
-                "- Significant gaps may exist for specialized functions"
-            ])
+            interpretation = ("Moderate annotation coverage provides basic functional insights. Essential "
+                            "housekeeping genes and core metabolic pathways are likely captured, but significant "
+                            "gaps may exist for specialized functions or novel proteins.")
         else:
-            content.extend([
-                "- Limited annotation coverage constrains functional analysis",
-                "- Consider specialized databases for improved coverage",
-                "- Results should be interpreted with caution"
+            interpretation = ("Limited annotation coverage constrains comprehensive functional analysis. "
+                            "Consider using additional databases or de novo functional prediction methods "
+                            "for improved coverage.")
+        
+        lines.extend([interpretation, ""])
+        
+        # Validation metrics
+        if gene_data and annotation_data:
+            lines.extend(self._create_section_header("Validation Metrics", level=2))
+            lines.extend([
+                f"Gene Calling Quality: {gene_data['quality_metrics']['quality_flag']}",
+                f"Mean Protein Length: {gene_data['length_statistics']['mean']:.0f} amino acids",
+                f"Annotation Identity: {annotation_data['identity_statistics']['mean']:.1f}% average",
+                f"High-Quality Annotations (≥90% ID): {sum([annotation_data['quality_distribution']['excellent'], annotation_data['quality_distribution']['very_good']]):,}",
+                ""
             ])
         
-        content.extend([
-            "",
-            "Recommended Follow-up:",
-            "- Cross-reference findings with expected sample characteristics",
-            "- Consider domain-specific databases for specialized functions",
-            "- Validate critical findings through targeted approaches",
-            "- Compare functional profiles with reference datasets when available",
-            ""
+        return lines
+    
+    def _generate_recommendations_section(self, coverage_metrics: Dict) -> List[str]:
+        """Generate recommendations section."""
+        lines = []
+        recommendations = []
+        
+        annotation_rate = coverage_metrics.get('annotation_rate', 0)
+        coverage_assessment = coverage_metrics.get('coverage_assessment', 'Unknown')
+        
+        # Data-driven recommendations
+        if annotation_rate < 70:
+            recommendations.extend([
+                "Consider supplementing SwissProt annotations with additional databases (KEGG, COG, Pfam) "
+                "to improve functional coverage.",
+                "Evaluate unannotated proteins for novel or highly divergent sequences that may represent "
+                "unique adaptations or horizontal gene transfer events."
+            ])
+        
+        if coverage_assessment == 'Excellent':
+            recommendations.append(
+                "High annotation coverage enables comprehensive pathway reconstruction and metabolic modeling. "
+                "Consider performing pathway enrichment analysis and comparative genomics."
+            )
+        
+        # General best practices
+        recommendations.extend([
+            "Cross-reference functional annotations with domain predictions (InterProScan, Pfam) for enhanced confidence.",
+            "Perform pathway completeness analysis to identify metabolic capabilities and potential auxotrophies.",
+            "Validate critical functional assignments (e.g., virulence factors, AMR genes) through targeted analysis.",
+            "Compare functional profiles with phylogenetically related organisms to identify unique features.",
+            "Consider manual curation of key functional categories for publication-quality annotations."
         ])
         
-        return content
-
-    def _generate_technical_specifications(self):
-        """Generate technical specifications section"""
-        return [
-            "Technical Specifications",
-            "-" * 25,
-            "Gene Prediction: Prokka v1.14.6",
-            "Annotation Database: SwissProt Release 2024_03",
-            f"Analysis Pipeline: MetaQuest v{self.version}",
-            "BLAST Parameters: E-value <1e-10, Identity >70%, Coverage >70%",
-            "Quality Thresholds: High (≥90% ID), Good (≥80% ID), Moderate (≥70% ID)",
-            "",
-            "Quality Control:",
-            "- Gene calling consistency verified across analysis",
-            "- Annotation concordance assessed for reliability",
-            "- Functional pathway completeness evaluated",
-            "- Statistical confidence measures applied",
-            ""
-        ]
-
-    def _create_functional_json_report(self, gene_analysis, annotation_analysis, coverage_metrics):
-        """Create structured JSON report for functional analysis"""
+        # Format recommendations
+        for i, rec in enumerate(recommendations, 1):
+            lines.append(f"{i}. {rec}")
+            lines.append("")
+        
+        return lines
+    
+    def _generate_json_report(self, gene_data: Optional[Dict], 
+                             annotation_data: Optional[Dict],
+                             coverage_metrics: Dict) -> Dict:
+        """Generate structured JSON report."""
         json_data = {
-            'analysis_summary': {
-                'analysis_type': 'Functional_Annotation',
-                'total_genes': gene_analysis.get('total_proteins', 0) if gene_analysis and 'error' not in gene_analysis else 0,
+            'summary': {
+                'total_genes_predicted': gene_data.get('total_proteins', 0) if gene_data else 0,
                 'annotation_rate': coverage_metrics.get('annotation_rate', 0),
-                'coverage_assessment': coverage_metrics.get('coverage_assessment', 'Unknown'),
-                'quality_assessment': coverage_metrics.get('quality_assessment', 'Unknown'),
-                'analysis_timestamp': self.timestamp.isoformat(),
-                'pipeline_version': f'MetaQuest v{self.version}'
+                'coverage_assessment': coverage_metrics.get('coverage_assessment', 'No data'),
+                'quality_assessment': coverage_metrics.get('quality_assessment', 'No data'),
+                'functional_categories_detected': len(coverage_metrics.get('functional_distribution', {}))
             },
-            'gene_prediction_analysis': gene_analysis if gene_analysis and 'error' not in gene_analysis else None,
-            'functional_annotation_analysis': annotation_analysis if annotation_analysis and 'error' not in annotation_analysis else None,
-            'coverage_metrics': coverage_metrics,
-            'functional_categories': coverage_metrics.get('functional_distribution', {})
+            'gene_prediction': gene_data,
+            'functional_annotation': annotation_data,
+            'coverage_metrics': coverage_metrics
         }
         
         return json_data
-
-
