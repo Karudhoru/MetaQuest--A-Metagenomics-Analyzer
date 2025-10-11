@@ -1,6 +1,6 @@
 from pathlib import Path
 from datetime import datetime
-from .visualization import BaseVisualizer
+from .base_visualizer import BaseVisualizer
 
 class DashboardGenerator(BaseVisualizer):
     """Generates the final HTML analysis dashboard with a sleek and professional design."""
@@ -13,39 +13,47 @@ class DashboardGenerator(BaseVisualizer):
         self.theme = {
             'color': "#4CAF50" if self.analysis_type == 'fastq' else "#007bff",
             'name': "FASTQ Analysis" if self.analysis_type == 'fastq' else "FASTA Analysis",
-            'version': "v3.2.2" # You can make this dynamic if needed
+            'version': "v3.6.0"
         }
 
     def _check_files(self) -> dict:
         """Checks for the existence of all key report files to display on the dashboard."""
         files_dict = {
-            # Common files for both FASTA and FASTQ
+            # Common Taxonomic Reports
             'taxonomic_report': (self.output_dir / "taxonomic_classification_report.txt").exists(),
-            'functional_report': (self.output_dir / "functional_annotation_report.txt").exists(),
-            'protein_length_distribution': (self.output_dir / "protein_length_distribution.html").exists(),
-            'pathogen_risk_chart': (self.output_dir / "pathogen_risk_detection.html").exists(),
             'taxonomic_abundance_chart': (self.output_dir / "taxonomic_abundance_chart.html").exists(),
             'taxonomy_krona': (self.output_dir / "taxonomy_krona.html").exists(),
-            'detection_method_coverage': (self.output_dir / "detection_method_coverage.html").exists(),
+            
+            # Common Functional Reports
+            'functional_report': (self.output_dir / "functional_annotation_report.txt").exists(),
+            'functional_annotations_tsv': (self.output_dir / "functional_annotations.tsv").exists(),
+            'protein_length_analysis': (self.output_dir / "protein_length_analysis.html").exists(),
+            'functional_categories': (self.output_dir / "functional_categories.html").exists(),
+            
+            # Common Pathogen Detection Reports
+            'pathogen_detection_report': (self.output_dir / "pathogen_detection_report.txt").exists(),
+            
+            # New Pathogen Visualizations (Plotly HTML)
+            'pathogen_risk_assessment': (self.output_dir / "pathogen_risk_assessment.html").exists(),
+            'who_priority_distribution': (self.output_dir / "who_priority_distribution.html").exists(),
+            'detection_confidence': (self.output_dir / "detection_confidence.html").exists(),
+            'diversity_metrics': (self.output_dir / "diversity_metrics.html").exists(),
         }
         
         if self.analysis_type == 'fastq':
-            # FASTQ-specific files (traditional pathogen screening)
+            # FASTQ-specific files (Kraken2/Bracken)
             files_dict.update({
-                'pathogen_summary': (self.output_dir / "pathogen_summary.txt").exists(),
-                'bracken_report': (self.output_dir / "bracken_report.tsv").exists(),
+                'bracken_report_txt': (self.output_dir / "bracken_report.txt").exists(),
+                'bracken_report_tsv': (self.output_dir / "bracken_report.tsv").exists(),
                 'kraken_report': (self.output_dir / "kraken_report.txt").exists(),
-                'amr_hits': (self.output_dir / "amr_hits.tsv").exists(),
+                'kraken_classified': (self.output_dir / "kraken_classified.txt").exists(),
                 'pathogen_results': (self.output_dir / "pathogen_results.txt").exists(),
-                'Pathogenic_Proteins': (self.output_dir / "Pathogenic_Proteins.txt").exists(),
             })
         elif self.analysis_type == 'fasta':
             # FASTA-specific files (BLAST + ML)
             files_dict.update({
-                'blast_ml_summary': (self.output_dir / "blast_ml_pathogen_summary.txt").exists(),
+                'blast_ml_pathogen_report': (self.output_dir / "blast_ml_pathogen_report.txt").exists(),
                 'ml_predictions_csv': (self.output_dir / "ml_pathogen_predictions.csv").exists(),
-                'organism_comparison_csv': (self.output_dir / "organism_comparison_data.csv").exists(),
-                'blast_ml_integrated_report': (self.output_dir / "blast_ml_integrated_pathogen_report.json").exists(),
             })
         
         return files_dict
@@ -355,6 +363,16 @@ class DashboardGenerator(BaseVisualizer):
                 text-transform: uppercase;
             }}
 
+            .file-type.interactive {{
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+            }}
+
+            .file-type.static {{
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                color: white;
+            }}
+
             .stats-grid {{
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -386,6 +404,27 @@ class DashboardGenerator(BaseVisualizer):
                 margin-top: 0.25rem;
                 text-transform: uppercase;
                 letter-spacing: 0.05em;
+            }}
+
+            .badge {{
+                display: inline-block;
+                padding: 0.25rem 0.6rem;
+                border-radius: 12px;
+                font-size: 0.7rem;
+                font-weight: 600;
+                margin-left: 0.5rem;
+                text-transform: uppercase;
+                letter-spacing: 0.03em;
+            }}
+
+            .badge.new {{
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+            }}
+
+            .badge.enhanced {{
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                color: white;
             }}
 
             .footer {{
@@ -462,45 +501,71 @@ class DashboardGenerator(BaseVisualizer):
             .card:nth-child(3) {{ animation-delay: 0.15s; }}
             .card:nth-child(4) {{ animation-delay: 0.2s; }}
             .card:nth-child(5) {{ animation-delay: 0.25s; }}
+            .card:nth-child(6) {{ animation-delay: 0.3s; }}
+            .card:nth-child(7) {{ animation-delay: 0.35s; }}
+            .card:nth-child(8) {{ animation-delay: 0.4s; }}
         </style>
         """
 
-    def _create_card(self, icon: str, title: str, description: str, link_key: str, file_type: str = "TXT") -> str:
+    def _create_card(self, icon: str, title: str, description: str, link_key: str, 
+                    file_type: str = "TXT", badge: str = None) -> str:
         """Creates the HTML for a single card if the corresponding file exists."""
         if self.files_exist.get(link_key, False):
             filename_map = {
-                # Common files
+                # Taxonomic Reports
                 'taxonomic_report': 'taxonomic_classification_report.txt',
-                'functional_report': 'functional_annotation_report.txt',
-                'protein_length_distribution': 'protein_length_distribution.html',
-                'pathogen_risk_chart': 'pathogen_risk_detection.html',
                 'taxonomic_abundance_chart': 'taxonomic_abundance_chart.html',
                 'taxonomy_krona': 'taxonomy_krona.html',
-                'detection_method_coverage': 'detection_method_coverage.html',
                 
-                # FASTQ-specific files
-                'pathogen_summary': 'pathogen_summary.txt',
-                'bracken_report': 'bracken_report.tsv',
+                # Functional Reports
+                'functional_report': 'functional_annotation_report.txt',
+                'functional_annotations_tsv': 'functional_annotations.tsv',
+                'protein_length_analysis': 'protein_length_analysis.html',
+                'functional_categories': 'functional_categories.html',
+                
+                # Pathogen Detection Reports
+                'pathogen_detection_report': 'pathogen_detection_report.txt',
+                
+                # New Interactive Pathogen Visualizations (Plotly)
+                'pathogen_risk_assessment': 'pathogen_risk_assessment.html',
+                'who_priority_distribution': 'who_priority_distribution.html',
+                'detection_confidence': 'detection_confidence.html',
+                'diversity_metrics': 'diversity_metrics.html',
+                
+                # FASTQ-specific
+                'bracken_report_txt': 'bracken_report.txt',
+                'bracken_report_tsv': 'bracken_report.tsv',
+                'kraken_report': 'kraken_report.txt',
+                'kraken_classified': 'kraken_classified.txt',
                 'pathogen_results': 'pathogen_results.txt',
-                'Pathogenic_Proteins': 'Pathogenic_Proteins.txt',
                 
-                # FASTA-specific files
-                'blast_ml_summary': 'blast_ml_pathogen_summary.txt',
+                # FASTA-specific
+                'blast_ml_pathogen_report': 'blast_ml_pathogen_report.txt',
                 'ml_predictions_csv': 'ml_pathogen_predictions.csv',
-                'organism_comparison_csv': 'organism_comparison_data.csv',
-                'blast_ml_integrated_report': 'blast_ml_integrated_pathogen_report.json',
             }
             
             filename = filename_map.get(link_key, '')
+            
+            # Determine file type badge style
+            file_type_class = ""
+            if file_type == "HTML":
+                file_type_class = "interactive"
+            elif file_type == "PNG":
+                file_type_class = "static"
+            
+            badge_html = ""
+            if badge:
+                badge_class = badge.lower()
+                badge_html = f'<span class="badge {badge_class}">{badge}</span>'
 
             return f"""
             <div class="card">
                 <div class="card-content">
-                    <h3><span class="icon">{icon}</span> {title}</h3>
+                    <h3><span class="icon">{icon}</span> {title}{badge_html}</h3>
                     <p>{description}</p>
                 </div>
                 <div class="card-footer">
-                    <span class="file-type">{file_type}</span>
+                    <span class="file-type {file_type_class}">{file_type}</span>
                     <a href="{filename}" target="_blank">Open Report &rarr;</a>
                 </div>
             </div>
@@ -515,10 +580,10 @@ class DashboardGenerator(BaseVisualizer):
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>MetaQuest Analysis Dashboard</title>
+            <title>MetaQuest Analysis Dashboard - {self.theme['name']}</title>
             <link rel="preconnect" href="https://fonts.googleapis.com">
             <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
             {self._get_styles()}
         </head>
         <body>
@@ -532,6 +597,9 @@ class DashboardGenerator(BaseVisualizer):
                     <div class="footer-logo">🧬 MetaQuest Bioinformatics Platform</div>
                     <p>Advanced metagenomics analysis pipeline combining traditional microbiology with cutting-edge AI technologies</p>
                     <p>Version {self.theme['version']} • Powered by Kraken2, BLAST, Prokka & Custom ML Models</p>
+                    <p style="margin-top: 0.5rem; font-size: 0.85rem;">
+                        Interactive visualizations powered by Plotly | Static charts generated with Matplotlib
+                    </p>
                 </div>
             </div>
         </body>
@@ -540,108 +608,180 @@ class DashboardGenerator(BaseVisualizer):
         
         final_html = html_head + html_header_body + html_foot
         
-        with open(self.output_dir / "analysis_dashboard.html", 'w') as f:
+        dashboard_path = self.output_dir / "analysis_dashboard.html"
+        with open(dashboard_path, 'w', encoding='utf-8') as f:
             f.write(final_html)
-        print(f"✓ Analysis dashboard created at: {self.output_dir / 'analysis_dashboard.html'}")
+        print(f"✓ Analysis dashboard created at: {dashboard_path}")
 
     def _create_header_and_body(self) -> str:
         """Creates the header and main body content based on analysis type."""
+        # Count available files for stats
+        total_files = sum(1 for exists in self.files_exist.values() if exists)
+        report_files = sum(1 for k, v in self.files_exist.items() if v and ('report' in k or 'summary' in k))
+        viz_files = sum(1 for k, v in self.files_exist.items() if v and ('chart' in k or 'distribution' in k or 'krona' in k))
+        
         header = f"""
         <div class="header">
-            <h1>🧬 MetaQuest Report</h1>
-            <div class="analysis-type">{self.theme['name']}</div>
-            <p>Version: {self.theme['version']} | Generated on: {self.timestamp}</p>
+            <div class="header-content">
+                <h1>🧬 MetaQuest Analysis Report</h1>
+                <div class="analysis-type">{self.theme['name']}</div>
+                <div class="header-meta">
+                    <span>📅 {self.timestamp}</span>
+                    <span>🔬 Version {self.theme['version']}</span>
+                    <span>📊 {total_files} Files Generated</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-item">
+                <span class="stat-number">{report_files}</span>
+                <span class="stat-label">Reports</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">{viz_files}</span>
+                <span class="stat-label">Visualizations</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">{self.theme['version']}</span>
+                <span class="stat-label">Pipeline Version</span>
+            </div>
         </div>
         """
         
         taxonomic_section, functional_section, pathogen_section = "", "", ""
 
         if self.analysis_type == 'fastq':
-            taxonomic_section = f"""
-            <div class="section">
-                <div class="section-header">
-                    <h2>📊 Taxonomic Analysis</h2>
-                </div>
-                <div class="grid">
-                    {self._create_card("📋", "Taxonomic Classification Report", "Comprehensive species identification and abundance analysis.", "taxonomic_report", "TXT")}
-                    {self._create_card("📈", "Taxonomic Abundance Chart", "Interactive visualization of the most abundant taxa in your sample.", "taxonomic_abundance_chart", "HTML")}
-                    {self._create_card("🌐", "Krona Taxonomy Chart", "Hierarchical interactive view of taxonomic classification.", "taxonomy_krona", "HTML")}
-                    {self._create_card("📊", "Bracken Report", "Refined abundance estimates at species level from Bracken.", "bracken_report", "TSV")}
-                </div>
-            </div>
-            """
-            
-            functional_section = f"""
-            <div class="section">
-                <div class="section-header">
-                    <h2>🧪 Functional Analysis</h2>
-                </div>
-                <div class="grid">
-                    {self._create_card("🔬", "Functional Annotation Report", "Gene prediction and protein annotation summary from Prokka.", "functional_report", "TXT")}
-                    {self._create_card("📏", "Protein Length Distribution", "Statistical distribution of predicted protein lengths.", "protein_length_distribution", "HTML")}
-                </div>
-            </div>
-            """
-            
-            pathogen_section = f"""
-            <div class="section">
-                <div class="section-header">
-                    <h2>🦠 Pathogen Analysis (Traditional Screening)</h2>
-                </div>
-                <div class="grid">
-                    {self._create_card("🎯", "Pathogen Summary Report", "Main clinical pathogen detection summary with risk assessment.", "pathogen_summary", "TXT")}
-                    {self._create_card("☣️", "Pathogen Risk Detection Chart", "Interactive visualization of detected pathogens by risk level.", "pathogen_risk_chart", "HTML")}
-                    {self._create_card("📄", "Pathogenic Proteins", "Comprehensive pathogen detection results and annotations.", "Pathogenic_Proteins", "TXT")}
-                    {self._create_card("📈", "Detection Method Coverage", "Coverage analysis of different pathogen detection methods.", "detection_method_coverage", "HTML")}
-                </div>
-            </div>
-            """
+            taxonomic_section = self._create_fastq_taxonomic_section()
+            functional_section = self._create_functional_section()
+            pathogen_section = self._create_fastq_pathogen_section()
             
         elif self.analysis_type == 'fasta':
-            taxonomic_section = f"""
-            <div class="section">
-                <div class="section-header">
-                    <h2>📊 Taxonomic Analysis (BLAST-based)</h2>
-                </div>
-                <div class="grid">
-                    {self._create_card("📋", "Taxonomic Classification Report", "Species identification results from BLAST analysis.", "taxonomic_report", "TXT")}
-                    {self._create_card("📈", "Taxonomic Abundance Chart", "Interactive chart showing organism abundance distribution.", "taxonomic_abundance_chart", "HTML")}
-                    {self._create_card("🌐", "Krona Taxonomy Chart", "Hierarchical view of taxonomic classification results.", "taxonomy_krona", "HTML")}
-                    {self._create_card("📊", "Organism Comparison Data", "Detailed BLAST hit statistics and organism comparison metrics.", "organism_comparison_csv", "CSV")}
-                </div>
-            </div>
-            """
-            
-            functional_section = f"""
-            <div class="section">
-                <div class="section-header">
-                    <h2>🧪 Functional Analysis</h2>
-                </div>
-                <div class="grid">
-                    {self._create_card("🔬", "Functional Annotation Report", "Gene prediction and protein annotation summary from Prokka.", "functional_report", "TXT")}
-                    {self._create_card("📏", "Protein Length Distribution", "Statistical distribution of predicted protein lengths.", "protein_length_distribution", "HTML")}
-                </div>
-            </div>
-            """
-            
-            pathogen_section = f"""
-            <div class="section">
-                <div class="section-header">
-                    <h2>🤖 Pathogen Analysis (BLAST + Machine Learning)</h2>
-                </div>
-                <div class="grid">
-                    {self._create_card("🎯", "BLAST+ML Integrated Summary", "Comprehensive pathogen analysis combining BLAST results with ML predictions.", "blast_ml_summary", "TXT")}
-                    {self._create_card("💻", "ML Pathogenicity Predictions", "Individual protein pathogenicity predictions from machine learning models.", "ml_predictions_csv", "CSV")}
-                    {self._create_card("☣️", "Pathogen Risk Detection Chart", "Interactive visualization of detected pathogens and risk levels.", "pathogen_risk_chart", "HTML")}
-                    {self._create_card("📈", "Detection Method Coverage", "Analysis of detection method coverage and effectiveness.", "detection_method_coverage", "HTML")}
-                </div>
-            </div>
-            """
+            taxonomic_section = self._create_fasta_taxonomic_section()
+            functional_section = self._create_functional_section()
+            pathogen_section = self._create_fasta_pathogen_section()
         
         return header + taxonomic_section + functional_section + pathogen_section
+
+    def _create_fastq_taxonomic_section(self) -> str:
+        """Create taxonomic section for FASTQ analysis"""
+        return f"""
+        <div class="section">
+            <div class="section-header">
+                <h2>📊 Taxonomic Classification</h2>
+                <p class="section-subtitle">Species identification using Kraken2/Bracken k-mer profiling</p>
+            </div>
+            <div class="grid">
+                {self._create_card("📋", "Taxonomic Classification Report", "Comprehensive species abundance and classification results.", "taxonomic_report", "TXT")}
+                {self._create_card("📈", "Abundance Chart", "Interactive visualization of taxonomic abundance distribution.", "taxonomic_abundance_chart", "HTML")}
+                {self._create_card("🌍", "Krona Taxonomy Chart", "Hierarchical interactive taxonomy browser.", "taxonomy_krona", "HTML")}
+                {self._create_card("📊", "Bracken Report (Text)", "Human-readable Bracken species abundance report.", "bracken_report_txt", "TXT")}
+                {self._create_card("📄", "Bracken Report (Data)", "Machine-readable species-level abundance data.", "bracken_report_tsv", "TSV")}
+                {self._create_card("📑", "Kraken Classification Report", "Raw Kraken2 classification results.", "kraken_report", "TXT")}
+            </div>
+        </div>
+        """
+
+    def _create_fasta_taxonomic_section(self) -> str:
+        """Create taxonomic section for FASTA analysis"""
+        return f"""
+        <div class="section">
+            <div class="section-header">
+                <h2>📊 Taxonomic Classification</h2>
+                <p class="section-subtitle">BLAST-based organism identification and abundance analysis</p>
+            </div>
+            <div class="grid">
+                {self._create_card("📋", "Taxonomic Classification Report", "BLAST-based species identification results.", "taxonomic_report", "TXT")}
+                {self._create_card("📈", "Abundance Chart", "Interactive organism abundance distribution.", "taxonomic_abundance_chart", "HTML")}
+                {self._create_card("🌍", "Krona Taxonomy Chart", "Hierarchical taxonomy visualization.", "taxonomy_krona", "HTML")}
+            </div>
+        </div>
+        """
+
+    def _create_functional_section(self) -> str:
+        """Create functional annotation section (common to both)"""
+        return f"""
+        <div class="section">
+            <div class="section-header">
+                <h2>🧪 Functional Annotation</h2>
+                <p class="section-subtitle">Gene prediction and protein functional characterization</p>
+            </div>
+            <div class="grid">
+                {self._create_card("🔬", "Functional Annotation Report", "Comprehensive gene and protein annotation summary.", "functional_report", "TXT")}
+                {self._create_card("📊", "Functional Annotations (Data)", "Detailed annotation data for all predicted features.", "functional_annotations_tsv", "TSV")}
+                {self._create_card("📏", "Protein Length Analysis", "Statistical analysis of predicted protein sizes.", "protein_length_analysis", "HTML")}
+                {self._create_card("📈", "Functional Categories", "Distribution of protein functional classifications.", "functional_categories", "HTML")}
+            </div>
+        </div>
+        """
+
+    def _create_fastq_pathogen_section(self) -> str:
+        """Create pathogen section for FASTQ analysis"""
+        return f"""
+        <div class="section">
+            <div class="section-header">
+                <h2>🦠 Pathogen Detection & Risk Assessment</h2>
+                <p class="section-subtitle">Multi-method pathogen screening with clinical risk stratification</p>
+            </div>
+            <div class="grid">
+                {self._create_card("📋", "Pathogen Detection Report", "Comprehensive pathogen analysis with WHO priority classification.", "pathogen_detection_report", "TXT")}
+                {self._create_card("🧬", "Pathogen Results", "Detailed pathogen detection results from multiple methods.", "pathogen_results", "TXT")}
+                {self._create_card("📑", "Kraken Classified Sequences", "Raw classified sequence data from Kraken2.", "kraken_classified", "TXT")}
+            </div>
+            
+            <div class="section-header" style="margin-top: 2rem;">
+                <h2>📊 Interactive Visualizations <span class="badge new">Enhanced</span></h2>
+                <p class="section-subtitle">Interactive Plotly charts with advanced filtering and zoom capabilities</p>
+            </div>
+            <div class="grid">
+                {self._create_card("🎯", "Risk Assessment Chart", "Interactive pathogen risk level analysis and classification.", "pathogen_risk_assessment", "HTML", "NEW")}
+                {self._create_card("🌍", "WHO Priority Distribution", "WHO 2024 priority pathogen classification breakdown.", "who_priority_distribution", "HTML", "NEW")}
+                {self._create_card("📈", "Detection Confidence", "Confidence scores and multi-method validation analysis.", "detection_confidence", "HTML", "NEW")}
+                {self._create_card("📊", "Diversity Metrics", "Microbial diversity and richness analysis.", "diversity_metrics", "HTML", "NEW")}
+            </div>
+        </div>
+        """
+
+    def _create_fasta_pathogen_section(self) -> str:
+        """Create pathogen section for FASTA analysis"""
+        return f"""
+        <div class="section">
+            <div class="section-header">
+                <h2>🤖 Integrated Pathogen Analysis (BLAST + ML)</h2>
+                <p class="section-subtitle">Dual-method pathogen detection combining sequence alignment and machine learning</p>
+            </div>
+            <div class="grid">
+                {self._create_card("📋", "BLAST+ML Pathogen Report", "Integrated pathogen analysis combining BLAST taxonomy and ML predictions.", "blast_ml_pathogen_report", "TXT")}
+                {self._create_card("🤖", "ML Predictions (CSV)", "Individual protein pathogenicity predictions with confidence scores.", "ml_predictions_csv", "CSV")}
+            </div>
+            
+            <div class="section-header" style="margin-top: 2rem;">
+                <h2>📊 Interactive Visualizations <span class="badge new">Enhanced</span></h2>
+                <p class="section-subtitle">Interactive Plotly charts with drill-down capabilities</p>
+            </div>
+            <div class="grid">
+                {self._create_card("🎯", "Risk Assessment Chart", "Integrated BLAST+ML pathogen risk classification.", "pathogen_risk_assessment", "HTML", "NEW")}
+                {self._create_card("🌍", "WHO Priority Distribution", "WHO priority pathogen breakdown from BLAST results.", "who_priority_distribution", "HTML", "NEW")}
+                {self._create_card("📈", "Detection Confidence", "ML prediction confidence and BLAST quality metrics.", "detection_confidence", "HTML", "NEW")}
+                {self._create_card("📊", "Diversity Analysis", "Taxonomic diversity and community structure metrics.", "diversity_metrics", "HTML", "NEW")}
+            </div>
+        </div>
+                <h2>📸 Static Charts</h2>
+                <p class="section-subtitle">Publication-ready static visualizations</p>
+            </div>
+            <div class="grid">
+                {self._create_card("⚠️", "Risk Distribution (PNG)", "Static pathogen risk level distribution.", "pathogen_risk_distribution", "PNG")}
+                {self._create_card("📊", "Top Pathogens (PNG)", "Static bar chart of detected pathogenic organisms.", "pathogen_abundance_top15", "PNG")}
+                {self._create_card("🏥", "WHO Classification (PNG)", "Static WHO priority classification chart.", "pathogen_who_classification", "PNG")}
+                {self._create_card("🎲", "ML Confidence (PNG)", "Static ML prediction confidence distribution.", "pathogen_confidence_methods", "PNG")}
+            </div>
+        </div>
+        """
+
 
 # --- Main wrapper function ---
 def create_dashboard(analysis_type: str, output_dir: Path):
     """Main entry point to create the final analysis dashboard."""
     generator = DashboardGenerator(output_dir, analysis_type)
     generator.create_dashboard()
+    return str(output_dir / "analysis_dashboard.html")
