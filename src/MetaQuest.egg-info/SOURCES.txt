@@ -11,6 +11,7 @@ src/metaquest/cli.py
 src/metaquest/config.py
 src/metaquest/core/__init__.py
 src/metaquest/core/analysis.py
+src/metaquest/core/comparative_analysis.py
 src/metaquest/core/functional_analysis.py
 src/metaquest/core/pathogen_analysis.py
 src/metaquest/core/taxonomic_analysis.py
@@ -26,6 +27,13 @@ src/metaquest/ml/model_artifacts/feature_names.pkl
 src/metaquest/ml/model_artifacts/feature_selector.pkl
 src/metaquest/ml/model_artifacts/scaler.pkl
 src/metaquest/reporting/__init__.py
+src/metaquest/reporting/base_reporter.py
+src/metaquest/reporting/functional_reporter.py
+src/metaquest/reporting/main_reporter.py
+src/metaquest/reporting/pathogen_reporter.py
 src/metaquest/reporting/reporting.py
+src/metaquest/reporting/taxonomic_reporter.py
 src/metaquest/visualization/__init__.py
+src/metaquest/visualization/compare_visuals.py
+src/metaquest/visualization/dashboard.py
 src/metaquest/visualization/visualization.py

@@ -10,3 +10,6 @@ xgboost
 plotly
 lightgbm
 catboost
+scikit-bio>=0.5.8
+statsmodels>=0.13.0
+scipy>=1.9.0
