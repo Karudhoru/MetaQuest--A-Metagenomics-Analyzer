@@ -24,7 +24,7 @@ PATHOGEN_DB_WITH_TAX = DB_DIR / "pathogen_db" / "pathogen_db_with_tax.dmnd"
 PATHOGEN_DB_CUSTOM = DB_DIR / "pathogen_db_custom" / "pathogen_markers.dmnd"
 
 # SPECIALIZED DATABASES
-SWISSPROT_DB = DB_DIR / "swissprot.dmnd"
+SWISSPROT_DB = DB_DIR / "SwissProt_COG_db.dmnd" # Custom Swiss-Prot + COG database for functional annotation
 
 # AMR AND VIRULENCE DATABASES
 CARD_PROTEIN_DB = DB_DIR / "pathogen_db" / "protein_fasta_protein_homolog_model.fasta"
