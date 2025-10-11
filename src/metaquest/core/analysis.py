@@ -8,20 +8,19 @@ import numpy as np
 import json
 from .taxonomic_analysis import run_kraken, run_bracken, run_fasta_blast_taxonomy
 from .pathogen_analysis import run_pathogen_scan
-from .functional_analysis import run_prokka, run_swissprot_annotation
+from .functional_analysis import run_prokka, run_functional_annotation
 from ..config import *
 from ..io.file_validator import FileValidator
-from ..io.utils import convert_fastq_to_fasta, split_interleaved
+from ..io.utils import assemble_reads_to_fasta, split_interleaved, should_use_ml_prediction, extract_pathogens_from_bracken, extract_pathogens_from_blast_taxonomy
 from ..visualization.dashboard import create_dashboard
 from ..reporting.main_reporter import (
-    PathogenReporter,
     generate_taxonomic_report, 
     generate_functional_report,
     generate_fastq_pathogen_report,
     generate_fasta_ml_pathogen_report,
     generate_sequence_hits_report
 )
-from ..visualization.visualization import (
+from ..visualization.main_visualizer import (
     create_taxonomic_visualizations,
     create_pathogen_visualizations, 
     create_functional_visualizations
@@ -35,42 +34,7 @@ try:
 except ImportError as e:
     ML_PATHOGEN_AVAILABLE = False
     print(f"⚠️ PathogenPredictor not available: {e}")
-    print(" Analysis will continue with traditional pathogen detection methods")
-
-def should_use_ml_prediction(prokka_dir):
-    """Determine if ML prediction is appropriate based on sequence lengths"""
-    try:
-        prokka_path = Path(prokka_dir)
-        protein_files = list(prokka_path.glob("*.faa"))
-        
-        if not protein_files:
-            return False
-        
-        from Bio import SeqIO
-        sequences = list(SeqIO.parse(protein_files[0], "fasta"))
-        
-        if not sequences:
-            return False
-        
-        lengths = [len(seq.seq) for seq in sequences]
-        avg_length = np.mean(lengths)
-        min_length_threshold = 200  
-        
-        print(f"📏 Protein length analysis:")
-        print(f"   • Average protein length: {avg_length:.1f} amino acids")
-        print(f"   • Total proteins: {len(sequences)}")
-        
-        if avg_length >= min_length_threshold:
-            print(f"   ✅ Suitable for ML prediction (avg ≥ {min_length_threshold} aa)")
-            return True
-        else:
-            print(f"   ⚠️ Too short for ML prediction (avg < {min_length_threshold} aa)")
-            print(f"   📝 ML model trained on 500-1000 aa proteins")
-            return False
-            
-    except Exception as e:
-        print(f"⚠️ Could not analyze protein lengths: {e}")
-        return False
+    print("   Analysis will continue with traditional pathogen detection methods")
 
 def run_analysis(input_file, file_type, output_dir, cli_args=None):
     """Main analysis controller that accepts CLI arguments and calls the correct pipeline."""
@@ -84,296 +48,409 @@ def run_analysis(input_file, file_type, output_dir, cli_args=None):
         fasta_path = input_file[0] if isinstance(input_file, list) else input_file
         analyze_fasta(Path(fasta_path), output_dir_path, cli_args)
     
-    # --- This is the correct, final call for the dashboard ---
-    print("\nGenerating final analysis dashboard...")
+    # Generate final dashboard
+    print("\n" + "="*80)
+    print("GENERATING FINAL ANALYSIS DASHBOARD")
+    print("="*80)
     create_dashboard(analysis_type=file_type, output_dir=output_dir_path)
     
     print(f"\n🎉 Analysis complete! Open {output_dir_path / 'analysis_dashboard.html'} to explore results.")
 
+
 def analyze_fastq(reads, output_dir: Path, args):
-    """Process FASTQ files with streamlined pathogen reporting and optional annotation skip"""
-    print("\n=== FASTQ Analysis Pipeline ===")
+    """Process FASTQ files with comprehensive v4.0.0 reporting and visualization"""
+    print("\n" + "="*80)
+    print("FASTQ ANALYSIS PIPELINE v4.0.0")
+    print("="*80)
     
     fasta_path = None
     kraken_report = None
     bracken_report = None
     
+    # ========================================================================
+    # STEP 1: TAXONOMIC CLASSIFICATION (Always runs)
+    # ========================================================================
     try:
+        print("\n" + "="*80)
+        print("STEP 1: TAXONOMIC CLASSIFICATION")
+        print("="*80)
+        
         # Handle interleaved files
         if hasattr(args, 'interleaved') and args.interleaved:
-            print("Splitting interleaved FASTQ...")
+            print("→ Splitting interleaved FASTQ...")
             reads = split_interleaved(reads[0], output_dir)
         elif hasattr(args, 'single') and args.single:
-            print("Processing single-end FASTQ...")
-            # Ensure reads is a list for consistency
+            print("→ Processing single-end FASTQ...")
             reads = [reads] if isinstance(reads, str) else reads
         
-        # --- 1. Taxonomic classification (Always runs) ---
-        print("\n--- Running Taxonomic Analysis ---")
-        print("1. Running Kraken2 classification...")
+        print("\n1. Running Kraken2 classification...")
         kraken_report_path = run_kraken(reads, output_dir)
         
         print("2. Running Bracken abundance estimation...")
         bracken_report = run_bracken(kraken_report_path, output_dir)
         
-        # Generate taxonomic reports and visualizations
-        print("3. Generating taxonomic reports and visualizations...")
-        generate_taxonomic_report(output_dir, bracken_data=bracken_report)
+        print("3. Generating taxonomic reports...")
+        generate_taxonomic_report(str(output_dir), bracken_data=bracken_report)
+        
+        print("4. Creating taxonomic visualizations...")
         create_taxonomic_visualizations(output_dir, bracken_report)
-        print("✓ Taxonomic analysis completed")
+        
+        print("\n✓ Taxonomic classification completed successfully")
         
     except Exception as e:
-        print(f"⚠️ Taxonomic analysis failed: {str(e)}")
+        print(f"\n✗ Taxonomic analysis failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
     
-    # --- 2. Convert to FASTA (needed for annotation steps) ---
+    # ========================================================================
+    # STEP 2: FASTA CONVERSION (Conditional)
+    # ========================================================================
     if args and not args.skip_annotation:
         try:
-            print("4. Converting to FASTA...")
-            fasta_path = convert_fastq_to_fasta(reads if len(reads) > 1 else reads[0], output_dir)
+            print("\n" + "="*80)
+            print("STEP 2: METAGENOMIC ASSEMBLY")
+            print("="*80)
+            print("→ Converting reads to FASTA format...")
+            fasta_path = assemble_reads_to_fasta(reads, output_dir)
+            print(f"✓ FASTA conversion completed: {fasta_path}")
         except Exception as e:
-            print(f"⚠️ FASTA conversion failed: {str(e)}")
-            print(" Skipping analyses that require FASTA format.")
+            print(f"✗ FASTA conversion failed: {str(e)}")
             fasta_path = None
     else:
-        print("4. ⏭️ Skipping FASTA conversion (--skip-annotation flag detected)")
+        print("\n⏭️ Skipping FASTA conversion (--skip-annotation flag)")
     
-    # --- 3. Conditionally run annotation steps ---
-    if args and not args.skip_annotation:
-        if fasta_path:
-            # Enhanced pathogen screening
-            pathogen_results = None
-            try:
-                print("\n--- Running Pathogen & Functional Analysis (this may take a while) ---")
-                print("5. Running comprehensive pathogen screening...")
-                pathogen_results = run_pathogen_scan(
-                    fasta_path, output_dir, 
-                    bracken_results=bracken_report, 
-                    taxonomy_results=None
+    # ========================================================================
+    # STEP 3: PATHOGEN & FUNCTIONAL ANALYSIS (Conditional)
+    # ========================================================================
+    if args and not args.skip_annotation and fasta_path:
+        
+        # --- Pathogen Screening ---
+        pathogen_results = None
+        try:
+            print("\n" + "="*80)
+            print("STEP 3: PATHOGEN SCREENING")
+            print("="*80)
+            print("→ Running comprehensive pathogen database search...")
+            pathogen_results = run_pathogen_scan(
+                fasta_path, output_dir, 
+                bracken_results=bracken_report, 
+                taxonomy_results=None
+            )
+            
+            if pathogen_results and Path(pathogen_results).exists():
+                print("→ Generating pathogen hits summary report...")
+                generate_sequence_hits_report(
+                    str(output_dir), 
+                    'Pathogen Database Search', 
+                    pathogen_results, 
+                    "Pathogen Screening Results"
+                )
+                print("✓ Pathogen screening completed")
+            
+        except Exception as e:
+            print(f"✗ Pathogen screening failed: {str(e)}")
+        
+        # --- Functional Annotation ---
+        prokka_dir = None
+        ml_results = None
+        ml_summary = None
+        
+        try:
+            print("\n" + "="*80)
+            print("STEP 4: FUNCTIONAL ANNOTATION")
+            print("="*80)
+            
+            print("1. Running gene prediction (Prokka)...")
+            prokka_dir = run_prokka(fasta_path, output_dir)
+            
+            protein_files = list(Path(prokka_dir).glob("*.faa"))
+            if not protein_files:
+                print("⚠️ No protein files found - skipping functional annotation")
+            elif all(os.path.getsize(pf) == 0 for pf in protein_files):
+                print("⚠️ All protein files are empty - skipping functional annotation")
+            else:
+                print("2. Running SwissProt annotation...")
+                swissprot_results = run_functional_annotation(prokka_dir, output_dir)
+                
+                print("3. Generating functional reports...")
+                generate_functional_report(
+                    str(output_dir), 
+                    prokka_results=str(prokka_dir), 
+                    swissprot_results=swissprot_results
                 )
                 
-                print("6. Generating Comprehensive Pathogen Hits Report...")
-                generate_sequence_hits_report(output_dir, 'fastq', pathogen_results, "Pathogen Screening Hits")
-                print("  -> Pathogen screening complete.")
-     
-                
-            except Exception as e:
-                print(f"⚠️ Pathogen analysis failed: {str(e)}")
-            
-            # Functional annotation with ML pathogen prediction
-            prokka_dir = None
-            ml_results = None
-            ml_summary = None
-            
-            try:
-                print("7. Running gene prediction...")
-                prokka_dir = run_prokka(fasta_path, output_dir)
-                protein_file = prokka_dir / "sample.faa"
-                gff_file = prokka_dir / "sample.gff"
-                
-                protein_files = list(Path(prokka_dir).glob("*.faa"))
-                if not protein_files:
-                    print("⚠️ Warning: No protein FASTA files found from Prokka. Skipping functional annotation.")
-                elif all(os.path.getsize(pf) == 0 for pf in protein_files):
-                    print("⚠️ Warning: All protein files are empty. Skipping functional annotation.")
-                else:
-                    print("8. Running functional annotation...")
-                    swissprot_results = run_swissprot_annotation(prokka_dir, output_dir)
-                    
-                    print("9. Generating functional analysis reports...")
-                    generate_functional_report(output_dir, prokka_results=prokka_dir, swissprot_results=swissprot_results)
-                    create_functional_visualizations(output_dir, prokka_results=prokka_dir, swissprot_results=swissprot_results)
-                    print("  -> Functional annotation complete.")
-                    
-                    # ML-based pathogen prediction
-                    if ML_PATHOGEN_AVAILABLE:
-                        if should_use_ml_prediction(prokka_dir):
-                            try:
-                                print("10. Running ML-based pathogen prediction...")
-                                ml_results, ml_summary = run_ml_pathogen_prediction(prokka_dir, output_dir)
-                                
-                                if ml_results and ml_summary:
-                                    print(f"✓ ML pathogen prediction completed:")
-                                    print(f" 📊 {ml_summary['pathogenic_predictions']}/{ml_summary['total_sequences_analyzed']} proteins predicted as pathogenic")
-                                    print(f" ⭐ {ml_summary['high_confidence_predictions']} high-confidence predictions")
-                                    print(f" 🎯 Average confidence: {ml_summary['average_confidence']:.3f}")
-                                else:
-                                    print("⚠️ ML pathogen prediction produced no results")
-                                    
-                            except Exception as e:
-                                print(f"⚠️ ML pathogen prediction failed: {str(e)}")
-                        else:
-                            print("10. ⏭️ Skipping ML prediction - protein sequences too short")
-                    else:
-                        print("10. ℹ️ ML pathogen predictor not available - skipping ML analysis")
-                        
-            except Exception as e:
-                print(f"⚠️ Functional analysis failed: {str(e)}")
-            
-            # STREAMLINED pathogen reporting for FASTQ
-            try:
-                print("11. Generating comprehensive pathogen analysis for FASTQ...")
-                
-                # Extract pathogens directly from Bracken data
-                bracken_pathogens = []
-                if bracken_report and Path(bracken_report).exists():
-                    reporter = PathogenReporter(Path(output_dir), analysis_mode='fastq')
-                    bracken_pathogens = reporter._extract_pathogens_from_bracken(bracken_report)
-                
-                # Generate the comprehensive FASTQ pathogen report
-                generate_fastq_pathogen_report(
+                print("4. Creating functional visualizations...")
+                create_functional_visualizations(
                     output_dir, 
-                    bracken_pathogens=bracken_pathogens,
-                    taxonomy_pathogens=[], 
-                    sequence_pathogens=[]
+                    prokka_results=prokka_dir, 
+                    swissprot_results=swissprot_results
                 )
+                
+                print("✓ Functional annotation completed")
+                
+                # --- ML Pathogen Prediction ---
+                if ML_PATHOGEN_AVAILABLE:
+                    if should_use_ml_prediction(prokka_dir):
+                        try:
+                            print("\n5. Running ML-based pathogen prediction...")
+                            ml_results, ml_summary = run_ml_pathogen_prediction(prokka_dir, output_dir)
+                            
+                            if ml_results and ml_summary:
+                                print(f"✓ ML pathogen prediction completed:")
+                                print(f"   📊 {ml_summary['pathogenic_predictions']}/{ml_summary['total_sequences_analyzed']} proteins predicted as pathogenic")
+                                print(f"   ⭐ {ml_summary['high_confidence_predictions']} high-confidence predictions")
+                                print(f"   🎯 Average confidence: {ml_summary['average_confidence']:.3f}")
+                            else:
+                                print("⚠️ ML prediction produced no results")
+                                
+                        except Exception as e:
+                            print(f"⚠️ ML prediction failed: {str(e)}")
+                    else:
+                        print("\n5. ⏭️ Skipping ML prediction - proteins too short")
+                else:
+                    print("\n5. ℹ️ ML predictor not available - skipping")
+                    
+        except Exception as e:
+            print(f"\n✗ Functional analysis failed: {str(e)}")
+            import traceback
+            traceback.print_exc()
+        
+        # --- Comprehensive Pathogen Report ---
+        try:
+            print("\n" + "="*80)
+            print("STEP 5: COMPREHENSIVE PATHOGEN ANALYSIS")
+            print("="*80)
+            
+            print("→ Extracting pathogenic organisms from Bracken...")
+            bracken_pathogens = []
+            if bracken_report and Path(bracken_report).exists():
+                bracken_pathogens = extract_pathogens_from_bracken(bracken_report)
+                print(f"   ✓ Extracted {len(bracken_pathogens)} pathogenic organisms")
+            
+            print("→ Generating comprehensive FASTQ pathogen report...")
+            pathogen_report_result = generate_fastq_pathogen_report(
+                str(output_dir), 
+                bracken_pathogens=bracken_pathogens,
+                taxonomy_pathogens=[], 
+                sequence_pathogens=[]
+            )
 
-                # Generate pathogen visualizations
-                report_file = output_dir / "pathogen_detection_report.json"
-                if report_file.exists():
-                    create_pathogen_visualizations(output_dir, traditional_data=str(report_file))
-                
-                print("✓ Comprehensive FASTQ pathogen analysis completed")
-                        
-            except Exception as e:
-                print(f"⚠️ Pathogen report generation failed: {str(e)}")
-                
+            print("→ Creating pathogen visualizations...")
+            report_file = output_dir / "pathogen_detection_report.json"
+            if report_file.exists():
+                create_pathogen_visualizations(
+                    output_dir, 
+                    traditional_data=str(report_file)
+                )
+            
+            print("\n✓ Comprehensive pathogen analysis completed")
+            print(f"   Risk Level: {pathogen_report_result.get('risk_level', 'UNKNOWN')}")
+            print(f"   Pathogens Detected: {pathogen_report_result.get('pathogen_count', 0)}")
+            print(f"   Critical Pathogens: {pathogen_report_result.get('critical_pathogens', 0)}")
+                    
+        except Exception as e:
+            print(f"\n✗ Pathogen report generation failed: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            
     else:
-        print("\n--skip-annotation flag detected. Skipping pathogen and functional analysis.")
-        print("  -> Only taxonomic classification will be performed for faster analysis.")
+        if args and args.skip_annotation:
+            print("\n" + "="*80)
+            print("⏭️ SKIPPING ANNOTATION STEPS")
+            print("="*80)
+            print("--skip-annotation flag detected")
+            print("Only taxonomic classification will be performed")
     
-    # --- 4. Generate visualizations (Always runs) ---
-    print("\n--- Generating Visualizations ---")
-    if bracken_report:
-        create_taxonomic_visualizations(output_dir, bracken_report)
-        print("✓ Taxonomic visualizations completed")
+    # ========================================================================
+    # FINAL SUMMARY
+    # ========================================================================
+    print("\n" + "="*80)
+    print("FASTQ ANALYSIS SUMMARY")
+    print("="*80)
+    print(f"📁 Output Directory: {output_dir}")
+    print("\n📋 Key Files Generated:")
+    print("   • taxonomic_classification_report.txt - Species identification")
+    print("   • taxonomic_abundance_chart.html - Interactive abundance visualization")
     
-    print(f"\n📁 All results saved to: {output_dir}")
-    print("🔍 Key files to review:")
-    print(" • taxonomic_classification_report.txt - Species identification and abundance")
     if args and not args.skip_annotation:
-        print(" • pathogen_summary.txt - Comprehensive pathogen analysis with clinical recommendations")
-        print(" • functional_annotation_report.txt - Gene prediction and annotation")
-    print(" • analysis_dashboard.html - Interactive dashboard")
+        print("   • pathogen_detection_report.txt - Comprehensive pathogen analysis")
+        print("   • pathogen_risk_assessment.html - Risk visualization")
+        print("   • functional_annotation_report.txt - Gene prediction results")
+        print("   • annotation_quality_dashboard.html - Quality metrics")
+    
+    print("   • analysis_dashboard.html - Complete interactive dashboard")
+    print("\n✓ FASTQ pipeline completed successfully")
+
 
 def analyze_fasta(fasta_path: Path, output_dir: Path, args):
-    """Process FASTA files with BLAST taxonomy + ML and optional annotation skip"""
-    print("\n=== FASTA Analysis Pipeline ===")
+    """Process FASTA files with comprehensive v4.0.0 reporting and visualization"""
+    print("\n" + "="*80)
+    print("FASTA ANALYSIS PIPELINE v4.0.0")
+    print("="*80)
     
     blast_results_data = None
     
+    # ========================================================================
+    # STEP 1: BLAST TAXONOMIC CLASSIFICATION (Always runs)
+    # ========================================================================
     try:
-        # --- 1. Taxonomic classification (Always runs) ---
-        print("\n--- Running Taxonomic Analysis ---")
-        print("1. Running BLAST taxonomic classification...")
+        print("\n" + "="*80)
+        print("STEP 1: BLAST TAXONOMIC CLASSIFICATION")
+        print("="*80)
         
-        # Use blast_sample_size if provided in args, otherwise default to 50
         max_sequences = getattr(args, 'blast_sample_size', 50) if args else 50
+        print(f"→ Running BLAST taxonomy (analyzing {max_sequences} sequences)...")
         
-        blast_results_file = run_fasta_blast_taxonomy(fasta_path, output_dir, database="nt", max_sequences=max_sequences)
+        blast_results_file = run_fasta_blast_taxonomy(
+            fasta_path, output_dir, 
+            database="nt", 
+            max_sequences=max_sequences
+        )
         
         if blast_results_file and Path(blast_results_file).exists():
             with open(blast_results_file, 'r') as f:
                 blast_results_data = json.load(f)
             print(f"✓ Loaded {len(blast_results_data)} BLAST results")
             
-            print("2. Generating comprehensive taxonomic reports...")
-            generate_taxonomic_report(output_dir, blast_data=blast_results_data)
+            print("→ Generating comprehensive taxonomic reports...")
+            generate_taxonomic_report(str(output_dir), blast_data=blast_results_data)
             
-            print("3. Creating BLAST-based taxonomic visualizations...")
+            print("→ Creating BLAST taxonomic visualizations...")
             create_taxonomic_visualizations(output_dir, blast_results_data)
-            print("✓ Comprehensive BLAST taxonomic analysis completed")
+            
+            print("\n✓ BLAST taxonomic analysis completed successfully")
         else:
-            print("⚠️ BLAST analysis produced no results file.")
+            print("⚠️ BLAST analysis produced no results")
 
     except Exception as e:
-        print(f"⚠️ BLAST taxonomic analysis failed: {str(e)}")
+        print(f"\n✗ BLAST taxonomic analysis failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
     
-    # --- 2. Conditionally run annotation steps ---
+    # ========================================================================
+    # STEP 2: FUNCTIONAL & ML ANALYSIS (Conditional)
+    # ========================================================================
     if args and not args.skip_annotation:
-        print("\n--- Running Functional & ML Analysis (this may take a while) ---")
-        print("4. ⏭️ Skipping traditional pathogen screening for FASTA analysis (using BLAST+ML instead).")
         
-        # Functional annotation with ML pathogen prediction
+        print("\n" + "="*80)
+        print("STEP 2: FUNCTIONAL & ML ANALYSIS")
+        print("="*80)
+        print("ℹ️ Skipping traditional pathogen screening (using BLAST+ML approach)")
+        
         ml_results = None
         ml_summary = None
         
         try:
-            print("5. Running gene prediction...")
+            print("\n1. Running gene prediction (Prokka)...")
             prokka_dir = run_prokka(fasta_path, output_dir)
             
             protein_files = list(Path(prokka_dir).glob("*.faa"))
             if not protein_files or all(os.path.getsize(pf) == 0 for pf in protein_files):
-                print("⚠️ No valid proteins predicted. Skipping functional and ML analysis.")
+                print("⚠️ No valid proteins predicted - skipping functional/ML analysis")
             else:
-                print("6. Running functional annotation...")
-                swissprot_results = run_swissprot_annotation(prokka_dir, output_dir)
+                print("2. Running SwissProt annotation...")
+                swissprot_results = run_functional_annotation(prokka_dir, output_dir)
                 
-                print("7. Generating functional analysis reports...")
-                generate_functional_report(output_dir, prokka_results=prokka_dir, swissprot_results=swissprot_results)
-                create_functional_visualizations(output_dir, prokka_results=prokka_dir, swissprot_results=swissprot_results)
-                print("  -> Functional annotation complete.")
+                print("3. Generating functional reports...")
+                generate_functional_report(
+                    str(output_dir), 
+                    prokka_results=str(prokka_dir), 
+                    swissprot_results=swissprot_results
+                )
+                
+                print("4. Creating functional visualizations...")
+                create_functional_visualizations(
+                    output_dir, 
+                    prokka_results=prokka_dir, 
+                    swissprot_results=swissprot_results
+                )
+                
+                print("✓ Functional annotation completed")
                 
                 # ML pathogen prediction
                 if ML_PATHOGEN_AVAILABLE and should_use_ml_prediction(prokka_dir):
-                    print("8. Running ML-based pathogen prediction...")
+                    print("\n5. Running ML-based pathogen prediction...")
                     ml_results, ml_summary = run_ml_pathogen_prediction(prokka_dir, output_dir)
                     
                     if ml_results and ml_summary:
                         print(f"✓ ML pathogen prediction completed:")
-                        print(f" 📊 {ml_summary['pathogenic_predictions']}/{ml_summary['total_sequences_analyzed']} proteins predicted as pathogenic")
-                        print(f" ⭐ {ml_summary['high_confidence_predictions']} high-confidence predictions")
-                        print(f" 🎯 Average confidence: {ml_summary['average_confidence']:.3f}")
+                        print(f"   📊 {ml_summary['pathogenic_predictions']}/{ml_summary['total_sequences_analyzed']} proteins predicted as pathogenic")
+                        print(f"   ⭐ {ml_summary['high_confidence_predictions']} high-confidence predictions")
+                        print(f"   🎯 Average confidence: {ml_summary['average_confidence']:.3f}")
                 else:
-                    print("8. ⏭️ Skipping ML prediction.")
+                    print("\n5. ⏭️ Skipping ML prediction")
                     
         except Exception as e:
-            print(f"⚠️ Functional/ML analysis failed: {str(e)}")
+            print(f"\n✗ Functional/ML analysis failed: {str(e)}")
+            import traceback
+            traceback.print_exc()
         
-        # INTEGRATED BLAST+ML pathogen reporting
+        # --- Integrated BLAST+ML Pathogen Report ---
         try:
-            print("9. Generating integrated BLAST+ML pathogen analysis...")
+            print("\n" + "="*80)
+            print("STEP 3: INTEGRATED BLAST+ML PATHOGEN ANALYSIS")
+            print("="*80)
             
-            # Extract pathogenic species from BLAST results
+            print("→ Extracting pathogenic organisms from BLAST results...")
             blast_taxonomy_pathogens = []
             if blast_results_data:
-                reporter = PathogenReporter(Path(output_dir), analysis_mode='fasta')
-                blast_taxonomy_pathogens = reporter._extract_pathogens_from_blast_taxonomy(blast_results_data)
+                blast_taxonomy_pathogens = extract_pathogens_from_blast_taxonomy(blast_results_data)
+                print(f"   ✓ Extracted {len(blast_taxonomy_pathogens)} pathogenic organisms")
 
-            # Generate the integrated FASTA+ML pathogen report if we have any evidence
+            # Generate report if we have any evidence
             if blast_taxonomy_pathogens or (ml_results and ml_summary):
-                generate_fasta_ml_pathogen_report(
-                    output_dir, 
+                print("→ Generating integrated BLAST+ML pathogen report...")
+                pathogen_report_result = generate_fasta_ml_pathogen_report(
+                    str(output_dir), 
                     blast_taxonomy_pathogens=blast_taxonomy_pathogens,
                     ml_results=ml_results,
                     ml_summary=ml_summary
                 )
                 
-                # Generate visualizations for the integrated report
-                report_file = output_dir / "blast_ml_integrated_pathogen_report.json"
+                print("→ Creating pathogen visualizations...")
+                report_file = output_dir / "blast_ml_pathogen_report.json"
                 if report_file.exists():
-                    create_pathogen_visualizations(output_dir, traditional_data=str(report_file))
-                    
-                print("✓ Integrated BLAST+ML pathogen analysis completed")
+                    create_pathogen_visualizations(
+                        output_dir, 
+                        traditional_data=str(report_file)
+                    )
+                
+                print("\n✓ Integrated BLAST+ML pathogen analysis completed")
+                print(f"   Risk Level: {pathogen_report_result.get('risk_level', 'UNKNOWN')}")
+                print(f"   BLAST Pathogens: {pathogen_report_result.get('blast_pathogens', 0)}")
+                print(f"   ML Pathogenic Proteins: {pathogen_report_result.get('ml_pathogenic_proteins', 0)}")
             else:
-                print("⚠️ No pathogenic evidence found from either BLAST or ML analysis. No report generated.")
+                print("⚠️ No pathogenic evidence found - no report generated")
                     
         except Exception as e:
-            print(f"⚠️ Integrated pathogen report generation failed: {str(e)}")
+            print(f"\n✗ Integrated pathogen report generation failed: {str(e)}")
+            import traceback
+            traceback.print_exc()
             
     else:
-        print("\n--skip-annotation flag detected. Skipping functional and ML pathogen analysis.")
-        print("  -> Only BLAST taxonomic classification will be performed for faster analysis.")
+        if args and args.skip_annotation:
+            print("\n" + "="*80)
+            print("⏭️ SKIPPING ANNOTATION STEPS")
+            print("="*80)
+            print("--skip-annotation flag detected")
+            print("Only BLAST taxonomic classification will be performed")
     
-    # --- 3. Generate visualizations ---
-    print("\n--- Generating Visualizations ---")
-    if blast_results_data:
-        create_taxonomic_visualizations(output_dir, blast_results_data)
-        print("✓ BLAST taxonomic visualizations completed")
+    # ========================================================================
+    # FINAL SUMMARY
+    # ========================================================================
+    print("\n" + "="*80)
+    print("FASTA ANALYSIS SUMMARY")
+    print("="*80)
+    print(f"📁 Output Directory: {output_dir}")
+    print("\n📋 Key Files Generated:")
+    print("   • taxonomic_classification_report.txt - BLAST-based taxonomy")
+    print("   • taxonomic_abundance_chart.html - BLAST hit distribution")
     
-    print(f"\n📁 All results saved to: {output_dir}")
-    print("🔍 Key files to review:")
-    print(" • taxonomic_classification_report.txt - Comprehensive BLAST-based species identification")
     if args and not args.skip_annotation:
-        print(" • blast_ml_pathogen_summary.txt - Integrated BLAST+ML pathogen analysis")
-        print(" • functional_annotation_report.txt - Gene prediction and annotation quality")
-    print(" • analysis_dashboard.html - Interactive dashboard")
+        print("   • blast_ml_pathogen_report.txt - Integrated pathogen analysis")
+        print("   • pathogen_risk_assessment.html - Risk visualization")
+        print("   • functional_annotation_report.txt - Gene prediction results")
+        print("   • annotation_quality_dashboard.html - Quality metrics")
+    
+    print("   • analysis_dashboard.html - Complete interactive dashboard")
+    print("\n✓ FASTA pipeline completed successfully")
