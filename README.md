@@ -10,12 +10,12 @@ MetaQuest is an integrated bioinformatics pipeline that addresses the complex ch
 
 **Key Capabilities:**
 - Taxonomic classification and pathogen detection
-- Machine learning-enhanced pathogen prediction
+- Machine learning-enhanced pathogen prediction (Also in FASTQ)
 - Advanced comparative analysis with statistical testing
 - Comprehensive file validation and quality control
 - Interactive visualizations and reporting
-- De novo metagenomic assembly with SPAdes
-- Enhanced functional annotation with combined COG and SwissProt databases
+- Enhanced functional annotation with COG and SwissProt databases
+- Professional logging system with debug mode for troubleshooting
 
 ---
 
@@ -34,39 +34,42 @@ MetaQuest is an integrated bioinformatics pipeline that addresses the complex ch
 
 ## Development Status
 
-**Current Version:** 3.6.0 (October 2025)
+**Current Version:** 4.0.0 (October 2025)
 
-MetaQuest continues active development with major improvements to assembly, annotation, and modular visualization systems.
+MetaQuest continues active development with major improvements to annotation, reporting, and user experience.
 
 ### Completed Features
 
 | Component | Status | Description |
 |-----------|---------|-------------|
-| **File Validation & Quality Control** | Complete | Comprehensive validation with detailed statistics for both FASTQ and FASTA inputs |
-| **Taxonomic Classification** | Complete | Both FASTQ and FASTA taxonomic profiling are accurate and fully functional |
-| **Pathogen Detection** | Complete | Comprehensive pathogen detection workflows with clinical risk assessment |
-| **Machine Learning Integration** | Complete | Advanced ML-based pathogen prediction with feature extraction and model artifacts |
-| **Comparative Analysis** | Complete | Statistical comparison across multiple samples with differential abundance testing and visualization |
-| **Beta Diversity Analysis** | Complete | PERMANOVA and ANOSIM statistical tests with PCoA visualization |
-| **Alpha Diversity Analysis** | Complete | Shannon, Simpson, Chao1, and Observed Species metrics with statistical testing |
-| **Differential Abundance Testing** | Complete | Mann-Whitney U tests with multiple testing correction (FDR, Bonferroni) |
-| **Machine Learning Biomarker Discovery** | Complete | Random Forest classification with feature importance analysis |
-| **Metagenomic Assembly** | Complete | SPAdes-based de novo assembly optimized for metagenomic data |
-| **Enhanced Functional Annotation** | Complete | Dual-database annotation system combining COG and SwissProt |
-| **Advanced Visualization System** | Complete | Completely revamped reporting, visualization, and interactive dashboards |
+| **File Validation & Quality Control** | ✅ Complete | Comprehensive validation with detailed statistics for both FASTQ and FASTA inputs |
+| **Taxonomic Classification** | ✅ Complete | Both FASTQ and FASTA taxonomic profiling are accurate and fully functional |
+| **Pathogen Detection** | ✅ Complete | Comprehensive pathogen detection workflows with clinical risk assessment |
+| **Machine Learning Integration** | ✅ Complete | Advanced ML-based pathogen prediction with feature extraction and model artifacts |
+| **Comparative Analysis** | ✅ Complete | Statistical comparison across multiple samples with differential abundance testing and visualization |
+| **Beta Diversity Analysis** | ✅ Complete | PERMANOVA and ANOSIM statistical tests with PCoA visualization |
+| **Alpha Diversity Analysis** | ✅ Complete | Shannon, Simpson, Chao1, and Observed Species metrics with statistical testing |
+| **Differential Abundance Testing** | ✅ Complete | Mann-Whitney U tests with multiple testing correction (FDR, Bonferroni) |
+| **Machine Learning Biomarker Discovery** | ✅ Complete | Random Forest classification with feature importance analysis |
+| **Enhanced Functional Annotation** | ✅ Complete | Dual-database annotation system combining COG and SwissProt with detailed reporting |
+| **Advanced Gene Prediction** | ✅ Complete | Prokka annotation with customizable contig filtering and timeout controls |
+| **Professional Logging System** | ✅ Complete | Dual-mode output (standard/debug) with formatted progress tracking |
+| **Enhanced Reporting System** | ✅ Complete | Comprehensive text-based reports with clinical and research perspectives |
 
 ### In Development
 
 | Component | Status | Target Completion |
 |-----------|---------|-------------------|
-| **Virulence Factor Analysis** | In Progress | Q1 2026 |
-| **AMR Analysis** | In Progress | Q2 2026 |
+| **Metagenomic Assembly** | Planning | Q1 2026 |
+| **Virulence Factor Analysis** | Enhancement | Q1 2026 |
+| **AMR Analysis** | Enhancement | Q2 2026 |
 | **Metabolic Pathway Reconstruction** | Planning | Q3 2026 |
 
 ### Recent Releases
 
 | Version | Date | Key Features |
 |---------|------|-------------|
+| **v4.0.0** | Oct 2025 | Enhanced COG+SwissProt annotation with comprehensive reporting, advanced gene prediction controls, professional logging system with debug mode |
 | **v3.6.0** | Oct 2025 | SPAdes metagenomic assembly, enhanced COG+SwissProt annotation, modular visualization system with specialized plotters |
 | **v3.5.0** | Aug 2025 | Enhanced statistical testing, advanced ML biomarker discovery, comprehensive comparative visualizations |
 | **v3.3.0** | Aug 2025 | Comparative analysis pipeline, statistical testing, beta diversity visualization, alpha diversity visualization |
@@ -85,18 +88,32 @@ MetaQuest continues active development with major improvements to assembly, anno
 - FASTA format validation with sequence type detection and composition analysis
 - Comprehensive statistics including MD5 checksums and N50 metrics
 
-**De Novo Metagenomic Assembly**
-- SPAdes metagenomic assembler integration for high-quality contig generation
-- Optimized assembly parameters for complex microbial communities
-- Quality metrics including N50, L50, and assembly statistics
-- Support for both single-end and paired-end sequencing data
-
 **Enhanced Functional Annotation**
 - Dual-database annotation system combining COG and SwissProt
 - COG database: Comprehensive functional categories and orthologous groups
 - SwissProt database: High-quality, manually curated protein annotations
 - Increased annotation coverage and functional depth
 - Detailed functional category distribution and pathway insights
+- Mobile genetic element analysis with IS family classification
+
+**Advanced Gene Prediction Controls**
+- Prokka annotation with customizable parameters
+- Contig filtering options (enable/disable, custom length thresholds)
+- tbl2asn timeout management with auto-kill functionality
+- Configurable threading for optimal performance
+- Enhanced error handling and recovery
+
+**Professional Logging System**
+- **Standard Mode**: Clean, user-friendly progress output
+  - Progress indicators with spinners
+  - Formatted section headers
+  - Success/error/warning notifications
+  - Time-formatted completion messages
+- **Debug Mode** (`--debug`): Comprehensive diagnostic output
+  - Full command-line tool invocations
+  - Complete tool output streams
+  - Detailed error traces
+  - Performance metrics
 
 **Machine Learning Integration**
 - Automated feature extraction for ML models
@@ -108,6 +125,7 @@ MetaQuest continues active development with major improvements to assembly, anno
 - FASTQ processing with multi-source screening and Bracken integration
 - FASTA processing with integrated BLAST taxonomy and ML predictions
 - Clinical risk assessment with comprehensive risk stratification
+- Three-tier pathogenicity assessment system
 
 **Advanced Statistical Analysis**
 - Alpha diversity metrics (Shannon, Simpson, Chao1, Observed Species)
@@ -116,7 +134,14 @@ MetaQuest continues active development with major improvements to assembly, anno
 - Differential abundance testing with multiple correction methods
 - Machine learning-based biomarker identification
 
-**Revamped Modular Visualization System**
+**Enhanced Reporting System**
+- **Taxonomic Reports**: Clinical and research perspectives with diversity metrics
+- **Functional Reports**: Detailed COG category analysis, mobile element tracking, annotation quality assessment
+- **Pathogen Risk Reports**: Three-tier risk assessment with integrated scoring and clinical interpretation
+- Professional formatting with emojis and visual indicators
+- Structured sections for different user roles (clinician vs researcher)
+
+**Modular Visualization System**
 - Completely redesigned with modular architecture
 - Specialized visualization modules for different analysis types
 - Modern, publication-ready visualizations
@@ -129,16 +154,17 @@ MetaQuest continues active development with major improvements to assembly, anno
 
 **FASTQ Analysis (Clinical Focus)**
 - Quality control and preprocessing
-- SPAdes metagenomic assembly for improved accuracy
 - Rapid Kraken2/Bracken classification
 - Pathogen screening with clinical recommendations
 - Enhanced functional annotation with COG+SwissProt
+- Detailed text reports for all analysis components
 
 **FASTA Analysis (Research Focus)**
 - High-accuracy BLAST classification
 - Machine learning pathogen prediction
 - Comprehensive taxonomic profiling
 - Detailed functional annotation with dual databases
+- Research-oriented detailed reports
 
 **Comparative Analysis**
 - Statistical comparison across sample groups
@@ -156,12 +182,11 @@ MetaQuest continues active development with major improvements to assembly, anno
 
 ```
 src/metaquest/
-├── cli.py                          # Command-line interface logic
+├── cli.py                          # Enhanced CLI with annotation controls
 ├── config.py                       # Central configuration management
 │
-├── core/                           # Core analysis modules (the "engine")
+├── core/                           # Core analysis modules
 │   ├── analysis.py                 # Main analysis orchestration
-│   ├── assembly.py                 # SPAdes metagenomic assembly
 │   ├── taxonomic_analysis.py       # Taxonomic classification
 │   ├── pathogen_analysis.py        # Pathogen detection
 │   ├── comparative_analysis.py     # Multi-sample comparison
@@ -169,6 +194,7 @@ src/metaquest/
 │
 ├── io/                             # Input/Output and validation
 │   ├── file_validator.py           # File validation & QC
+│   ├── output_formatter.py         # Professional logging system (NEW)
 │   └── utils.py                    # I/O utilities
 │
 ├── ml/                             # Machine Learning components
@@ -176,22 +202,22 @@ src/metaquest/
 │   ├── pathogen_predictor.py       # ML pathogen prediction
 │   └── model_artifacts/            # Pre-trained models
 │
-├── reporting/                      # Modular reporting engine (REVAMPED)
-│   ├── main_reporter.py            # Orchestrator with enhanced layouts
-│   ├── base_reporter.py            # Base class with modern styling
-│   ├── taxonomic_reporter.py       # Enhanced taxonomic section
-│   ├── pathogen_reporter.py        # Improved pathogen section
-│   ├── functional_reporter.py      # Expanded functional section (COG+SwissProt)
-│   └── assembly_reporter.py        # Assembly statistics and quality metrics
+├── reporting/                      # Enhanced reporting engine
+│   ├── main_reporter.py            # Report orchestrator
+│   ├── base_reporter.py            # Base class with formatting utilities
+│   ├── taxonomy_reporter.py        # Enhanced taxonomic reports (UPDATED)
+│   ├── pathogen_risk_reporter.py   # Pathogen risk reports (UPDATED)
+│   ├── functional_reporter.py      # Expanded functional reports (UPDATED)
+│   └── risk_scoring.py             # Risk calculation engine
 │
-└── visualization/                  # Modular visualization system (REVAMPED)
+└── visualization/                  # Modular visualization system
     ├── base_visualizer.py          # Base class for all visualizers
     ├── taxonomic_visualizer.py     # Taxonomic visualization module
     ├── pathogenic_visualizer.py    # Pathogen detection plots
     ├── functional_visualizer.py    # Functional annotation visualizations
     ├── compare_visuals.py          # Multi-sample comparison plots
-    └── dashboard.py                # Modern interactive dashboard orchestrator
-
+    ├── dashboard.py                # Interactive dashboard orchestrator
+    └── main_visualizer.py          # Main visualization coordinator
 ```
 
 ---
@@ -206,15 +232,15 @@ MetaQuest requires a Linux/macOS environment with conda package manager.
 
 - Linux/macOS operating system
 - Conda package manager
-- Minimum 16GB RAM (32GB recommended for assembly)
-- 100GB available disk space for databases and assembly
+- Minimum 16GB RAM (32GB recommended)
+- 100GB available disk space for databases
 
 ### Quick Installation
 
 ```bash
 # Clone repository
-git clone https://github.com/your-org/metaquest.git
-cd metaquest
+git clone https://github.com/Karudhoru/MetaQuest.git
+cd MetaQuest
 
 # Create conda environment
 conda env create -f environment.yml
@@ -224,7 +250,7 @@ conda activate metaquest
 pip install -e .
 
 # Download annotation databases (COG + SwissProt)
-metaquest download-databases
+./scripts/setup_databases.sh
 
 # Verify installation
 metaquest check
@@ -249,18 +275,47 @@ metaquest validate fasta genome.fasta
 ```
 
 ### 3. Run Analysis
-```bash
-# FASTQ analysis with assembly (recommended)
-metaquest analyze fastq --single sample.fastq.gz -o results/ --assemble
 
-# Paired-end FASTQ with assembly
-metaquest analyze fastq --r1 sample_R1.fastq.gz --r2 sample_R2.fastq.gz -o results/ --assemble
+#### Basic Analysis
+```bash
+# FASTQ analysis (uses default annotation settings)
+metaquest analyze fastq --single sample.fastq.gz -o results/
 
 # FASTA analysis with enhanced annotation
 metaquest analyze fasta genome.fasta -o results/ -s 100
+```
 
-# Skip annotation for faster analysis
+#### Advanced Annotation Controls
+```bash
+# Custom contig filtering threshold
+metaquest analyze fastq --single reads.fq --min-contig-length 500 -o results/
+
+# Disable contig filtering (annotate all contigs)
+metaquest analyze fastq --single reads.fq --no-filter-contigs -o results/
+
+# Extended tbl2asn timeout for large datasets
+metaquest analyze fasta assembly.fasta --tbl2asn-timeout 600 -o results/
+
+# Use more threads for faster annotation
+metaquest analyze fastq --paired R1.fq R2.fq --annotation-threads 16 -o results/
+
+# Disable tbl2asn auto-kill (let it run indefinitely)
+metaquest analyze fasta assembly.fasta --no-kill-tbl2asn -o results/
+
+# Skip annotation for faster taxonomic-only analysis
 metaquest analyze fastq --single sample.fastq.gz --skip-annotation -o fast_results/
+```
+
+#### Debug Mode for Troubleshooting
+```bash
+# Run with full diagnostic output
+metaquest --debug analyze fastq --single reads.fq -o debug_results/
+
+# Debug mode shows:
+# - All tool command invocations
+# - Complete tool output
+# - Detailed error messages
+# - Performance timing
 ```
 
 ### 4. Compare Multiple Samples
@@ -278,17 +333,18 @@ metaquest compare -i sample1_results/ sample2_results/ -m metadata.tsv -o compar
 
 The analysis generates comprehensive outputs:
 
-**Assembly Metrics** (when using --assemble)
-- N50, L50, and total assembly size
-- Contig length distribution
-- Assembly quality assessment
-- Improved taxonomic classification from assembled contigs
+**Enhanced Text Reports**
+- **Taxonomic Report**: Clinical summary, researcher view, diversity metrics
+- **Functional Report**: COG categories, mobile elements, annotation quality
+- **Pathogen Risk Report**: Three-tier assessment with clinical interpretation
 
 **Functional Annotation** (COG + SwissProt)
 - Expanded functional category coverage
 - High-confidence protein annotations
 - Pathway and process enrichment
 - Detailed COG category distributions
+- Mobile genetic element analysis
+- IS family classification
 
 **Interactive Visualizations**
 - Modern, publication-ready dashboards
@@ -303,7 +359,6 @@ The analysis generates comprehensive outputs:
 ### Core Documentation
 - **[Usage Guide](usage.md)** - Comprehensive usage examples and command reference
 - **[Installation Guide](installation.md)** - Detailed installation instructions
-- **[Assembly Guide](assembly.md)** - SPAdes assembly parameters and optimization
 - **[Annotation Guide](annotation.md)** - COG and SwissProt database information
 - **API Documentation** - Coming soon
 
@@ -311,18 +366,19 @@ The analysis generates comprehensive outputs:
 
 **FASTQ Results**
 - Interactive dashboard with modern styling
-- Assembly statistics and quality metrics
 - Pathogen risk assessment with clinical recommendations
-- Taxonomic classification reports
-- Enhanced functional annotation (COG + SwissProt)
+- Taxonomic classification reports (text + JSON)
+- Enhanced functional annotation reports (COG + SwissProt)
+- Mobile genetic element analysis
 - Publication-ready visualizations
 
 **FASTA Results**  
 - BLAST+ML integrated pathogen reports
 - High-accuracy taxonomic classification
 - Machine learning predictions
-- Comprehensive functional annotation
+- Comprehensive functional annotation with dual databases
 - Organism comparison data
+- Detailed text reports for all components
 
 **Comparative Results**
 - Alpha diversity box plots with statistical tests
@@ -336,36 +392,56 @@ The analysis generates comprehensive outputs:
 
 ---
 
-## What's New in Version 3.6
+## What's New in Version 3.6.0
 
 ### Major Improvements
 
-**1. SPAdes Metagenomic Assembly**
-- Integrated SPAdes assembler for de novo contig generation
-- Optimized parameters for complex metagenomic samples
-- Improved taxonomic classification accuracy from assembled sequences
-- Comprehensive assembly quality metrics
+**1. Enhanced Annotation System**
+- **Dual-database approach**: Combined COG and SwissProt annotation for maximum coverage
+- **COG Database**: Comprehensive functional categories with detailed pathway analysis
+- **SwissProt Database**: High-quality, manually curated protein annotations
+- **Significantly increased annotation coverage** compared to previous versions
+- **Mobile genetic element tracking**: IS family classification and transposase analysis
 
-**2. Enhanced Annotation System**
-- Dual-database approach combining COG and SwissProt
-- Significantly increased annotation coverage
-- Higher-quality functional predictions
-- Detailed functional category analysis
+**2. Advanced Gene Prediction Controls**
+- **Contig filtering**: Enable/disable filtering with custom length thresholds
+  - Default: Filter contigs <1000bp before annotation
+  - Customize: `--min-contig-length 500` for different thresholds
+  - Disable: `--no-filter-contigs` to annotate all sequences
+- **tbl2asn management**: Automatic timeout and termination controls
+  - Default 300s timeout with auto-kill for stuck processes
+  - Customize: `--tbl2asn-timeout 600` for longer runs
+  - Disable: `--no-kill-tbl2asn` for unlimited runtime
+- **Threading optimization**: `--annotation-threads` for parallel processing
 
-**3. Modular Visualization Architecture**
-- Redesigned with modular architecture matching reporting system
-- Specialized plotter modules for each analysis type
-- Base plotter class with shared functionality
-- Modern, publication-ready output
-- Enhanced color schemes and styling
-- Improved plot layouts and interactivity
+**3. Professional Logging System**
+- **Standard Mode**: Clean, informative progress tracking
+  - Formatted section headers with visual separators
+  - Progress spinners for long-running operations
+  - Color-coded status messages (success/error/warning)
+  - Time-formatted completion summaries
+- **Debug Mode** (`--debug` flag): Complete diagnostic output
+  - Full command-line invocations for all tools
+  - Complete stdout/stderr from external programs
+  - Detailed error traces and stack information
+  - Performance metrics and timing data
+- **Structured logging**: Consistent format across all operations
+- **Log file support**: Automatic logging to `metaquest.log` in output directory
 
-**4. Improved Reporting**
-- Comprehensive assembly statistics section
-- Expanded functional annotation reports
-- Enhanced data presentation
-- Better organization and readability
-- Seamless integration with modular visualization system
+**4. Enhanced Reporting System**
+- **Comprehensive text reports** for all analysis components:
+  - **Taxonomic Reports**: Clinical and research perspectives, diversity metrics
+  - **Functional Reports**: COG category analysis, mobile element tracking, quality scores
+  - **Pathogen Risk Reports**: Three-tier assessment with clinical interpretation
+- **Professional formatting**: Emojis, visual indicators, structured sections
+- **Role-based views**: Tailored information for clinicians vs researchers
+- **Quality metrics**: Annotation coverage, identity scores, functional diversity
+
+**5. Improved Error Handling**
+- Better error messages with actionable solutions
+- Graceful handling of annotation failures
+- Recovery mechanisms for common issues
+- Detailed troubleshooting guidance in debug mode
 
 ---
 
@@ -377,8 +453,8 @@ We welcome contributions from the scientific community.
 
 | Area | Description | Impact |
 |------|-------------|---------|
-| **Assembly Optimization** | Fine-tune SPAdes parameters for specific sample types | High |
-| **Database Expansion** | Add additional functional databases | High |
+| **Annotation Optimization** | Improve COG/SwissProt coverage and accuracy | High |
+| **Database Expansion** | Add additional functional databases (KEGG, Pfam) | High |
 | **Machine Learning Enhancement** | Improve ML models with additional training data | High |
 | **Clinical Validation** | Real-world testing of pathogen detection | Critical |
 | **Statistical Methods** | Additional statistical tests and corrections | High |
@@ -408,7 +484,6 @@ We welcome contributions from the scientific community.
 ### Documentation Resources
 - **Installation Guide**: [installation.md](installation.md)
 - **Usage Examples**: [usage.md](usage.md)
-- **Assembly Guide**: [assembly.md](assembly.md)
 - **Annotation Guide**: [annotation.md](annotation.md)
 - **GitHub Wiki**: Additional tutorials and examples
 
@@ -417,6 +492,12 @@ We welcome contributions from the scientific community.
 - **Feature Requests**: Use GitHub discussions for new feature proposals
 - **Community Support**: Join our discussion forum for user questions
 - **Email Support**: metaquest-support@example.org
+
+### Troubleshooting
+- Use `--debug` flag for detailed diagnostic output
+- Check `metaquest.log` in output directory for error details
+- Run `metaquest check` to verify system dependencies
+- See [usage.md](usage.md) for common issues and solutions
 
 ### Development Team
 **MetaQuest Development Team**  
@@ -436,7 +517,7 @@ We welcome contributions from the scientific community.
 
 ---
 
-**Last Updated**: October 2025 - Version 3.6.0 with SPAdes assembly, enhanced annotation, and modular visualization system
+**Last Updated**: October 2025 - Version 3.6.0 with enhanced annotation, advanced gene prediction controls, and professional logging system
 
 ---
 
