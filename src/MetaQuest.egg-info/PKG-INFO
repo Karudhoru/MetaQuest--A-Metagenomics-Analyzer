@@ -1,21 +1,38 @@
 Metadata-Version: 2.1
 Name: MetaQuest
-Version: 3.2.1
-Summary: Comprehensive metagenomics analysis pipeline with ML-based pathogen detection
-Home-page: https://github.com/yourusername/MetaQuest
+Version: 3.6.0
+Summary: Comprehensive metagenomics analysis pipeline with taxonomic classification, pathogen detection, and ML integration
+Home-page: https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer
 Author: MetaQuest Development Team
 Author-email: devpatelcambay@gmail.com
-Classifier: Development Status :: 4 - Beta
+License: TBD
+Project-URL: Bug Reports, https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer/issues
+Project-URL: Documentation, https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer/blob/main/README.md
+Project-URL: Source Code, https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer
+Project-URL: Changelog, https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer/releases
+Keywords: metagenomics,bioinformatics,pathogen-detection,taxonomic-classification,machine-learning,microbiome,genomics,fastq,fasta,clinical-diagnostics
+Platform: Linux
+Platform: macOS
+Platform: Unix
+Classifier: Development Status :: 5 - Production/Stable
 Classifier: Intended Audience :: Science/Research
+Classifier: Intended Audience :: Healthcare Industry
+Classifier: Intended Audience :: Developers
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Operating System :: POSIX :: Linux
 Classifier: Operating System :: MacOS
+Classifier: Operating System :: Unix
 Classifier: Programming Language :: Python :: 3
 Classifier: Programming Language :: Python :: 3.8
 Classifier: Programming Language :: Python :: 3.9
 Classifier: Programming Language :: Python :: 3.10
 Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
 Classifier: Topic :: Scientific/Engineering :: Bio-Informatics
+Classifier: Topic :: Scientific/Engineering :: Medical Science Apps.
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Natural Language :: English
+Classifier: Environment :: Console
 Requires-Python: >=3.8
 Description-Content-Type: text/markdown
 Requires-Dist: pandas
@@ -33,6 +50,44 @@ Requires-Dist: catboost
 Requires-Dist: scikit-bio>=0.5.8
 Requires-Dist: statsmodels>=0.13.0
 Requires-Dist: scipy>=1.9.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Requires-Dist: black>=22.0.0; extra == "dev"
+Requires-Dist: flake8>=5.0.0; extra == "dev"
+Requires-Dist: mypy>=0.990; extra == "dev"
+Requires-Dist: pre-commit>=2.20.0; extra == "dev"
+Provides-Extra: docs
+Requires-Dist: sphinx>=5.0.0; extra == "docs"
+Requires-Dist: sphinx-rtd-theme>=1.0.0; extra == "docs"
+Requires-Dist: sphinx-autodoc-typehints>=1.19.0; extra == "docs"
+Provides-Extra: ml
+Requires-Dist: scikit-learn>=1.2.0; extra == "ml"
+Requires-Dist: pandas>=1.5.0; extra == "ml"
+Requires-Dist: numpy>=1.23.0; extra == "ml"
+Requires-Dist: matplotlib>=3.6.0; extra == "ml"
+Requires-Dist: seaborn>=0.12.0; extra == "ml"
+Requires-Dist: xgboost>=1.7.0; extra == "ml"
+Requires-Dist: lightgbm>=3.3.0; extra == "ml"
+Requires-Dist: catboost>=1.0.0; extra == "ml"
+Provides-Extra: all
+Requires-Dist: sphinx>=5.0.0; extra == "all"
+Requires-Dist: matplotlib>=3.6.0; extra == "all"
+Requires-Dist: numpy>=1.23.0; extra == "all"
+Requires-Dist: black>=22.0.0; extra == "all"
+Requires-Dist: pytest>=7.0.0; extra == "all"
+Requires-Dist: pytest-cov>=4.0.0; extra == "all"
+Requires-Dist: scikit-learn>=1.2.0; extra == "all"
+Requires-Dist: pandas>=1.5.0; extra == "all"
+Requires-Dist: catboost>=1.0.0; extra == "all"
+Requires-Dist: seaborn>=0.12.0; extra == "all"
+Requires-Dist: mypy>=0.990; extra == "all"
+Requires-Dist: pre-commit>=2.20.0; extra == "all"
+Requires-Dist: xgboost>=1.7.0; extra == "all"
+Requires-Dist: flake8>=5.0.0; extra == "all"
+Requires-Dist: sphinx-autodoc-typehints>=1.19.0; extra == "all"
+Requires-Dist: sphinx-rtd-theme>=1.0.0; extra == "all"
+Requires-Dist: lightgbm>=3.3.0; extra == "all"
 
 # MetaQuest
 
