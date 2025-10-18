@@ -250,7 +250,7 @@ pip install -e .
 ./scripts/setup_databases.sh
 
 # Download pathogen database (Custom Database)
-python scripts/pathogen_custom.py
+python scripts/custom_pathogen_db.py
 
 # Verify installation
 metaquest check
@@ -523,4 +523,5 @@ We welcome contributions from the scientific community.
 
 
 *MetaQuest is actively developed with regular updates and improvements. Check our GitHub repository for the latest releases and features.*
+
 
