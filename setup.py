@@ -30,7 +30,7 @@ with open(requirements_file, "r", encoding="utf-8") as fh:
 
 # Package metadata
 PACKAGE_NAME = "MetaQuest"
-VERSION = "3.6.0"
+VERSION = "4.0.0"
 DESCRIPTION = "Comprehensive metagenomics analysis pipeline with taxonomic classification, pathogen detection, and ML integration"
 AUTHOR = "MetaQuest Development Team"
 AUTHOR_EMAIL = "devpatelcambay@gmail.com"
