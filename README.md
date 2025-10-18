@@ -249,6 +249,9 @@ pip install -e .
 # Download annotation databases (COG + SwissProt)
 ./scripts/setup_databases.sh
 
+# Download pathogen database (Custom Database)
+python scripts/pathogen_custom.py
+
 # Verify installation
 metaquest check
 ```
@@ -520,3 +523,4 @@ We welcome contributions from the scientific community.
 
 
 *MetaQuest is actively developed with regular updates and improvements. Check our GitHub repository for the latest releases and features.*
+
