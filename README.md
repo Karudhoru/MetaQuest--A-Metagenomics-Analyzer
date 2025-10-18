@@ -60,16 +60,13 @@ MetaQuest continues active development with major improvements to annotation, re
 
 | Component | Status | Target Completion |
 |-----------|---------|-------------------|
-| **Metagenomic Assembly** | Planning | Q1 2026 |
-| **Virulence Factor Analysis** | Enhancement | Q1 2026 |
-| **AMR Analysis** | Enhancement | Q2 2026 |
 | **Metabolic Pathway Reconstruction** | Planning | Q3 2026 |
 
 ### Recent Releases
 
 | Version | Date | Key Features |
 |---------|------|-------------|
-| **v4.0.0** | Oct 2025 | Enhanced COG+SwissProt annotation with comprehensive reporting, advanced gene prediction controls, professional logging system with debug mode |
+| **v4.0.0** | Oct 2025 | Enhanced COG+SwissProt annotation with comprehensive reporting, new and updated ML model v2.1, advanced gene prediction controls, professional logging system with debug mode |
 | **v3.6.0** | Oct 2025 | SPAdes metagenomic assembly, enhanced COG+SwissProt annotation, modular visualization system with specialized plotters |
 | **v3.5.0** | Aug 2025 | Enhanced statistical testing, advanced ML biomarker discovery, comprehensive comparative visualizations |
 | **v3.3.0** | Aug 2025 | Comparative analysis pipeline, statistical testing, beta diversity visualization, alpha diversity visualization |
@@ -520,5 +517,6 @@ We welcome contributions from the scientific community.
 **Last Updated**: October 2025 - Version 3.6.0 with enhanced annotation, advanced gene prediction controls, and professional logging system
 
 ---
+
 
 *MetaQuest is actively developed with regular updates and improvements. Check our GitHub repository for the latest releases and features.*
