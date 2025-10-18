@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 MetaQuest Visualization Module
-Pathogenic Visualizer Class
+Pathogenic Visualizer Class - Fixed for integrated risk reports
 """
 from collections import Counter
 import json
@@ -14,18 +14,119 @@ from plotly.subplots import make_subplots
 from .base_visualizer import BaseVisualizer
 
 class PathogenVisualizer(BaseVisualizer):
-    """Pathogen detection visualizations aligned with  reporting"""
+    """Pathogen detection visualizations aligned with reporting"""
+    
+    def _create_summary_risk_chart(self, report_data):
+        """Create a summary chart when only aggregate data is available"""
+        try:
+            print("  ℹ️ Creating summary risk chart from aggregate data")
+            
+            counts = report_data.get('pathogen_counts', {})
+            markers = report_data.get('functional_markers', {})
+            scores = report_data.get('risk_scores', {})
+            
+            # Create a bar chart showing risk components
+            categories = []
+            values = []
+            colors = []
+            hover_text = []
+            
+            # Add pathogen counts
+            if counts.get('high_risk', 0) > 0:
+                categories.append("High Risk Pathogens")
+                values.append(counts['high_risk'])
+                colors.append('#DC143C')
+                hover_text.append(f"High Risk: {counts['high_risk']} pathogens detected")
+            
+            if counts.get('moderate_risk', 0) > 0:
+                categories.append("Moderate Risk Pathogens")
+                values.append(counts['moderate_risk'])
+                colors.append('#FFA500')
+                hover_text.append(f"Moderate Risk: {counts['moderate_risk']} pathogens detected")
+            
+            if counts.get('low_risk', 0) > 0:
+                categories.append("Low Risk Pathogens")
+                values.append(counts['low_risk'])
+                colors.append('#32CD32')
+                hover_text.append(f"Low Risk: {counts['low_risk']} pathogens detected")
+            
+            # Add functional markers (scaled for visualization)
+            if markers.get('virulence', 0) > 0:
+                categories.append("Virulence Genes")
+                scaled_val = min(markers['virulence'] / 20, 10)
+                values.append(scaled_val)
+                colors.append('#8B0000')
+                hover_text.append(f"Virulence: {markers['virulence']} genes detected")
+            
+            if markers.get('amr', 0) > 0:
+                categories.append("AMR Genes")
+                scaled_val = min(markers['amr'] / 30, 10)
+                values.append(scaled_val)
+                colors.append('#FF4500')
+                hover_text.append(f"AMR: {markers['amr']} genes detected")
+            
+            if markers.get('transposases', 0) > 0:
+                categories.append("Transposases")
+                scaled_val = min(markers['transposases'] / 5, 10)
+                values.append(scaled_val)
+                colors.append('#FFD700')
+                hover_text.append(f"Transposases: {markers['transposases']} genes detected")
+            
+            if not categories:
+                print("  ⚠️ No data available for summary chart")
+                return None
+            
+            fig = go.Figure(data=[go.Bar(
+                x=categories,
+                y=values,
+                marker_color=colors,
+                text=[f"{v:.1f}" for v in values],
+                textposition='outside',
+                hovertext=hover_text,
+                hoverinfo='text'
+            )])
+            
+            risk_level = scores.get('risk_level', 'Unknown')
+            final_score = scores.get('final', 0)
+            total_pathogens = counts.get('total', 0)
+            
+            fig.update_layout(
+                title=f"Integrated Pathogen Risk Summary<br><sub>Overall Risk: <b>{risk_level}</b> (Score: {final_score:.1f}/100) | {total_pathogens} Pathogens Detected</sub>",
+                xaxis_title="Risk Component",
+                yaxis_title="Count / Scaled Value",
+                template="plotly_white",
+                height=500,
+                xaxis={'tickangle': -45},
+                margin=dict(b=150, t=100),
+                font=dict(size=11),
+                showlegend=False
+            )
+            
+            filepath = self.save_plot(fig, "pathogen_risk_summary.html")
+            print(f"  ✓ Risk summary chart saved: {filepath}")
+            return filepath
+            
+        except Exception as e:
+            print(f"  ✗ Error creating summary chart: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
     
     def create_risk_assessment_chart(self, report_path, title="Pathogen Risk Assessment"):
         """
         Create comprehensive risk assessment visualization.
-        Supports both FASTQ and FASTA+ML report formats.
+        Supports FASTQ, FASTA+ML, and integrated summary formats.
         """
         try:
             # Load report data
             report_data = self.load_json_report(Path(report_path))
             if not report_data:
                 return None
+            
+            # Check if this is an integrated risk summary (no detailed detections)
+            if 'pathogen_counts' in report_data and 'data' not in report_data:
+                print("  ℹ️ Detected integrated risk summary format")
+                return self._create_summary_risk_chart(report_data)
             
             # Extract the nested data structure
             data_section = report_data.get('data', {})
@@ -39,13 +140,17 @@ class PathogenVisualizer(BaseVisualizer):
                 detections = data_section.get('blast_taxonomy', {}).get('organisms', {})
                 print("  ✓ Processing FASTA+ML pathogen report")
             else:
-                # For FASTQ reports, data is nested under data.pathogen_detections
-                detections = data_section.get('pathogen_detections', {})
+                # For FASTQ reports, try multiple possible locations
+                detections = (data_section.get('pathogen_detections') or 
+                            data_section.get('pathogens') or
+                            report_data.get('pathogen_detections') or
+                            report_data.get('pathogens') or {})
                 print("  ✓ Processing FASTQ pathogen report")
             
             if not detections:
                 print("  ⚠️ No pathogen detections found in report")
-                print(f"  ℹ️ Available keys in data: {list(data_section.keys())}")
+                print(f"  ℹ️ Available keys in report root: {list(report_data.keys())}")
+                print(f"  ℹ️ Available keys in data section: {list(data_section.keys())}")
                 return None
 
             # Convert to DataFrame
@@ -171,6 +276,11 @@ class PathogenVisualizer(BaseVisualizer):
             if not report_data:
                 return None
             
+            # Check for integrated summary format
+            if 'pathogen_counts' in report_data and 'data' not in report_data:
+                print("  ℹ️ Skipping WHO chart - integrated summary lacks WHO priority data")
+                return None
+            
             # Extract nested data
             data_section = report_data.get('data', {})
             summary = data_section.get('summary', {})
@@ -180,7 +290,10 @@ class PathogenVisualizer(BaseVisualizer):
             if 'FASTA' in analysis_type or 'BLAST' in analysis_type:
                 detections = data_section.get('blast_taxonomy', {}).get('organisms', {})
             else:
-                detections = data_section.get('pathogen_detections', {})
+                detections = (data_section.get('pathogen_detections') or 
+                            data_section.get('pathogens') or
+                            report_data.get('pathogen_detections') or
+                            report_data.get('pathogens') or {})
             
             if not detections:
                 print("  ⚠️ No detections for WHO priority chart")
@@ -250,6 +363,11 @@ class PathogenVisualizer(BaseVisualizer):
             if not report_data:
                 return None
             
+            # Check for integrated summary format
+            if 'pathogen_counts' in report_data and 'data' not in report_data:
+                print("  ℹ️ Skipping confidence chart - integrated summary lacks detailed detection data")
+                return None
+            
             # Extract nested data
             data_section = report_data.get('data', {})
             summary = data_section.get('summary', {})
@@ -259,7 +377,10 @@ class PathogenVisualizer(BaseVisualizer):
             if 'FASTA' in analysis_type:
                 detections = data_section.get('blast_taxonomy', {}).get('organisms', {})
             else:
-                detections = data_section.get('pathogen_detections', {})
+                detections = (data_section.get('pathogen_detections') or 
+                            data_section.get('pathogens') or
+                            report_data.get('pathogen_detections') or
+                            report_data.get('pathogens') or {})
             
             if not detections:
                 print("  ⚠️ No detections for confidence chart")
@@ -372,9 +493,17 @@ class PathogenVisualizer(BaseVisualizer):
             if not report_data:
                 return None
             
+            # Check for integrated summary format
+            if 'pathogen_counts' in report_data and 'data' not in report_data:
+                print("  ℹ️ Skipping abundance heatmap - integrated summary lacks detailed abundance data")
+                return None
+            
             # Extract data
             data_section = report_data.get('data', {})
-            detections = data_section.get('pathogen_detections', {})
+            detections = (data_section.get('pathogen_detections') or 
+                         data_section.get('pathogens') or
+                         report_data.get('pathogen_detections') or
+                         report_data.get('pathogens') or {})
             
             if not detections:
                 print("  ⚠️ No detections for abundance heatmap")

@@ -13,12 +13,18 @@ class DashboardGenerator(BaseVisualizer):
         self.theme = {
             'color': "#4CAF50" if self.analysis_type == 'fastq' else "#007bff",
             'name': "FASTQ Analysis" if self.analysis_type == 'fastq' else "FASTA Analysis",
-            'version': "v3.6.0"
+            'version': "v4.0.0"
         }
 
     def _check_files(self) -> dict:
         """Checks for the existence of all key report files to display on the dashboard."""
         files_dict = {
+            # Numbered Summary Reports
+            'taxonomic_report_01': (self.output_dir / "01_taxonomic_report.txt").exists(),
+            'functional_report_02': (self.output_dir / "02_functional_report.txt").exists(),
+            'pathogen_risk_report_03': (self.output_dir / "03_pathogen_risk_report.txt").exists(),
+            'comprehensive_report': (self.output_dir / "comprehensive_report.txt").exists(),
+            
             # Common Taxonomic Reports
             'taxonomic_report': (self.output_dir / "taxonomic_classification_report.txt").exists(),
             'taxonomic_abundance_chart': (self.output_dir / "taxonomic_abundance_chart.html").exists(),
@@ -29,6 +35,7 @@ class DashboardGenerator(BaseVisualizer):
             'functional_annotations_tsv': (self.output_dir / "functional_annotations.tsv").exists(),
             'protein_length_analysis': (self.output_dir / "protein_length_analysis.html").exists(),
             'functional_categories': (self.output_dir / "functional_categories.html").exists(),
+            'annotation_quality_dashboard': (self.output_dir / "annotation_quality_dashboard.html").exists(),
             
             # Common Pathogen Detection Reports
             'pathogen_detection_report': (self.output_dir / "pathogen_detection_report.txt").exists(),
@@ -427,6 +434,16 @@ class DashboardGenerator(BaseVisualizer):
                 color: white;
             }}
 
+            .badge.summary {{
+                background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+                color: white;
+            }}
+
+            .badge.complete {{
+                background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+                color: white;
+            }}
+
             .footer {{
                 background: rgba(255, 255, 255, 0.9);
                 backdrop-filter: blur(10px);
@@ -512,6 +529,12 @@ class DashboardGenerator(BaseVisualizer):
         """Creates the HTML for a single card if the corresponding file exists."""
         if self.files_exist.get(link_key, False):
             filename_map = {
+                # Numbered Summary Reports
+                'taxonomic_report_01': '01_taxonomic_report.txt',
+                'functional_report_02': '02_functional_report.txt',
+                'pathogen_risk_report_03': '03_pathogen_risk_report.txt',
+                'comprehensive_report': 'comprehensive_report.txt',
+                
                 # Taxonomic Reports
                 'taxonomic_report': 'taxonomic_classification_report.txt',
                 'taxonomic_abundance_chart': 'taxonomic_abundance_chart.html',
@@ -522,6 +545,7 @@ class DashboardGenerator(BaseVisualizer):
                 'functional_annotations_tsv': 'functional_annotations.tsv',
                 'protein_length_analysis': 'protein_length_analysis.html',
                 'functional_categories': 'functional_categories.html',
+                'annotation_quality_dashboard': 'annotation_quality_dashboard.html',
                 
                 # Pathogen Detection Reports
                 'pathogen_detection_report': 'pathogen_detection_report.txt',
@@ -618,7 +642,7 @@ class DashboardGenerator(BaseVisualizer):
         # Count available files for stats
         total_files = sum(1 for exists in self.files_exist.values() if exists)
         report_files = sum(1 for k, v in self.files_exist.items() if v and ('report' in k or 'summary' in k))
-        viz_files = sum(1 for k, v in self.files_exist.items() if v and ('chart' in k or 'distribution' in k or 'krona' in k))
+        viz_files = sum(1 for k, v in self.files_exist.items() if v and ('chart' in k or 'distribution' in k or 'krona' in k or 'dashboard' in k))
         
         header = f"""
         <div class="header">
@@ -649,6 +673,8 @@ class DashboardGenerator(BaseVisualizer):
         </div>
         """
         
+        # Add summary reports section
+        summary_section = self._create_summary_section()
         taxonomic_section, functional_section, pathogen_section = "", "", ""
 
         if self.analysis_type == 'fastq':
@@ -661,7 +687,24 @@ class DashboardGenerator(BaseVisualizer):
             functional_section = self._create_functional_section()
             pathogen_section = self._create_fasta_pathogen_section()
         
-        return header + taxonomic_section + functional_section + pathogen_section
+        return header + summary_section + taxonomic_section + functional_section + pathogen_section
+
+    def _create_summary_section(self) -> str:
+        """Create summary reports section with numbered reports"""
+        return f"""
+        <div class="section">
+            <div class="section-header">
+                <h2>📑 Executive Summary Reports</h2>
+                <p class="section-subtitle">Quick-access numbered summary reports for rapid analysis review</p>
+            </div>
+            <div class="grid">
+                {self._create_card("1️⃣", "01 - Taxonomic Summary", "Executive summary of taxonomic classification and species abundance.", "taxonomic_report_01", "TXT", "SUMMARY")}
+                {self._create_card("2️⃣", "02 - Functional Summary", "Executive summary of functional annotations and gene predictions.", "functional_report_02", "TXT", "SUMMARY")}
+                {self._create_card("3️⃣", "03 - Pathogen Risk Summary", "Executive summary of pathogen detection and risk assessment.", "pathogen_risk_report_03", "TXT", "SUMMARY")}
+                {self._create_card("📊", "Comprehensive Report", "Complete integrated analysis report covering all modules.", "comprehensive_report", "TXT", "COMPLETE")}
+            </div>
+        </div>
+        """
 
     def _create_fastq_taxonomic_section(self) -> str:
         """Create taxonomic section for FASTQ analysis"""
@@ -674,7 +717,7 @@ class DashboardGenerator(BaseVisualizer):
             <div class="grid">
                 {self._create_card("📋", "Taxonomic Classification Report", "Comprehensive species abundance and classification results.", "taxonomic_report", "TXT")}
                 {self._create_card("📈", "Abundance Chart", "Interactive visualization of taxonomic abundance distribution.", "taxonomic_abundance_chart", "HTML")}
-                {self._create_card("🌍", "Krona Taxonomy Chart", "Hierarchical interactive taxonomy browser.", "taxonomy_krona", "HTML")}
+                {self._create_card("🌐", "Krona Taxonomy Chart", "Hierarchical interactive taxonomy browser.", "taxonomy_krona", "HTML")}
                 {self._create_card("📊", "Bracken Report (Text)", "Human-readable Bracken species abundance report.", "bracken_report_txt", "TXT")}
                 {self._create_card("📄", "Bracken Report (Data)", "Machine-readable species-level abundance data.", "bracken_report_tsv", "TSV")}
                 {self._create_card("📑", "Kraken Classification Report", "Raw Kraken2 classification results.", "kraken_report", "TXT")}
@@ -693,7 +736,7 @@ class DashboardGenerator(BaseVisualizer):
             <div class="grid">
                 {self._create_card("📋", "Taxonomic Classification Report", "BLAST-based species identification results.", "taxonomic_report", "TXT")}
                 {self._create_card("📈", "Abundance Chart", "Interactive organism abundance distribution.", "taxonomic_abundance_chart", "HTML")}
-                {self._create_card("🌍", "Krona Taxonomy Chart", "Hierarchical taxonomy visualization.", "taxonomy_krona", "HTML")}
+                {self._create_card("🌐", "Krona Taxonomy Chart", "Hierarchical taxonomy visualization.", "taxonomy_krona", "HTML")}
             </div>
         </div>
         """
@@ -711,6 +754,7 @@ class DashboardGenerator(BaseVisualizer):
                 {self._create_card("📊", "Functional Annotations (Data)", "Detailed annotation data for all predicted features.", "functional_annotations_tsv", "TSV")}
                 {self._create_card("📏", "Protein Length Analysis", "Statistical analysis of predicted protein sizes.", "protein_length_analysis", "HTML")}
                 {self._create_card("📈", "Functional Categories", "Distribution of protein functional classifications.", "functional_categories", "HTML")}
+                {self._create_card("✅", "Annotation Quality Dashboard", "Quality metrics and validation of annotation results.", "annotation_quality_dashboard", "HTML", "ENHANCED")}
             </div>
         </div>
         """
@@ -764,16 +808,6 @@ class DashboardGenerator(BaseVisualizer):
                 {self._create_card("🌍", "WHO Priority Distribution", "WHO priority pathogen breakdown from BLAST results.", "who_priority_distribution", "HTML", "NEW")}
                 {self._create_card("📈", "Detection Confidence", "ML prediction confidence and BLAST quality metrics.", "detection_confidence", "HTML", "NEW")}
                 {self._create_card("📊", "Diversity Analysis", "Taxonomic diversity and community structure metrics.", "diversity_metrics", "HTML", "NEW")}
-            </div>
-        </div>
-                <h2>📸 Static Charts</h2>
-                <p class="section-subtitle">Publication-ready static visualizations</p>
-            </div>
-            <div class="grid">
-                {self._create_card("⚠️", "Risk Distribution (PNG)", "Static pathogen risk level distribution.", "pathogen_risk_distribution", "PNG")}
-                {self._create_card("📊", "Top Pathogens (PNG)", "Static bar chart of detected pathogenic organisms.", "pathogen_abundance_top15", "PNG")}
-                {self._create_card("🏥", "WHO Classification (PNG)", "Static WHO priority classification chart.", "pathogen_who_classification", "PNG")}
-                {self._create_card("🎲", "ML Confidence (PNG)", "Static ML prediction confidence distribution.", "pathogen_confidence_methods", "PNG")}
             </div>
         </div>
         """

@@ -13,22 +13,25 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import cross_val_score
 
 from ..visualization.compare_visuals import ComparativeVisualizer
+from ..io.output_formatter import OutputFormatter
 
 class ComparativeAnalysis:
     """
     A publication-ready comparative analysis pipeline for microbiome data.
     Enhanced with better statistical handling and small sample size considerations.
+    Uses OutputFormatter for clean, professional output.
     """
-    def __init__(self, output_dir: str):
+    def __init__(self, output_dir: str, debug: bool = False):
         self.output_path = Path(output_dir)
         self.output_path.mkdir(parents=True, exist_ok=True)
         self.abundance_table = None
         self.metadata_df = None
+        self.debug = debug
+        self.formatter = OutputFormatter(debug=debug)
 
     def run_complete_analysis(self, input_dirs: List[str], metadata_file: str):
         """Main orchestrator for the entire comparative analysis workflow."""
-        print("🔬 Starting Enhanced Comparative Microbiome Analysis")
-        print("=" * 60)
+        self.formatter.header("Enhanced Comparative Microbiome Analysis")
 
         if not self.load_and_aggregate_data(input_dirs, metadata_file):
             return
@@ -41,7 +44,7 @@ class ComparativeAnalysis:
         self._run_ml_biomarker_discovery()
 
         # --- Visualization ---
-        print("\n-> Generating enhanced visualizations...")
+        self.formatter.step("Generating enhanced visualizations")
         visualizer = ComparativeVisualizer(self.output_path)
         
         if bc_matrix is not None:
@@ -60,45 +63,48 @@ class ComparativeAnalysis:
         # Additional visualization - abundance comparison
         visualizer.create_abundance_barplot(self.abundance_table, self.metadata_df)
 
-        print("\n🎉 Enhanced comparative analysis completed!")
-        print(f"📁 Results saved to: {self.output_path}")
+        self.formatter.success("Enhanced comparative analysis completed!", style='bold')
+        self.formatter.info(f"Results saved to: {self.output_path}")
 
     def load_and_aggregate_data(self, input_dirs: List[str], metadata_file: str) -> bool:
         """Load and aggregate taxonomic data from multiple samples."""
-        print(f"-> Loading metadata from: {metadata_file}")
+        self.formatter.step(f"Loading metadata from: {Path(metadata_file).name}")
         try:
             self.metadata_df = pd.read_csv(metadata_file, sep='\t')
+            self.formatter.success(f"Loaded metadata for {len(self.metadata_df)} samples")
         except Exception as e:
-            print(f"❌ ERROR: Could not parse metadata file. Details: {e}")
+            self.formatter.error(f"Could not parse metadata file: {e}")
             return False
-
-        print(f"-> Found {len(self.metadata_df)} samples in metadata.")
         
         # Aggregate taxonomic data
-        print("-> Aggregating taxonomic profiles...")
+        self.formatter.step("Aggregating taxonomic profiles")
         all_samples_data = []
         sample_ids_in_data = []
         
-        for input_dir in input_dirs:
-            dir_path = Path(input_dir)
-            sample_id = dir_path.name
-            bracken_report = dir_path / "bracken_report.tsv"
-            
-            if bracken_report.exists():
-                try:
-                    sample_df = pd.read_csv(bracken_report, sep='\t')[['name', 'new_est_reads']]
-                    sample_df.rename(columns={'new_est_reads': sample_id}, inplace=True)
-                    sample_df.set_index('name', inplace=True)
-                    all_samples_data.append(sample_df)
-                    sample_ids_in_data.append(sample_id)
-                    print(f"  ✓ Processed: {sample_id}")
-                except Exception as e:
-                    print(f"  ⚠ Warning: Could not process Bracken report for '{sample_id}'. Error: {e}")
-            else:
-                print(f"  ⚠ Warning: Bracken report not found for '{sample_id}'. Skipping.")
+        with self.formatter.progress_bar(total=len(input_dirs), desc="Processing samples") as pbar:
+            for input_dir in input_dirs:
+                dir_path = Path(input_dir)
+                sample_id = dir_path.name
+                bracken_report = dir_path / "bracken_report.tsv"
+                
+                if bracken_report.exists():
+                    try:
+                        sample_df = pd.read_csv(bracken_report, sep='\t')[['name', 'new_est_reads']]
+                        sample_df.rename(columns={'new_est_reads': sample_id}, inplace=True)
+                        sample_df.set_index('name', inplace=True)
+                        all_samples_data.append(sample_df)
+                        sample_ids_in_data.append(sample_id)
+                        if self.debug:
+                            self.formatter.success(f"Processed: {sample_id}")
+                    except Exception as e:
+                        self.formatter.warning(f"Could not process Bracken report for '{sample_id}': {e}")
+                else:
+                    self.formatter.warning(f"Bracken report not found for '{sample_id}' - skipping")
+                
+                pbar.update(1)
 
         if not all_samples_data:
-            print("❌ ERROR: No valid Bracken reports found.")
+            self.formatter.error("No valid Bracken reports found")
             return False
             
         abundance_table = pd.concat(all_samples_data, axis=1, join='outer').fillna(0).astype(int)
@@ -108,27 +114,27 @@ class ComparativeAnalysis:
     
     def _clean_and_validate_data(self) -> bool:
         """Clean and validate the abundance table."""
-        print("\n-> Cleaning and validating abundance table...")
+        self.formatter.step("Cleaning and validating abundance table")
 
         original_sample_count = self.abundance_table.shape[0]
         self.abundance_table = self.abundance_table.loc[(self.abundance_table.sum(axis=1) > 0)]
         samples_removed = original_sample_count - self.abundance_table.shape[0]
         
         if samples_removed > 0:
-            print(f"  -> Removed {samples_removed} empty samples.")
+            self.formatter.substep(f"Removed {samples_removed} empty samples")
 
         original_species_count = self.abundance_table.shape[1]
         self.abundance_table = self.abundance_table.loc[:, (self.abundance_table != 0).any(axis=0)]
         species_removed = original_species_count - self.abundance_table.shape[1]
         
         if species_removed > 0:
-            print(f"  -> Removed {species_removed} species absent in all samples.")
+            self.formatter.substep(f"Removed {species_removed} species absent in all samples")
         
         # Filter metadata to match available samples
         self.metadata_df = self.metadata_df[self.metadata_df['sample_id'].isin(self.abundance_table.index)]
         
         if len(self.metadata_df) < 2:
-            print("❌ ERROR: Fewer than two valid samples remain after cleaning.")
+            self.formatter.error("Fewer than two valid samples remain after cleaning")
             return False
             
         # CRITICAL FIX: Ensure proper alignment and indexing
@@ -137,13 +143,13 @@ class ComparativeAnalysis:
         
         # Save cleaned data
         self.abundance_table.to_csv(self.output_path / "taxonomic_abundance_table.tsv", sep='\t')
-        print(f"✅ Cleaned abundance table: {self.abundance_table.shape[1]} species × {self.abundance_table.shape[0]} samples")
+        self.formatter.success(f"Cleaned abundance table: {self.abundance_table.shape[1]} species × {self.abundance_table.shape[0]} samples")
         
         return True
 
     def _calculate_alpha_diversity(self) -> pd.DataFrame:
         """Calculate multiple alpha diversity metrics for each sample."""
-        print("\n-> Calculating Alpha Diversity...")
+        self.formatter.step("Calculating Alpha Diversity")
         
         metrics = ['shannon', 'simpson', 'chao1', 'sobs']
         alpha_div_results = {}
@@ -151,7 +157,7 @@ class ComparativeAnalysis:
             try:
                 alpha_div_results[metric] = alpha_diversity(metric, self.abundance_table.values, ids=self.abundance_table.index)
             except Exception as e:
-                print(f"  ⚠️ Warning: Could not calculate {metric}: {e}")
+                self.formatter.warning(f"Could not calculate {metric}: {e}")
 
         if not alpha_div_results:
             return None
@@ -165,16 +171,16 @@ class ComparativeAnalysis:
         self._perform_alpha_diversity_stats(alpha_df)
         
         alpha_df.to_csv(self.output_path / "alpha_diversity_metrics.tsv", sep='\t')
-        print("  ✓ Alpha diversity calculations complete.")
+        self.formatter.success("Alpha diversity calculations complete")
         return alpha_df
 
     def _perform_alpha_diversity_stats(self, alpha_df):
         """Perform statistical tests on alpha diversity metrics."""
-        print("\n-> Running Alpha Diversity Statistical Tests...")
+        self.formatter.step("Running Alpha Diversity Statistical Tests")
         
         groups = alpha_df['group'].unique()
         if len(groups) != 2:
-            print("  ⚠️ Warning: Alpha diversity tests require exactly 2 groups.")
+            self.formatter.warning("Alpha diversity tests require exactly 2 groups")
             return
             
         group1_name, group2_name = groups
@@ -203,10 +209,11 @@ class ComparativeAnalysis:
                         'interpretation': self._interpret_p_value(p_value, effect_size)
                     })
                     
-                    print(f"  ✓ {metric}: p = {p_value:.4f} {self._interpret_p_value(p_value, effect_size)}")
+                    interpretation = self._interpret_p_value(p_value, effect_size)
+                    self.formatter.substep(f"{metric}: p = {p_value:.4f} {interpretation}")
                     
                 except Exception as e:
-                    print(f"  ⚠️ Warning: Could not test {metric}: {e}")
+                    self.formatter.warning(f"Could not test {metric}: {e}")
         
         if results:
             results_df = pd.DataFrame(results)
@@ -229,36 +236,39 @@ class ComparativeAnalysis:
 
     def _calculate_beta_diversity(self):
         """Calculate Bray-Curtis beta diversity."""
-        print("\n-> Calculating Beta Diversity (Bray-Curtis)...")
+        self.formatter.step("Calculating Beta Diversity (Bray-Curtis)")
         bc_matrix = beta_diversity("braycurtis", self.abundance_table.values, self.abundance_table.index)
         if np.isnan(bc_matrix.data).any():
             bc_matrix.data = np.nan_to_num(bc_matrix.data)
+        self.formatter.success("Beta diversity calculated")
         return bc_matrix
 
     def _perform_beta_diversity_stats(self, distance_matrix):
         """Perform PERMANOVA and ANOSIM tests with proper error handling."""
-        print("\n-> Running Beta Diversity Statistical Tests...")
+        self.formatter.step("Running Beta Diversity Statistical Tests")
         
         try:
             # CRITICAL FIX: Create properly aligned metadata for statistical tests
-            # The distance matrix IDs should match the metadata index
             metadata_for_stats = self.metadata_df.copy()
             
-            print(f"  -> Distance matrix IDs: {list(distance_matrix.ids)}")
-            print(f"  -> Metadata index: {list(metadata_for_stats.index)}")
+            if self.debug:
+                self.formatter.info(f"Distance matrix IDs: {list(distance_matrix.ids)}")
+                self.formatter.info(f"Metadata index: {list(metadata_for_stats.index)}")
             
             # Ensure perfect alignment
             common_ids = [id for id in distance_matrix.ids if id in metadata_for_stats.index]
             if len(common_ids) != len(distance_matrix.ids):
-                print(f"  ⚠️ Warning: ID mismatch. Common IDs: {len(common_ids)}, Distance matrix: {len(distance_matrix.ids)}")
+                self.formatter.warning(f"ID mismatch. Common IDs: {len(common_ids)}, Distance matrix: {len(distance_matrix.ids)}")
             
             # PERMANOVA
             try:
+                self.formatter.substep("Running PERMANOVA...")
                 permanova_result = permanova(distance_matrix, metadata_for_stats, column='group', permutations=999)
                 p_val = permanova_result['p-value']
                 f_stat = permanova_result['test statistic']
                 
-                print(f"  ✓ PERMANOVA: F = {f_stat:.3f}, p = {p_val:.4f} {self._interpret_p_value(p_val)}")
+                interpretation = self._interpret_p_value(p_val)
+                self.formatter.success(f"PERMANOVA: F = {f_stat:.3f}, p = {p_val:.4f} {interpretation}")
                 
                 # Save detailed results
                 with open(self.output_path / "permanova_results.txt", 'w') as f:
@@ -271,15 +281,17 @@ class ComparativeAnalysis:
                     f.write(f"Test: Groups differ in microbiome composition\n")
                 
             except Exception as e:
-                print(f"  ❌ PERMANOVA failed: {e}")
+                self.formatter.error(f"PERMANOVA failed: {e}")
 
             # ANOSIM
             try:
+                self.formatter.substep("Running ANOSIM...")
                 anosim_result = anosim(distance_matrix, metadata_for_stats, column='group', permutations=999)
                 r_stat = anosim_result['test statistic']
                 p_val = anosim_result['p-value']
                 
-                print(f"  ✓ ANOSIM: R = {r_stat:.3f}, p = {p_val:.4f} {self._interpret_p_value(p_val)}")
+                interpretation = self._interpret_p_value(p_val)
+                self.formatter.success(f"ANOSIM: R = {r_stat:.3f}, p = {p_val:.4f} {interpretation}")
                 
                 # Save detailed results
                 with open(self.output_path / "anosim_results.txt", 'w') as f:
@@ -296,25 +308,25 @@ class ComparativeAnalysis:
                     f.write(f"  R ≈ 0: Indistinguishable\n")
                     
             except Exception as e:
-                print(f"  ❌ ANOSIM failed: {e}")
+                self.formatter.error(f"ANOSIM failed: {e}")
                 
         except Exception as e:
-            print(f"  ❌ Beta diversity statistical tests failed: {e}")
+            self.formatter.error(f"Beta diversity statistical tests failed: {e}")
 
     def _run_differential_abundance(self) -> pd.DataFrame:
         """Run differential abundance testing with multiple significance levels."""
-        print("\n-> Running differential abundance analysis...")
+        self.formatter.step("Running differential abundance analysis")
         
         groups = self.metadata_df['group'].unique()
         if len(groups) != 2:
-            print("  ⚠️ Warning: Differential abundance test requires exactly 2 groups. Skipping.")
+            self.formatter.warning("Differential abundance test requires exactly 2 groups - skipping")
             return None
             
         group1_name, group2_name = groups
         group1_samples = self.metadata_df[self.metadata_df['group'] == group1_name].index
         group2_samples = self.metadata_df[self.metadata_df['group'] == group2_name].index
 
-        print(f"  -> Comparing {group1_name} (n={len(group1_samples)}) vs {group2_name} (n={len(group2_samples)})")
+        self.formatter.substep(f"Comparing {group1_name} (n={len(group1_samples)}) vs {group2_name} (n={len(group2_samples)})")
 
         results = []
         for species in self.abundance_table.columns:
@@ -351,10 +363,11 @@ class ComparativeAnalysis:
                     'group2_name': group2_name
                 })
             except Exception as e:
-                print(f"  ⚠️ Warning: Could not test {species}: {e}")
+                if self.debug:
+                    self.formatter.warning(f"Could not test {species}: {e}")
         
         if not results:
-            print("  -> No species were eligible for testing.")
+            self.formatter.warning("No species were eligible for testing")
             return None
 
         diff_df = pd.DataFrame(results)
@@ -397,24 +410,24 @@ class ComparativeAnalysis:
         trend_sig = (diff_df['p_value'] < 0.1).sum()
         nominal_sig = (diff_df['p_value'] < 0.05).sum()
         
-        print(f"  ✓ Differential abundance results:")
-        print(f"    • FDR significant (q < 0.05): {fdr_sig}")
-        print(f"    • Bonferroni significant: {bonf_sig}")
-        print(f"    • Nominally significant (p < 0.05): {nominal_sig}")
-        print(f"    • Trend level (p < 0.10): {trend_sig}")
+        self.formatter.success("Differential abundance results:")
+        self.formatter.metric("FDR significant (q < 0.05)", fdr_sig)
+        self.formatter.metric("Bonferroni significant", bonf_sig)
+        self.formatter.metric("Nominally significant (p < 0.05)", nominal_sig)
+        self.formatter.metric("Trend level (p < 0.10)", trend_sig)
         
         if trend_sig > 0:
-            print(f"  -> Top candidates (p < 0.10):")
+            self.formatter.substep("Top candidates (p < 0.10):")
             top_candidates = diff_df[diff_df['p_value'] < 0.10].head(5)
             for _, row in top_candidates.iterrows():
                 direction = "↑" if row['fold_change'] > 1 else "↓"
-                print(f"    • {row['species']}: p = {row['p_value']:.4f}, FC = {row['fold_change']:.2f} {direction}")
+                self.formatter.info(f"{row['species']}: p = {row['p_value']:.4f}, FC = {row['fold_change']:.2f} {direction}")
         
         return diff_df
 
     def _run_ml_biomarker_discovery(self):
         """Use Random Forest to find the most discriminative species."""
-        print("\n-> Running Machine Learning for Biomarker Discovery...")
+        self.formatter.step("Running Machine Learning for Biomarker Discovery")
         try:
             X = self.abundance_table
             y = self.metadata_df.loc[X.index, 'group']
@@ -426,9 +439,10 @@ class ComparativeAnalysis:
                                       class_weight='balanced')  # Handle class imbalance
             
             # Cross-validation with proper scoring
-            cv_scores = cross_val_score(rf, X, y, cv=min(3, len(X)//2), scoring='accuracy')
+            cv_folds = min(3, len(X)//2)
+            cv_scores = cross_val_score(rf, X, y, cv=cv_folds, scoring='accuracy')
             
-            print(f"  ✓ Random Forest {len(cv_scores)}-fold CV Accuracy: {np.mean(cv_scores):.2f} ± {np.std(cv_scores):.2f}")
+            self.formatter.success(f"Random Forest {len(cv_scores)}-fold CV Accuracy: {np.mean(cv_scores):.2f} ± {np.std(cv_scores):.2f}")
             
             # Fit final model
             rf.fit(X, y)
@@ -451,15 +465,17 @@ class ComparativeAnalysis:
             report_path = self.output_path / "random_forest_feature_importance.tsv"
             importance_df.to_csv(report_path, sep='\t', index=False)
             
-            print(f" ✓ Top discriminative species:")
+            self.formatter.substep("Top discriminative species:")
             for i in range(min(2, len(importance_df))):
-                print(f"    -> '{importance_df.iloc[i]['species']}' - Importance: {importance_df.iloc[i]['importance']:.4f}")
-            print(f"-> Feature importance report saved to: {report_path}")
+                species_name = importance_df.iloc[i]['species']
+                importance_val = importance_df.iloc[i]['importance']
+                self.formatter.info(f"'{species_name}' - Importance: {importance_val:.4f}")
+            self.formatter.success(f"Feature importance report saved")
                 
         except Exception as e:
-            print(f"  ⚠️ Warning: ML biomarker discovery failed. Error: {e}")
+            self.formatter.warning(f"ML biomarker discovery failed: {e}")
 
-def run_comparison(input_dirs: List[str], metadata_file: str, output_dir: str):
+def run_comparison(input_dirs: List[str], metadata_file: str, output_dir: str, debug: bool = False):
     """Main entry point to run the enhanced comparative analysis."""
-    analyzer = ComparativeAnalysis(output_dir)
+    analyzer = ComparativeAnalysis(output_dir, debug=debug)
     analyzer.run_complete_analysis(input_dirs, metadata_file)

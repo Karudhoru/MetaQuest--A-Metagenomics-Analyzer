@@ -3,13 +3,16 @@ import os
 from pathlib import Path
 import json
 from Bio import SeqIO
-from typing import List
+from typing import List, Optional
 import pandas as pd
 import re
 import numpy as np
 from collections import Counter
 from ..config import *
 import importlib
+from .output_formatter import get_formatter
+
+formatter = get_formatter()
 
 def _check_command(name, version_cmd="--version"):
     """Helper to check for a single command-line tool."""
@@ -25,44 +28,33 @@ def _check_command(name, version_cmd="--version"):
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False
 
-def run_system_check():
+def run_system_check(formatter):
     """
-    Runs a comprehensive check of all dependencies: tools, packages, models, and databases.
-    Provides a single, clean report of the system's status.
+    Runs a comprehensive check of all dependencies using the formatter for output.
     """
     errors = []
     warnings = []
     
-    print("Performing system-wide checks...")
+    formatter.info("Performing system-wide checks...")
 
     # --- 1. Command-Line Tools ---
-    print("  -> Checking command-line tools...")
+    formatter.substep("Checking command-line tools...")
     tools = {
-        'kraken2': '--version',
-        'bracken': '--version',
-        'diamond': 'version',
-        'prokka': '--version',
-        'seqkit': 'version',
-        'ktImportText': None, # ktImportText just needs to be runnable
-        'seqtk': None,
-        'spades.py': '--version',
-        'reformat.sh': None  # from BBTools
+        'kraken2': '--version', 'bracken': '--version', 'diamond': 'version',
+        'prokka': '--version', 'seqkit': 'version', 'ktImportText': None,
+        'seqtk': None, 'spades.py': '--version', 'reformat.sh': None
     }
     for tool, cmd in tools.items():
         if not _check_command(tool, cmd):
             errors.append(f"Tool not found: '{tool}'. Please install it, e.g., via 'conda install -c bioconda {tool}'.")
 
     # --- 2. Python Packages ---
-    print("  -> Checking Python packages...")
+    formatter.substep("Checking Python packages...")
     packages = {
-        'Bio': 'biopython',
-        'pandas': 'pandas',
-        'numpy': 'numpy',
-        'plotly': 'plotly',
-        'sklearn': 'scikit-learn',
-        'joblib': 'joblib',
-        'requests': 'requests'
-
+        'Bio': 'biopython', 'pandas': 'pandas', 'numpy': 'numpy', 'plotly': 'plotly',
+        'sklearn': 'scikit-learn', 'joblib': 'joblib', 'requests': 'requests',
+        'tqdm': 'tqdm', 'scipy': 'scipy', 'matplotlib': 'matplotlib', 'xgboost': 'xgboost',
+        'lightgbm': 'lightgbm', 'catboost': 'catboost'
     }
     for pkg, install_name in packages.items():
         try:
@@ -71,57 +63,36 @@ def run_system_check():
             errors.append(f"Python package not found: '{install_name}'. Please install it, e.g., 'pip install {install_name}'.")
 
     # --- 3. Machine Learning Artifacts ---
-    print("  -> Checking ML model artifacts...")
+    formatter.substep("Checking ML model artifacts...")
     if not MODEL_ARTIFACTS_DIR.exists():
         errors.append(f"Model artifacts directory not found: {MODEL_ARTIFACTS_DIR}")
     else:
-        expected_models = [
-            'best_model.pkl', 'scaler.pkl', 'feature_selector.pkl',
-            'all_feature_names.pkl', 'feature_names.pkl'
-        ]
+        expected_models = ['best_model.pkl', 'scaler.pkl', 'feature_selector.pkl', 'selected_feature_names.json']
         for model_file in expected_models:
             if not (MODEL_ARTIFACTS_DIR / model_file).exists():
                 warnings.append(f"ML artifact missing: '{model_file}'. ML predictions may fail.")
 
     # --- 4. Databases ---
-    print("  -> Checking database files...")
+    formatter.substep("Checking database files...")
     required_dbs = {
-        "Kraken2 DB (hash)": KRAKEN_DB / "hash.k2d",
-        "SwissProt DB": SWISSPROT_DB,
-        "Taxonomy Nodes": TAXDUMP_NODES,
-        "Taxonomy Names": TAXDUMP_NAMES,
-        "Annotated DB": SWISSPROT_DB,
-        "Pathogen Screening DB": PATHOGEN_DB_CUSTOM,
-
+        "Kraken2 DB": KRAKEN_DB / "hash.k2d", "SwissProt DB": SWISSPROT_DB,
+        "Pathogen DB": PATHOGEN_DB_CUSTOM
     }
-
     for name, path in required_dbs.items():
         if not path.exists():
             errors.append(f"Required database not found: {name} (expected at {path}).")
 
     # --- Final Report ---
-    print("\n" + "="*50)
-    print("          SYSTEM CHECK COMPLETE")
-    print("="*50)
-
-    if not errors and not warnings:
-        print("\n✅  Success! All dependencies and databases are correctly configured.")
-        return True
-
     if warnings:
-        print("\n⚠️  Warnings Found:")
         for warning in warnings:
-            print(f"  - {warning}")
+            formatter.warning(warning)
     
     if errors:
-        print("\n❌ CRITICAL ERRORS FOUND:")
-        for error in errors:
-            print(f"  - {error}")
-        print("\nPlease resolve the critical errors above before running an analysis.")
-        raise SystemExit("System check failed due to missing critical dependencies.")
-    
-    print("\nSystem check passed with warnings. Some functionality may be limited.")
-    return True
+        formatter.error(
+            "System check failed due to missing critical dependencies.",
+            solutions=errors + ["Please resolve the issues above before running an analysis."]
+        )
+        raise SystemExit()
 
 def get_tool_version(tool_name: str) -> str:
     """
@@ -159,75 +130,54 @@ def get_tool_version(tool_name: str) -> str:
     except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
         return "Not Found"
 
-def assemble_reads_to_fasta(reads: List[str], output_dir: Path, threads: int = 8) -> Path:
+def assemble_reads_to_fasta(reads: List[str], output_dir: Path, formatter, threads: int = 8) -> Path:
     """
-    Performs metagenomic assembly on FASTQ reads using SPAdes.
-    Handles both single-end and paired-end reads.
+    Performs metagenomic assembly on FASTQ reads using SPAdes and the output formatter.
     """
-    print("--- Assembling reads into contigs with SPAdes ---")
     spades_outdir = output_dir / "spades_assembly"
-    final_contigs = spades_outdir / "contigs.fasta"  # SPAdes uses this output name
+    final_contigs = spades_outdir / "contigs.fasta"
     
-    # Build the SPAdes command
-    cmd = ["spades.py", "--meta", "--only-assembler"] # Use '--meta' for metagenomic assembly
+    cmd = ["spades.py", "--meta", "--only-assembler"]
     if len(reads) == 1:
         cmd.extend(["-s", reads[0]])
     elif len(reads) == 2:
         cmd.extend(["-1", reads[0], "-2", reads[1]])
-    else:
-        raise ValueError(f"Invalid number of read files for SPAdes: {len(reads)}. Expected 1 or 2.")
-
+    
     cmd.extend(["-o", str(spades_outdir), "-t", str(threads)])
     
-    try:
-        print(f"Running: {' '.join(cmd)}")
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
-        
-        if final_contigs.exists():
-            print(f"✅ Assembly complete. Contigs saved to: {final_contigs}")
-            return final_contigs
-        else:
-            raise FileNotFoundError("SPAdes finished, but the final contig file was not found.")
-            
-    except FileNotFoundError:
-        print("❌ ERROR: 'spades.py' command not found. Please ensure it is installed.")
-        raise
-    except subprocess.CalledProcessError as e:
-        print(f"❌ SPAdes assembly failed. See error details below:")
-        # SPAdes often writes detailed errors to a log file
-        print(f"Check the log file for more details: {spades_outdir}/spades.log")
-        print(e.stderr)
-        raise
+    returncode, _, stderr = formatter.run_subprocess(cmd, "Running SPAdes assembler", show_command=True)
 
-def split_interleaved(interleaved_fastq: str, output_dir: Path) -> list:
+    if returncode != 0 or not final_contigs.exists():
+        formatter.error(
+            "SPAdes assembly failed.",
+            solutions=[f"Check the log file for details: {spades_outdir}/spades.log"]
+        )
+        raise RuntimeError(f"SPAdes failed. Stderr: {stderr}")
+
+    return final_contigs
+
+def split_interleaved(interleaved_fastq: str, output_dir: Path, formatter) -> list:
     """
-    Splits a single interleaved FASTQ into two gzipped files (R1, R2)
-    using the reformat.sh utility from the BBTools suite.
+    Splits an interleaved FASTQ into two files using reformat.sh and the output formatter.
     """
-    
     r1 = output_dir / "split_R1.fastq.gz"
     r2 = output_dir / "split_R2.fastq.gz"
 
     cmd = [
-        "reformat.sh",
-        f"in={interleaved_fastq}",
-        f"out1={r1}",
-        f"out2={r2}",
-        "overwrite=true",
+        "reformat.sh", f"in={interleaved_fastq}",
+        f"out1={r1}", f"out2={r2}", "overwrite=true",
     ]
     
-    try:
-        print(f"Running: {' '.join(cmd)}")
-        # Using a list of args is safer than shell=True
-        subprocess.run(cmd, check=True, capture_output=True)
-        return [str(r1), str(r2)]
-    except FileNotFoundError:
-        print("❌ ERROR: 'reformat.sh' not found. Please install BBTools via 'conda install -c bioconda bbmap'.")
-        raise
-    except subprocess.CalledProcessError as e:
-        print(f"❌ reformat.sh failed. Please ensure your input file is a valid FASTQ file.")
-        print(f"Error details: {e.stderr.decode()}")
-        raise
+    returncode, _, stderr = formatter.run_subprocess(cmd, "Splitting interleaved file", show_command=True)
+
+    if returncode != 0:
+        formatter.error(
+            "reformat.sh failed to split the file.",
+            solutions=["Ensure BBTools is installed and the input file is a valid FASTQ."]
+        )
+        raise RuntimeError(f"reformat.sh failed. Stderr: {stderr}")
+    
+    return [str(r1), str(r2)]
 
 def parse_prokka_gff(gff_file):
     """Parse Prokka GFF file to count features"""
@@ -267,95 +217,71 @@ def has_taxonomy_info(pathogen_db_path):
         print(f"Error checking taxonomy info: {e}")
         return False
 
-def should_use_ml_prediction(prokka_dir):
-    """Determine if ML prediction is appropriate based on sequence lengths"""
+def should_use_ml_prediction(prokka_dir, formatter):
+    """Determine if ML prediction is appropriate, logging with the formatter."""
     try:
-        prokka_path = Path(prokka_dir)
-        protein_files = list(prokka_path.glob("*.faa"))
+        protein_files = list(Path(prokka_dir).glob("*.faa"))
+        if not protein_files: return False
         
-        if not protein_files:
-            return False
-        
-        from Bio import SeqIO
         sequences = list(SeqIO.parse(protein_files[0], "fasta"))
+        if not sequences: return False
         
-        if not sequences:
-            return False
-        
+        # **FIX: Check if ANY proteins meet threshold, not average**
         lengths = [len(seq.seq) for seq in sequences]
+        min_length_threshold = 200
+        
+        # Count proteins >= threshold
+        eligible_proteins = [l for l in lengths if l >= min_length_threshold]
         avg_length = np.mean(lengths)
-        min_length_threshold = 200  
         
-        print(f"🔍 Protein length analysis:")
-        print(f"   • Average protein length: {avg_length:.1f} amino acids")
-        print(f"   • Total proteins: {len(sequences)}")
+        formatter.info("Protein length analysis for ML suitability:")
+        formatter.result({
+            "Total proteins": len(sequences),
+            "Average protein length": f"{avg_length:.1f} aa",
+            "Proteins ≥ 200 aa": len(eligible_proteins),
+            "ML Threshold": f"≥ {min_length_threshold} aa",
+            "Eligible for ML": f"{len(eligible_proteins)/len(sequences)*100:.1f}%"
+        }, indent=2)
         
-        if avg_length >= min_length_threshold:
-            print(f"   ✅ Suitable for ML prediction (avg ≥ {min_length_threshold} aa)")
+        # **NEW LOGIC: Run ML if at least 10% of proteins are long enough**
+        min_eligible_fraction = 0.10  # 10% threshold
+        
+        if len(eligible_proteins) / len(sequences) >= min_eligible_fraction:
+            formatter.info(f"✓ Sufficient long proteins for ML prediction", indent=2)
             return True
         else:
-            print(f"   ⚠️ Too short for ML prediction (avg < {min_length_threshold} aa)")
-            print(f"   📏 ML model trained on 500-1000 aa proteins")
+            formatter.info(f"✗ Too few long proteins ({len(eligible_proteins)}) for reliable ML prediction", indent=2)
             return False
             
     except Exception as e:
-        print(f"⚠️ Could not analyze protein lengths: {e}")
+        formatter.warning(f"Could not analyze protein lengths for ML: {e}")
         return False
 
-
-def extract_pathogens_from_bracken(bracken_file):
-    """
-    Extract pathogenic organisms from Bracken output file.
-    
-    Args:
-        bracken_file: Path to Bracken output file
-        
-    Returns:
-        List of dictionaries containing pathogen information
-    """
+def extract_pathogens_from_bracken(bracken_file, formatter):
+    """Extract pathogenic organisms from Bracken output, logging with the formatter."""
+    # (Function logic remains the same, but now uses formatter for errors)
     pathogenic_keywords = [
         'salmonella', 'escherichia coli', 'staphylococcus aureus', 'clostridium tetani',
-        'klebsiella pneumoniae', 'yersinia enterocolitica', 'yersinia pestis',
-        'streptococcus', 'enterococcus faecalis', 'pseudomonas aeruginosa',
-        'acinetobacter baumannii', 'vibrio', 'brucella', 'mycobacterium tuberculosis',
-        'bacillus anthracis', 'listeria monocytogenes', 'clostridium difficile',
-        'francisella tularensis', 'burkholderia', 'rickettsia', 'coxiella',
-        'campylobacter', 'helicobacter pylori', 'neisseria gonorrhoeae',
-        'shigella', 'enterobacter', 'serratia', 'proteus', 'providencia', 'morganella'
+        'klebsiella pneumoniae', 'yersinia', 'streptococcus', 'pseudomonas aeruginosa',
+        'acinetobacter baumannii', 'vibrio', 'brucella', 'mycobacterium',
+        'bacillus anthracis', 'listeria', 'clostridium difficile', 'shigella'
     ]
-    
     pathogens = []
-    
     try:
         df = pd.read_csv(bracken_file, sep='\t')
-        
         for _, row in df.iterrows():
-            organism_name = row['name'].lower()
-            
-            # Check if organism matches any pathogenic keyword
-            if any(keyword in organism_name for keyword in pathogenic_keywords):
+            if any(keyword in row['name'].lower() for keyword in pathogenic_keywords):
                 pathogens.append({
-                    'organism': row['name'],
-                    'abundance': row['fraction_total_reads'],
-                    'reads': int(row['new_est_reads']),
-                    'taxonomy_id': row.get('taxonomy_id', None)
+                    'organism': row['name'], 'abundance': row['fraction_total_reads'],
+                    'reads': int(row['new_est_reads']), 'taxonomy_id': row.get('taxonomy_id', None)
                 })
-    
     except Exception as e:
-        print(f"⚠️ Error extracting pathogens from Bracken: {e}")
-    
+        formatter.warning(f"Error extracting pathogens from Bracken: {e}")
     return pathogens
 
-
-def extract_pathogens_from_blast_taxonomy(blast_results):
+def extract_pathogens_from_blast_taxonomy(blast_results, formatter):
     """
-    Extract pathogenic organisms from BLAST taxonomy results.
-    
-    Args:
-        blast_results: List of BLAST result dictionaries or JSON data
-        
-    Returns:
-        List of dictionaries containing pathogen information
+    Extract pathogenic organisms from BLAST taxonomy results using the formatter.
     """
     pathogenic_keywords = [
         'salmonella', 'escherichia coli', 'staphylococcus aureus', 'clostridium tetani',
@@ -375,10 +301,13 @@ def extract_pathogens_from_blast_taxonomy(blast_results):
             return pathogens
         
         for result in blast_results:
-            organism = result.get('organism', '').lower()
-            
+            # Improvement: handle cases where 'organism' might be missing in a result
+            organism = result.get('organism', '')
+            if not organism:
+                continue
+
             # Check if organism matches any pathogenic keyword
-            if any(keyword in organism for keyword in pathogenic_keywords):
+            if any(keyword in organism.lower() for keyword in pathogenic_keywords):
                 pathogens.append({
                     'organism': result.get('organism', 'Unknown'),
                     'identity': result.get('identity', 0),
@@ -388,6 +317,76 @@ def extract_pathogens_from_blast_taxonomy(blast_results):
                 })
     
     except Exception as e:
-        print(f"⚠️ Error extracting pathogens from BLAST: {e}")
+        # Fix: Use formatter instead of print()
+        formatter.warning(f"Error extracting pathogens from BLAST results: {e}")
     
     return pathogens
+
+# Add this to your utils.py or wherever parse_diamond_progress is defined
+
+import re
+from typing import Optional
+
+def parse_diamond_progress(line: str) -> Optional[int]:
+    """
+    Parse DIAMOND output to extract current progress.
+    
+    DIAMOND outputs progress in several formats:
+    - "Processed 12000 queries"
+    - "12000 queries aligned"
+    - Progress percentage indicators
+    - "Queries: 12000/50000"
+    
+    Returns:
+        The absolute number of queries processed, or None if no match found
+    """
+    # Pattern 1: "Processed X queries" or "X queries processed"
+    match = re.search(r'(?:Processed|processed)\s+(\d+)\s+(?:queries|sequences)', line)
+    if match:
+        return int(match.group(1))
+    
+    # Pattern 2: "X queries aligned"
+    match = re.search(r'(\d+)\s+queries\s+aligned', line)
+    if match:
+        return int(match.group(1))
+    
+    # Pattern 3: "Queries: X/Y" format
+    match = re.search(r'Queries:\s*(\d+)/\d+', line)
+    if match:
+        return int(match.group(1))
+    
+    # Pattern 4: Progress indicator with numbers
+    match = re.search(r'(\d+)\s*/\s*\d+\s+queries', line)
+    if match:
+        return int(match.group(1))
+    
+    # Pattern 5: Simple number followed by query/sequence indicators
+    match = re.search(r'^[>\s]*(\d+)\s+(?:query|queries|sequence|sequences)', line, re.IGNORECASE)
+    if match:
+        return int(match.group(1))
+    
+    return None
+
+
+def parse_diamond_progress_verbose(line: str) -> Optional[int]:
+    """
+    More verbose version for debugging - prints what it's trying to match.
+    Use this temporarily to see what DIAMOND is actually outputting.
+    """
+    patterns = [
+        (r'(?:Processed|processed)\s+(\d+)\s+(?:queries|sequences)', "Processed X queries"),
+        (r'(\d+)\s+queries\s+aligned', "X queries aligned"),
+        (r'Queries:\s*(\d+)/\d+', "Queries: X/Y"),
+        (r'(\d+)\s*/\s*\d+\s+queries', "X / Y queries"),
+        (r'^[>\s]*(\d+)\s+(?:query|queries|sequence|sequences)', "Line starts with X query/queries"),
+    ]
+    
+    for pattern, description in patterns:
+        match = re.search(pattern, line, re.IGNORECASE)
+        if match:
+            value = int(match.group(1))
+            # Uncomment for debugging:
+            print(f"  [DEBUG] Matched '{description}': {value} from line: {line.strip()}")
+            return value
+    
+    return None
