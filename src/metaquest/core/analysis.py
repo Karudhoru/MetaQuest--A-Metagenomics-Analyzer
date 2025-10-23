@@ -676,12 +676,36 @@ def analyze_fasta(fasta_path: Path, output_dir: Path, args):
         import traceback
         traceback.print_exc()
 
+    #========================================================================
+    # STEP 3: PATHOGEN DETECTION & RISK ASSESSMENT
     # ========================================================================
-    # STEP 3: ML PATHOGEN PREDICTION → IMMEDIATE REPORTING
-    # ========================================================================
+    pathogen_hits_file = None # Will store path to pathogen_results.txt
+    
     try:
-        fmt.step_header(3, total_steps, "ML PATHOGEN PREDICTION")
+        fmt.step_header(3, total_steps, "PATHOGEN DETECTION & RISK ASSESSMENT")
+
+        # 3A: Sequence Database Scan (NEWLY ADDED)
+        fmt.section_header("Sequence-Based Pathogen Screening")
+        protein_file = None
+        if prokka_dir:
+            protein_file = prokka_dir / "sample.faa"
         
+        if protein_file and protein_file.exists():
+            # Call run_pathogen_scan, just like in the FASTQ pipeline
+            # It will skip Bracken/integration steps automatically
+            pathogen_hits_file = run_pathogen_scan(
+                protein_file, 
+                output_dir,
+                bracken_results=None,  # <-- No Bracken for FASTA
+                taxonomy_results=None # <-- BLAST JSON not compatible with this param
+            )
+            fmt.success(f"Database scan complete: {pathogen_hits_file.name}")
+        else:
+            fmt.warning("No protein file found, skipping sequence-based pathogen scan.")
+
+
+        # 3B: Machine Learning Prediction (Original logic)
+        fmt.section_header("ML-Based Pathogen Prediction v2.1")
         if prokka_dir and should_use_ml_prediction(prokka_dir, fmt):
             with fmt.spinner("Running ML pathogen prediction"):
                 ml_results, ml_summary = run_ml_pathogen_prediction(prokka_dir, output_dir)
@@ -690,13 +714,12 @@ def analyze_fasta(fasta_path: Path, output_dir: Path, args):
                 # ►►► IMMEDIATE REPORTING ◄◄◄
                 fmt.section_header("► Generating ML Prediction Report")
                 
-                # For FASTA, we use BLAST pathogens + ML results
+                # Use the original FASTA reporting logic, as it's built for BLAST data
                 blast_pathogens = extract_pathogens_from_blast_taxonomy(blast_results_data) if blast_results_data else []
                 
-                # Build risk data for ML report
                 ml_risk_data = {
                     'taxonomic': {'score': 0, 'pathogens_detected': blast_pathogens},
-                    'functional': {'score': 0},
+                    'functional': {'score': 0}, # Note: This could be improved
                     'ml': {
                         'score': ml_summary.get('pathogenic_percentage', 0),
                         'high_confidence_pathogenic': ml_summary.get('high_confidence_pathogenic', 0),
@@ -708,10 +731,11 @@ def analyze_fasta(fasta_path: Path, output_dir: Path, args):
                     }
                 }
                 
-                # Generate report using MainReporter
+                # Generate report
                 ml_report = reporter.generate_pathogen_report(
                     risk_data=ml_risk_data,
-                    pathogen_hits_file=output_dir / "pathogen_results.txt",
+                    # *** CRITICAL FIX: Pass the new pathogen_hits_file to the reporter ***
+                    pathogen_hits_file=pathogen_hits_file if pathogen_hits_file else output_dir / "pathogen_results.txt",
                     ml_predictions_file=output_dir / "ml_pathogen_predictions.json"
                 )
                 
@@ -724,7 +748,9 @@ def analyze_fasta(fasta_path: Path, output_dir: Path, args):
             fmt.info("ML prediction skipped")
             
     except Exception as e:
-        fmt.warning(f"ML prediction failed: {str(e)}")
+        fmt.error(f"Pathogen analysis failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
 
     # ========================================================================
     # FINAL SUMMARY
