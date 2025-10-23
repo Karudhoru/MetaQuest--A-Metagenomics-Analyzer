@@ -20,23 +20,26 @@ def run_kraken(input_files, output_dir):
     report = output_dir / "kraken_report.txt"
     classified = output_dir / "kraken_classified.txt"
     
-    # Handle single-end vs paired-end
-    if isinstance(input_files, (list, tuple)) and len(input_files) == 2:
-        reads_flags = f"--paired {input_files[0]} {input_files[1]}"
-        formatter.info("Running Kraken2 on paired-end reads")
-    else:
-        reads_flags = input_files[0] if isinstance(input_files, (list, tuple)) else input_files
-        formatter.info("Running Kraken2 on single-end reads")
-    
+    # Build base command
     cmd = [
         "kraken2",
         "--db", str(KRAKEN_DB),
         "--threads", "8",
         "--report", str(report),
         "--output", str(classified)
-    ] + reads_flags.split()
+    ]
+    
+    # Handle single-end vs paired-end
+    if isinstance(input_files, (list, tuple)) and len(input_files) == 2:
+        cmd.extend(["--paired", str(input_files[0]), str(input_files[1])])
+        formatter.info("Running Kraken2 on paired-end reads")
+    else:
+        input_file = input_files[0] if isinstance(input_files, (list, tuple)) else input_files
+        cmd.append(str(input_file))
+        formatter.info("Running Kraken2 on single-end reads")
     
     formatter.debug(f"Kraken2 database: {KRAKEN_DB}")
+    formatter.debug(f"Command: {' '.join(cmd)}")  # Debug: show full command
     
     # Run with smart output handling
     returncode, stdout, stderr = formatter.run_subprocess(
@@ -57,21 +60,36 @@ def run_kraken(input_files, output_dir):
         )
         raise RuntimeError(f"Kraken2 failed with exit code {returncode}")
     
+    # Verify report was created
+    if not report.exists() or report.stat().st_size == 0:
+        formatter.error(
+            "Kraken2 report file was not created or is empty",
+            solutions=[
+                "Check if Kraken2 completed successfully",
+                "Verify database integrity",
+                "Check available disk space",
+                "Review stderr output above for errors"
+            ]
+        )
+        raise RuntimeError(f"Kraken2 report missing or empty: {report}")
+    
     # Parse and display key metrics
-    if report.exists():
-        try:
-            # Count classified sequences
-            with open(classified, 'r') as f:
-                total_seqs = sum(1 for _ in f)
-            
-            formatter.success("Kraken2 classification complete")
-            formatter.result({
-                'Classified sequences': f"{total_seqs:,}",
-                'Report file': str(report.name),
-                'Output file': str(classified.name)
-            })
-        except Exception as e:
-            formatter.debug(f"Could not parse metrics: {e}")
+    try:
+        # Count classified sequences from report
+        with open(report, 'r') as f:
+            lines = f.readlines()
+            if lines:
+                # First line is usually unclassified
+                total_reads = sum(int(line.split('\t')[1]) for line in lines if line.strip())
+                
+        formatter.success("Kraken2 classification complete")
+        formatter.result({
+            'Total sequences': f"{total_reads:,}",
+            'Report file': str(report.name),
+            'Output file': str(classified.name)
+        })
+    except Exception as e:
+        formatter.debug(f"Could not parse metrics: {e}")
     
     return report
 
@@ -304,38 +322,46 @@ def run_fasta_blast_taxonomy(fasta_path, output_dir, database="nt", max_sequence
     
     formatter.operation("Starting BLAST analysis (this may take several minutes)")
     
-    # Process sequences with progress
-    for i, seq_record in enumerate(sequences):
-        # Show progress
-        if formatter.verbosity >= formatter.MINIMAL:
-            formatter.progress_bar(i, len(sequences), prefix="BLAST Progress", suffix=f"{seq_record.id}")
-        
-        sequence_str = str(seq_record.seq)
-        cache_key = get_sequence_cache_key(sequence_str)
-        
-        # Skip very short sequences
-        if len(sequence_str) < 50:
-            formatter.debug(f"Skipping {seq_record.id} (too short: {len(sequence_str)} bp)")
-            continue
-        
-        # BLAST the sequence
-        result = blast_sequence_online(
-            sequence_str, 
-            seq_record.id, 
-            database=database,
-            cache=cache,
-            cache_key=cache_key
-        )
-        
-        blast_results.append(result)
-        
-        # Save cache periodically
-        if i % 10 == 0:
-            save_blast_cache(cache_dir, cache)
+    # Define the NCBI web API limit
+    NCBI_MAX_LENGTH = 1_000_000
+
+    with formatter.progress_bar(total=len(sequences), desc="   BLAST Progress", unit="seq") as pbar:
+        for i, seq_record in enumerate(sequences):
+            
+            sequence_str = str(seq_record.seq)
+            cache_key = get_sequence_cache_key(sequence_str)
+            
+            # Skip very short sequences
+            if len(sequence_str) < 50:
+                formatter.debug(f"Skipping {seq_record.id} (too short: {len(sequence_str)} bp)")
+                pbar.update(1) # Update bar even when skipping
+                continue
+
+            # Skip sequences that are too long for NCBI web BLAST
+            if len(sequence_str) > NCBI_MAX_LENGTH:
+                formatter.warning(f"Skipping {seq_record.id} ({len(sequence_str):,} bp) - exceeds NCBI web BLAST limit of {NCBI_MAX_LENGTH:,} bp")
+                pbar.update(1) # Update bar even when skipping
+                continue
+            
+            # BLAST the sequence
+            result = blast_sequence_online(
+                sequence_str, 
+                seq_record.id, 
+                database=database,
+                cache=cache,
+                cache_key=cache_key
+            )
+            
+            blast_results.append(result)
+            
+            # Save cache periodically
+            if i % 10 == 0:
+                save_blast_cache(cache_dir, cache)
+
+            # Update the progress bar *after* processing the item
+            pbar.update(1)
     
-    # Final progress update
-    if formatter.verbosity >= formatter.MINIMAL:
-        formatter.progress_bar(len(sequences), len(sequences), prefix="BLAST Progress", suffix="Complete")
+    # Final progress update is no longer needed; the 'with' block handles completion.
     
     # Final cache save
     save_blast_cache(cache_dir, cache)
