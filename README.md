@@ -218,6 +218,61 @@ src/metaquest/
 ```
 
 ---
+---
+
+## Benchmark Performance
+
+MetaQuest has been rigorously benchmarked against established tools using standardized datasets. The results demonstrate superior performance across taxonomic classification, functional annotation, and pathogen detection.
+
+### Key Performance Metrics
+
+#### Taxonomic Classification Excellence
+- **3.1× lower error rate** than MetaPhlAn4 (1.69% vs 5.23% MAE)
+- **100% species detection rate** for all expected organisms
+- **Perfect consistency**: All predictions within ±3.5% of expected values
+- **Statistically indistinguishable** from gold standard (p = 0.920)
+
+#### Functional Annotation Leadership
+- **98.9% annotation coverage** using COG database
+- **99.3% gene detection accuracy** compared to NCBI reference
+- **Near-reference quality** with only 1.1% annotation gap
+- **18-29% higher coverage** than single-database approaches
+
+#### Pathogen Detection Capability
+- **80.2% recall** for validated pathogen factors
+- **Multi-tier detection** combining ML and database approaches
+- **Clinical risk stratification** for actionable insights
+- **Novel pathogen discovery** potential through ML predictions
+
+### Comparative Advantages
+
+| Analysis Type | MetaQuest | Competitor | Improvement |
+|--------------|-----------|------------|-------------|
+| Taxonomic MAE | **1.69%** | 5.23% (MetaPhlAn4) | **3.1× better** |
+| Error Consistency | **σ = 1.31%** | σ = 4.37% (MetaPhlAn4) | **3.3× better** |
+| Functional Coverage | **98.9%** | 81.3% (Prokka only) | **+17.6%** |
+| Pathogen Recall | **80.2%** | Reference standard | Strong |
+
+### Benchmarking Standards
+
+MetaQuest was validated using industry-standard datasets:
+- **ZymoBIOMICS Microbial Community Standard** (taxonomic classification)
+- **E. coli K-12 MG1655 Reference Genome** (functional annotation)
+- **Klebsiella pneumoniae Clinical Isolate** (pathogen detection)
+
+### Detailed Results
+
+For comprehensive benchmarking methodology, detailed performance metrics, and statistical analyses, see the complete **[Benchmarking Report](benchmark/benchmark.md)**.
+
+The benchmark report includes:
+- Quantitative performance comparisons
+- Statistical validation tests
+- Error distribution analysis
+- Distance metrics and correlation coefficients
+- Tool-specific strengths and limitations
+- Use case recommendations
+
+---
 
 ## Installation
 
