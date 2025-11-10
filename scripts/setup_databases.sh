@@ -1,13 +1,24 @@
 #!/bin/bash
-# MetaQuest Advanced Database Setup Script
+# MetaQuest Database Setup Script (Updated)
 #
-# This script downloads and formats all necessary databases for the MetaQuest tool.
-# It includes checks for existing files and supports selective downloads.
+# This script downloads MiniKraken, builds a custom pathogen DB,
+# and builds a combined SwissProt+COG DB.
 
 set -e # Exit immediately if a command exits with a non-zero status.
 
 # --- Configuration ---
 DB_DIR="$(dirname "$0")/../databases"
+
+# --- ⬇️ USER: CONFIGURE YOUR CUSTOM PATHOGEN DB HERE ---
+#
+# Name of your custom FASTA file (must be inside $DB_DIR)
+CUSTOM_PATHOGEN_FASTA_NAME="metaquest_pathogen_markers.faa"
+#
+# Desired name for the output DIAMOND database (will create "pathogen_markers.dmnd")
+CUSTOM_PATHOGEN_DB_NAME="metaquest_pathogen_markers"
+#
+# --- End of Configuration ---
+
 
 # --- Helper Functions ---
 check_command() {
@@ -27,6 +38,7 @@ main() {
     check_command wget
     check_command tar
     check_command diamond
+    check_command gunzip
     echo "✅ All tools found."
 
     # 2. Parse command-line arguments
@@ -55,7 +67,7 @@ main() {
         setup_kraken_db
     fi
     if [ "$setup_pathogen" = true ]; then
-        setup_pathogen_dbs
+        setup_custom_pathogen_db
     fi
     if [ "$setup_swissprot" = true ]; then
         setup_swissprot_db
@@ -68,10 +80,11 @@ show_help() {
     echo "Usage: ./setup_databases.sh [options]"
     echo
     echo "Options:"
-    echo "  --kraken       Download and set up the Kraken2/Bracken database."
-    echo "  --pathogen     Download and set up the CARD and VFDB pathogen databases."
-    echo "  --swissprot    Download and set up the SwissProt+COG combined database for functional annotation."
-    echo "  --all          Download and set up all available databases."
+    echo "  --kraken       Download and set up the Kraken2 (MiniKraken) database."
+    echo "  --pathogen     Build a DIAMOND database from your custom pathogen FASTA."
+    echo "                 (Requires $CUSTOM_PATHOGEN_FASTA_NAME to be in $DB_DIR)"
+    echo "  --swissprot    Download and set up the SwissProt+COG combined database."
+    echo "  --all          Run all setup steps (Kraken, Pathogen, SwissProt)."
     echo "  --help         Show this help message."
 }
 
@@ -89,35 +102,44 @@ setup_kraken_db() {
     fi
 }
 
-setup_pathogen_dbs() {
-    echo -e "\n--- Setting up Pathogen Databases (CARD & VFDB) ---"
-    PATHOGEN_DIR="$DB_DIR/pathogen_db"
-    mkdir -p "$PATHOGEN_DIR"
+setup_custom_pathogen_db() {
+    echo -e "\n--- Setting up Custom Pathogen Database ---"
+    
+    FASTA_IN="$DB_DIR/$CUSTOM_PATHOGEN_FASTA_NAME"
+    DB_OUT_BASE="$DB_DIR/$CUSTOM_PATHOGEN_DB_NAME" # diamond adds .dmnd
+    DB_OUT_FINAL="$DB_OUT_BASE.dmnd"
 
-    # CARD
-    if [ ! -f "$PATHOGEN_DIR/protein_fasta_protein_homolog_model.fasta" ]; then
-        echo "Downloading CARD database..."
-        wget -q --show-progress -nc -P "$PATHOGEN_DIR" https://card.mcmaster.ca/latest/data
-        tar -xjf "$PATHOGEN_DIR/data" -C "$PATHOGEN_DIR" protein_fasta_protein_homolog_model.fasta
-        rm "$PATHOGEN_DIR/data"
-    else
-        echo "✅ CARD database file already exists. Skipping download."
+    # Check if final DB already exists
+    if [ -f "$DB_OUT_FINAL" ]; then
+        echo "✅ Custom pathogen DIAMOND database already exists: $DB_OUT_FINAL. Skipping."
+        return
     fi
 
-    # VFDB
-    if [ ! -f "$PATHOGEN_DIR/VFDB_setB_pro.fas" ]; then
-        echo "Downloading VFDB..."
-        wget -q --show-progress -nc -P "$PATHOGEN_DIR" http://www.mgc.ac.cn/VFs/Down/VFDB_setB_pro.fas
-    else
-        echo "✅ VFDB file already exists. Skipping download."
+    # Check if source FASTA exists
+    if [ ! -f "$FASTA_IN" ]; then
+        echo "❌ ERROR: Custom pathogen FASTA file not found!"
+        echo "   Please place your file at: $FASTA_IN"
+        echo "   (You can change the expected filename at the top of this script)"
+        exit 1
     fi
-    echo "✅ Pathogen databases downloaded."
+    
+    echo "Building DIAMOND database from $FASTA_IN..."
+    
+    # Build the diamond database
+    diamond makedb --in "$FASTA_IN" -d "$DB_OUT_BASE" --threads 4
+    
+    if [ -f "$DB_OUT_FINAL" ]; then
+        echo "✅ Successfully created DIAMOND database: $DB_OUT_FINAL"
+    else
+        echo "❌ ERROR: DIAMOND database creation failed."
+        exit 1
+    fi
 }
 
 setup_swissprot_db() {
     echo -e "\n--- Setting up SwissProt + COG Combined Database ---"
     
-    # Final combined database name matching config.py
+    # Final combined database name
     COMBINED_DB="$DB_DIR/SwissProt_COG_db.dmnd"
     
     if [ -f "$COMBINED_DB" ]; then
