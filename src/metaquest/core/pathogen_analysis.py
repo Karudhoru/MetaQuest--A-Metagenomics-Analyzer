@@ -18,12 +18,14 @@ from ..io.output_formatter import get_formatter
 
 def run_pathogen_scan(protein_file, output_dir, bracken_results=None, taxonomy_results=None):
     """
-    Enhanced pathogen scan using multiple data sources with professional output
+    Enhanced pathogen scan using multiple data sources with professional output.
+    
+    *** REWRITTEN WITH TIGHTER RESTRICTIONS TO IMPROVE PRECISION ***
     
     Sources:
     1. Bracken results (FASTQ taxonomic classification)
     2. Taxonomy results (BLAST-based)
-    3. Custom pathogen database (sequence-based)
+    3. Custom pathogen database (sequence-based with strict filters)
     """
     formatter = get_formatter()
     
@@ -173,6 +175,12 @@ def run_pathogen_scan(protein_file, output_dir, bracken_results=None, taxonomy_r
             formatter.warning(f"Could not parse taxonomy results: {e}")
     
     # ===== SOURCE 3: Custom Pathogen Database =====
+    
+    # --- NEW: Define strict filter thresholds ---
+    MIN_IDENTITY = 80.0  # Require 80% identity
+    MIN_COVERAGE = 0.8   # Require 80% coverage (alignment_length / query_length)
+    # ---
+    
     selected_db = PATHOGEN_DB_CUSTOM
     blast_out = output_dir / "pathogen_results.txt"
 
@@ -180,20 +188,24 @@ def run_pathogen_scan(protein_file, output_dir, bracken_results=None, taxonomy_r
         try:
             query_count = len(list(SeqIO.parse(protein_file, "fasta")))
             formatter.info(f"Scanning {query_count:,} sequences against pathogen database...")
+            formatter.info(f"Applying strict filters: Identity >= {MIN_IDENTITY}%, Coverage >= {MIN_COVERAGE*100}%")
         except Exception:
             formatter.warning("Could not count input sequences for progress bar.")
             query_count = 1
 
         db_base = selected_db.with_suffix('') if selected_db.suffix == '.dmnd' else selected_db
-        outfmt_cols = "qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore stitle"
+        
+        # --- MODIFIED: Add qlen to output format ---
+        outfmt_cols = "qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore stitle qlen"
+        
         cmd = [
             "diamond", "blastp",
             "-d", str(db_base),
             "-q", str(protein_file),
             "-o", str(blast_out),
             "--outfmt", "6", *outfmt_cols.split(),
-            "--top", "5",
-            "--evalue", "1e-3",
+            "--top", "5",        # Keep top 5 to allow Python to do the fine-filtering
+            "--evalue", "1e-3", # Lenient e-value, Python will filter
             "--threads", "4",
             "--more-sensitive",
             "--log"  # CRITICAL: Enable progress output
@@ -217,32 +229,45 @@ def run_pathogen_scan(protein_file, output_dir, bracken_results=None, taxonomy_r
                     for line in f:
                         if line.strip() and not line.startswith('#'):
                             parts = line.strip().split('\t')
-                            if len(parts) >= 13:
+                            
+                            # --- MODIFIED: Check for 14 columns ---
+                            if len(parts) >= 14:
                                 query_id = parts[0]
                                 subject_id = parts[1]
                                 identity = float(parts[2])
-                                length = int(parts[3])
+                                align_length = int(parts[3])
                                 evalue = float(parts[10])
                                 bitscore = float(parts[11])
                                 description = parts[12]
+                                query_len = int(parts[13]) # <-- NEW: Get query length
+                                
+                                # --- NEW: Calculate coverage ---
+                                if query_len == 0:
+                                    continue # Avoid division by zero
+                                coverage = align_length / query_len
+                                
+                                # --- NEW: Apply strict filters ---
+                                if identity < MIN_IDENTITY or coverage < MIN_COVERAGE:
+                                    continue # Skip this low-quality hit
                                 
                                 # Extract organism from description [brackets]
                                 organism_matches = re.findall(r'\[([^\]]+)\]', description)
                                 organism = organism_matches[-1] if organism_matches else "Unknown"
                                 
-                                # FIX: Keep only BEST hit per gene (lowest e-value, highest bitscore)
+                                # Keep only BEST hit per gene (lowest e-value) that passes filters
                                 if query_id not in hits_by_gene:
                                     hits_by_gene[query_id] = {
                                         'organism': organism,
                                         'identity': identity,
                                         'evalue': evalue,
                                         'bitscore': bitscore,
-                                        'length': length,
+                                        'length': align_length,
+                                        'coverage': coverage, # Store for reference
                                         'query_id': query_id,
                                         'subject_id': subject_id,
                                         'description': description,
                                         'source': 'pathogen_database',
-                                        'confidence': 'high' if identity > 70 else 'medium'
+                                        'confidence': 'high' # Passed strict filter
                                     }
                                 else:
                                     # Keep hit with better e-value (lower is better)
@@ -252,12 +277,13 @@ def run_pathogen_scan(protein_file, output_dir, bracken_results=None, taxonomy_r
                                             'identity': identity,
                                             'evalue': evalue,
                                             'bitscore': bitscore,
-                                            'length': length,
+                                            'length': align_length,
+                                            'coverage': coverage,
                                             'query_id': query_id,
                                             'subject_id': subject_id,
                                             'description': description,
                                             'source': 'pathogen_database',
-                                            'confidence': 'high' if identity > 70 else 'medium'
+                                            'confidence': 'high'
                                         }
                 
                 # Convert to list (now deduplicated - one hit per gene)
@@ -265,11 +291,11 @@ def run_pathogen_scan(protein_file, output_dir, bracken_results=None, taxonomy_r
                 
                 if sequence_pathogens:
                     formatter.success(
-                        f"Found {len(sequence_pathogens)} unique genes with pathogen hits "
-                        f"(deduplicated from DIAMOND output)"
+                        f"Found {len(sequence_pathogens)} unique genes with high-confidence pathogen hits "
+                        f"(passed {MIN_IDENTITY}% ident, {MIN_COVERAGE*100}% cov filters)"
                     )
                 else:
-                    formatter.info("No pathogen hits found in database search")
+                    formatter.info("No high-confidence pathogen hits found in database search")
                     
             except Exception as e:
                 formatter.warning(f"Could not parse pathogen scan results: {e}")
@@ -282,8 +308,8 @@ def run_pathogen_scan(protein_file, output_dir, bracken_results=None, taxonomy_r
     formatter.summary("Pathogen Detection Summary", {
         'Bracken detections': len(bracken_pathogens),
         'BLAST detections': len(taxonomy_pathogens),
-        'Database detections': len(sequence_pathogens),
-        'Total unique pathogens': total_pathogens
+        'Database detections (strict)': len(sequence_pathogens),
+        'Total detections': total_pathogens
     })
 
     with open(results_file, 'w') as f:
@@ -292,13 +318,12 @@ def run_pathogen_scan(protein_file, output_dir, bracken_results=None, taxonomy_r
                 'total_detections': total_pathogens,
                 'bracken': len(bracken_pathogens),
                 'blast': len(taxonomy_pathogens),
-                'database': len(sequence_pathogens)
+                'database_strict': len(sequence_pathogens)
             },
             'detections': all_pathogens,
-            # *** FIX: Add detailed Bracken pathogen info ***
             'bracken_pathogens': bracken_pathogens,
             'taxonomy_pathogens': taxonomy_pathogens,
-            'sequence_pathogens': sequence_pathogens
+            'sequence_pathogens_strict': sequence_pathogens
         }, f, indent=2)
 
     if total_pathogens > 0:
@@ -313,7 +338,7 @@ def run_pathogen_scan(protein_file, output_dir, bracken_results=None, taxonomy_r
         integrated_file = output_dir / "integrated_pathogen_taxonomy.tsv"
         integrated_df = integrate_pathogen_hits_with_taxonomy(
             bracken_results,
-            blast_out,
+            blast_out,  # Pass the path to the raw DIAMOND output
             integrated_file
         )
         
@@ -330,12 +355,11 @@ def integrate_pathogen_hits_with_taxonomy(
     """
     Integrate sequence-based pathogen hits with Bracken taxonomic classification.
     
-    This ensures pathogens detected by BLAST/DIAMOND are included in abundance
-    calculations even if they weren't abundant enough for Bracken to detect.
+    *** MODIFIED to parse 14 columns from DIAMOND output ***
     
     Args:
         bracken_file: Path to bracken_report.tsv
-        pathogen_hits_file: Path to pathogen_results.txt (DIAMOND output)
+        pathogen_hits_file: Path to pathogen_results.txt (raw DIAMOND output)
         output_file: Path to save integrated results
     
     Returns:
@@ -355,7 +379,9 @@ def integrate_pathogen_hits_with_taxonomy(
             for line in f:
                 if line.strip() and not line.startswith('#'):
                     parts = line.strip().split('\t')
-                    if len(parts) >= 13:
+                    
+                    # --- MODIFIED: Check for 14 columns ---
+                    if len(parts) >= 14: 
                         query_id = parts[0]
                         description = parts[12]
                         
@@ -365,7 +391,7 @@ def integrate_pathogen_hits_with_taxonomy(
                             organism = organism_matches[-1]
                             hit_counts[organism] += 1
                             
-                            # Store best hit info
+                            # Store best hit info (not strictly needed here, but good practice)
                             if organism not in pathogen_organisms:
                                 pathogen_organisms[organism] = {
                                     'identity': float(parts[2]),
@@ -385,6 +411,7 @@ def integrate_pathogen_hits_with_taxonomy(
                 already_present = True
                 break
         
+        # --- MODIFIED: Use hit_counts (which is not filtered) ---
         if not already_present and hit_counts[organism] >= 3:  # At least 3 hits
             # Add as low-abundance detection
             # Estimate abundance based on hit count (rough approximation)

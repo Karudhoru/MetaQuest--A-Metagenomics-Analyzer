@@ -41,14 +41,14 @@ class TaxonomicVisualizer(BaseVisualizer):
                                names=['percentage', 'clade_reads', 'taxon_reads', 'rank', 'taxid', 'name'])
                 df['fraction_total_reads'] = df['percentage'] / 100
                 df['new_est_reads'] = df['clade_reads']
-                print("  ✓ Loaded Kraken format data")
+                self.formatter.info("Loaded Bracken format data")
                 return df, 'kraken'
             except:
                 pass
         
         # Handle BLAST results (list of dictionaries)
         elif isinstance(data, list) and len(data) > 0:
-            print("  ✓ Processing BLAST results...")
+            self.formatter.info("  ✓ Processing BLAST results...")
             organisms = []
             
             for result in data:
@@ -59,21 +59,21 @@ class TaxonomicVisualizer(BaseVisualizer):
                     organisms.append(result.get('organism', 'Unknown'))
             
             if not organisms:
-                print("  ⚠️ No organisms found in BLAST data")
+                self.formatter.warning("No organisms found in BLAST data")
                 return pd.DataFrame(), 'blast'
             
             # Count organisms to estimate abundance
             organism_counts = Counter(organisms)
             df = pd.DataFrame(organism_counts.items(), columns=['name', 'new_est_reads'])
             df['fraction_total_reads'] = df['new_est_reads'] / df['new_est_reads'].sum()
-            print(f"  ✓ Processed {len(df)} unique organisms from BLAST")
+            self.formatter.info(f"  ✓ Processed {len(df)} unique organisms from BLAST")
             return df, 'blast'
         
         # Handle pre-loaded DataFrames
         elif isinstance(data, pd.DataFrame):
             return data, 'dataframe'
         
-        print("  ⚠️ Unsupported data format")
+        self.formatter.warning("Unsupported data format for taxonomy viz")
         return pd.DataFrame(), 'unknown'
 
     def create_abundance_chart(self, data, title="Taxonomic Abundance Analysis", top_n=15):
@@ -85,7 +85,7 @@ class TaxonomicVisualizer(BaseVisualizer):
             df, data_source = self._prepare_dataframe_from_data(data)
 
             if df.empty:
-                print("  ⚠️ No data available for abundance chart")
+                self.formatter.warning("No data available for abundance chart")
                 return None
 
             # Filter significant taxa (>0.01% for Bracken, any hit for BLAST)
@@ -93,7 +93,7 @@ class TaxonomicVisualizer(BaseVisualizer):
             significant_taxa = df[df['fraction_total_reads'] > threshold].copy()
             
             if significant_taxa.empty:
-                print("  ⚠️ No significant taxa found")
+                self.formatter.warning("No significant taxa found for abundance chart")
                 return None
             
             # Clean and sort
@@ -149,11 +149,11 @@ class TaxonomicVisualizer(BaseVisualizer):
             )
             
             filepath = self.save_plot(fig, "taxonomic_abundance_chart.html")
-            print(f"  ✓ Abundance chart saved: {filepath}")
+            self.formatter.success(f"Abundance chart saved: {Path(filepath).name}")
             return filepath
             
         except Exception as e:
-            print(f"  ✗ Error creating abundance chart: {e}")
+            self.formatter.error(f"Error creating abundance chart: {e}")
             import traceback
             traceback.print_exc()
             return None

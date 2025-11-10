@@ -21,7 +21,9 @@ PATHOGEN_DB = DB_DIR / "pathogen_db" / "pathogen_db_clean_tax.dmnd"
 PATHOGEN_DB_WITH_TAX = DB_DIR / "pathogen_db" / "pathogen_db_with_tax.dmnd"
 
 # CUSTOM PATHOGEN DATABASE
-PATHOGEN_DB_CUSTOM = DB_DIR / "pathogen_db_custom" / "pathogen_markers.dmnd"
+# PATHOGEN_DB_CUSTOM = DB_DIR / "pathogen_db_custom" / "pathogen_markers.dmnd"
+PATHOGEN_DB_CUSTOM = DB_DIR / "metaquest_pathogen_markers_fixed.dmnd"  # Updated custom pathogen marker database
+
 
 # SPECIALIZED DATABASES
 SWISSPROT_DB = DB_DIR / "SwissProt_COG_db.dmnd" # Custom Swiss-Prot + COG database for functional annotation

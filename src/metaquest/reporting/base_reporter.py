@@ -2,15 +2,15 @@
 """
 MetaQuest Professional Reporting Module - Base Classes v4.0.0
 Enhanced for three-tier pathogen risk assessment
+*** REFACTORED to use global OutputFormatter ***
 """
 
 import json
-import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-
+from ..io.output_formatter import get_formatter  # <-- IMPORT FORMATTER
 
 class BaseReporter(ABC):
     """
@@ -33,27 +33,17 @@ class BaseReporter(ABC):
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.timestamp = datetime.now()
         
-        # Setup logging
-        self.logger = logging.getLogger(self.__class__.__name__)
-        if not self.logger.handlers:
-            handler = logging.StreamHandler()
-            formatter = logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            )
-            handler.setFormatter(formatter)
-            self.logger.addHandler(handler)
-            self.logger.setLevel(logging.INFO)
+        # Setup formatter
+        self.formatter = get_formatter()
     
     def print_section_header(self, title: str):
-        """Print a section header for console output."""
-        print("\n" + "=" * self.LINE_WIDTH)
-        print(f"  {title}")
-        print("=" * self.LINE_WIDTH)
+        """Print a section header using the formatter."""
+        self.formatter.section_header(title)
     
     def print_subsection(self, title: str):
-        """Print a subsection header."""
-        print(f"\n{title}")
-        print("-" * len(title))
+        """Print a subsection header using the formatter."""
+        self.formatter.info(f"\n{title}")
+        self.formatter.info(f"{'-' * len(title)}")
     
     def format_header(self, title: str) -> List[str]:
         """Create professional report header."""
@@ -91,31 +81,20 @@ class BaseReporter(ABC):
                     alignments: Optional[List[str]] = None) -> str:
         """
         Format data as ASCII table.
-        
-        Args:
-            headers: Column headers
-            rows: Data rows
-            alignments: 'left', 'right', or 'center' for each column
-        
-        Returns:
-            Formatted table string
+        (This function returns a string, so no formatter calls needed)
         """
         if not alignments:
             alignments = ['left'] * len(headers)
         
-        # Calculate column widths
         col_widths = [len(h) for h in headers]
         for row in rows:
             for i, cell in enumerate(row):
                 col_widths[i] = max(col_widths[i], len(str(cell)))
         
-        # Add padding
         col_widths = [w + 2 for w in col_widths]
         
-        # Build table
         lines = []
         
-        # Header
         header_line = ""
         for header, width, align in zip(headers, col_widths, alignments):
             if align == 'right':
@@ -127,7 +106,6 @@ class BaseReporter(ABC):
         lines.append(header_line)
         lines.append("-" * sum(col_widths))
         
-        # Rows
         for row in rows:
             row_line = ""
             for cell, width, align in zip(row, col_widths, alignments):
@@ -145,30 +123,16 @@ class BaseReporter(ABC):
     def save_report(self, content: str, filename: str) -> Path:
         """
         Save text report to file.
-        
-        Args:
-            content: Report content
-            filename: Output filename
-        
-        Returns:
-            Path to saved file
         """
-        filepath = self.output_dir / filename
+        filepath = Path(filepath)  # Accept Path or str
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(content)
-        self.logger.info(f"Report saved to {filepath}")
+        self.formatter.success(f"Report saved to {filepath.name}")
         return filepath
     
-    def save_json(self, data: Dict, filename: str) -> Path:
+    def save_json(self, data: Dict, filepath: Path) -> Path:
         """
         Save JSON data with metadata.
-        
-        Args:
-            data: Data dictionary
-            filename: Output filename
-        
-        Returns:
-            Path to saved file
         """
         report_data = {
             'metadata': {
@@ -178,9 +142,9 @@ class BaseReporter(ABC):
             'data': data
         }
         
-        filepath = self.output_dir / filename
+        filepath = Path(filepath)  # Accept Path or str
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(report_data, f, indent=2)
         
-        self.logger.info(f"JSON data saved to {filepath}")
+        self.formatter.success(f"JSON data saved to {filepath.name}")
         return filepath

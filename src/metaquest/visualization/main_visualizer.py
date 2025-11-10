@@ -8,6 +8,7 @@ import pandas as pd
 from .taxonomic_visualizer import TaxonomicVisualizer  
 from .pathogenic_visualizer import PathogenVisualizer
 from .functional_visualizer import FunctionalVisualizer
+from ..io.output_formatter import get_formatter
 
 # ============================================================================
 # Main visualization functions for pipeline integration
@@ -24,10 +25,13 @@ def create_taxonomic_visualizations(output_dir, data, **kwargs):
     Returns:
         Dictionary of generated file paths
     """
+    # --- ADD FORMATTER ---
+    formatter = get_formatter()
     visualizer = TaxonomicVisualizer(Path(output_dir))
     generated_files = {}
     
-    print("\n=== Creating Taxonomic Visualizations ===")
+    # --- USE FORMATTER ---
+    formatter.section_header("Creating Taxonomic Visualizations")
     
     # Abundance chart
     abundance_chart = visualizer.create_abundance_chart(data)
@@ -44,7 +48,7 @@ def create_taxonomic_visualizations(output_dir, data, **kwargs):
     if krona_plot:
         generated_files['krona_plot'] = krona_plot
     
-    print(f"✓ Generated {len(generated_files)} taxonomic visualizations")
+    formatter.success(f"Generated {len(generated_files)} taxonomic visualizations")
     return generated_files
 
 
@@ -59,10 +63,12 @@ def create_pathogen_visualizations(output_dir, traditional_data=None, **kwargs):
     Returns:
         Dictionary of generated file paths
     """
+    formatter = get_formatter()
     visualizer = PathogenVisualizer(Path(output_dir))
     generated_files = {}
     
-    print("\n=== Creating Pathogen Visualizations ===")
+    # --- USE FORMATTER ---
+    formatter.section_header("Creating Pathogen Visualizations")
     
     if traditional_data:
         # Risk assessment chart
@@ -79,8 +85,8 @@ def create_pathogen_visualizations(output_dir, traditional_data=None, **kwargs):
         confidence_chart = visualizer.create_detection_confidence_chart(traditional_data)
         if confidence_chart:
             generated_files['detection_confidence'] = confidence_chart
-    
-    print(f"✓ Generated {len(generated_files)} pathogen visualizations")
+        
+    formatter.success(f"Generated {len(generated_files)} pathogen visualizations")    
     return generated_files
 
 
@@ -97,10 +103,13 @@ def create_functional_visualizations(output_dir, prokka_results=None,
     Returns:
         Dictionary of generated file paths
     """
+    # --- ADD FORMATTER ---
+    formatter = get_formatter()
     visualizer = FunctionalVisualizer(Path(output_dir))
     generated_files = {}
     
-    print("\n=== Creating Functional Visualizations ===")
+    # --- USE FORMATTER ---
+    formatter.section_header("Creating Functional Visualizations")
     
     # Annotation quality dashboard
     if swissprot_results:
@@ -119,7 +128,7 @@ def create_functional_visualizations(output_dir, prokka_results=None,
         if category_chart:
             generated_files['functional_categories'] = category_chart
     
-    print(f"✓ Generated {len(generated_files)} functional visualizations")
+    formatter.success(f"Generated {len(generated_files)} functional visualizations")
     return generated_files
 
 # ============================================================================

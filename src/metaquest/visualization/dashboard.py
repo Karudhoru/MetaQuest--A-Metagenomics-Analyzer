@@ -635,8 +635,8 @@ class DashboardGenerator(BaseVisualizer):
         dashboard_path = self.output_dir / "analysis_dashboard.html"
         with open(dashboard_path, 'w', encoding='utf-8') as f:
             f.write(final_html)
-        print(f"✓ Analysis dashboard created at: {dashboard_path}")
-
+        self.formatter.success(f"Analysis dashboard created at: {dashboard_path.name}")
+        
     def _create_header_and_body(self) -> str:
         """Creates the header and main body content based on analysis type."""
         # Count available files for stats

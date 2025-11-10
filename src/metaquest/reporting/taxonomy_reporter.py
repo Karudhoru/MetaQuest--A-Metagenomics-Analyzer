@@ -1,6 +1,7 @@
 """
 MetaQuest Taxonomy Reporter
 Dual-mode reporting for clinicians and researchers with pathogen alerts
+*** REFACTORED to use global OutputFormatter ***
 """
 import numpy as np
 import pandas as pd
@@ -15,9 +16,8 @@ class TaxonomyReporter(BaseReporter):
     Supports both clinician (simplified) and researcher (detailed) views.
     """
     
-
     def __init__(self, output_dir: Path):
-        super().__init__(output_dir)
+        super().__init__(output_dir) # This sets up self.formatter
         self.section_name = "Taxonomy Report"
         
         # Risk level configurations - CASE SENSITIVE!
@@ -42,22 +42,13 @@ class TaxonomyReporter(BaseReporter):
     def _is_true_pathogen(self, species_name: str, abundance: float) -> bool:
         """
         Validate if species is a true pathogen, not a commensal.
-        
-        Args:
-            species_name: Species name
-            abundance: Relative abundance
-        
-        Returns:
-            True if pathogen, False if commensal
         """
         species_lower = species_name.lower()
         
-        # Check commensal list
         for commensal in self.commensal_species:
             if commensal.lower() in species_lower:
-                # Exception: High abundance of normally commensal species
                 if abundance > 0.10:  # >10% abundance is concerning
-                    self.logger.warning(
+                    self.formatter.warning( # <-- CHANGE
                         f"{species_name} is normally commensal but at {abundance*100:.1f}% abundance"
                     )
                     return True  # Treat as opportunistic pathogen
@@ -71,16 +62,8 @@ class TaxonomyReporter(BaseReporter):
                        mode: str = 'both') -> str:
         """
         Generate complete taxonomy report.
-        
-        Args:
-            bracken_file: Path to Bracken report TSV
-            taxonomic_risk: Risk assessment from RiskScorer
-            mode: 'clinician', 'researcher', or 'both'
-        
-        Returns:
-            Formatted report string
         """
-        self.print_section_header("TAXONOMY REPORT")
+        self.formatter.info(f"Generating {self.section_name} (Mode: {mode})") # <-- CHANGE
         
         # Load data
         bracken_df = pd.read_csv(bracken_file, sep='\t')
@@ -111,24 +94,21 @@ class TaxonomyReporter(BaseReporter):
         total_species = len(bracken_df)
         dominant = bracken_df.iloc[0] if not bracken_df.empty else None
         
-        # BUG FIX: Add debugging for pathogen detection
         pathogen_count = len(risk['pathogens_detected'])
         
-        # DEBUG: Log what we received
-        self.logger.debug(f"Risk dict keys: {risk.keys()}")
-        self.logger.debug(f"Pathogens detected: {pathogen_count}")
-        self.logger.debug(f"Pathogen list: {risk['pathogens_detected']}")
+        # DEBUGGING with formatter
+        self.formatter.debug(f"Risk dict keys: {risk.keys()}") # <-- CHANGE
+        self.formatter.debug(f"Pathogens detected: {pathogen_count}") # <-- CHANGE
+        self.formatter.debug(f"Pathogen list: {risk['pathogens_detected']}") # <-- CHANGE
 
-        for pathogen in risk['pathogens_detected'][:3]:  # Check first 3
+        for pathogen in risk['pathogens_detected'][:3]:
             if 'risk_level' not in pathogen:
-                self.logger.warning(f"⚠️ Pathogen missing risk_level: {pathogen.get('species', 'Unknown')}")
+                self.formatter.warning(f"⚠️ Pathogen missing risk_level: {pathogen.get('species', 'Unknown')}") # <-- CHANGE
             else:
-                self.logger.debug(f"✓ Pathogen {pathogen['species']} has risk_level: {pathogen['risk_level']}")
+                self.formatter.debug(f"✓ Pathogen {pathogen['species']} has risk_level: {pathogen['risk_level']}") # <-- CHANGE
         
-        # BUG FIX: Check if pathogens_detected is actually populated
         if pathogen_count == 0:
-            self.logger.warning("⚠️ pathogens_detected is empty - check pathogen_analysis.py")
-            # Try to manually detect pathogens from bracken data as fallback
+            self.formatter.warning("⚠️ pathogens_detected is empty - check pathogen_analysis.py") # <-- CHANGE
             pathogen_species = [
                 'Clostridioides difficile', 'Clostridium difficile',
                 'Staphylococcus aureus', 'Escherichia coli',
@@ -137,17 +117,16 @@ class TaxonomyReporter(BaseReporter):
                 'Campylobacter gracilis', 'Salmonella enterica'
             ]
             
-            # Manual pathogen detection
             detected_pathogens = bracken_df[
                 bracken_df['name'].isin(pathogen_species)
             ]
             
             if not detected_pathogens.empty:
-                self.logger.warning(f"⚠️ FOUND {len(detected_pathogens)} PATHOGENS IN BRACKEN BUT NOT IN RISK DICT!")
-                self.logger.warning(f"Pathogens found: {detected_pathogens['name'].tolist()}")
-                # Override the count for display
+                self.formatter.warning(f"⚠️ FOUND {len(detected_pathogens)} PATHOGENS IN BRACKEN BUT NOT IN RISK DICT!") # <-- CHANGE
+                self.formatter.warning(f"Pathogens found: {detected_pathogens['name'].tolist()}") # <-- CHANGE
                 pathogen_count = len(detected_pathogens)
         
+        # ... (rest of the string formatting is fine) ...
         lines = [
             "=" * 70,
             "📊 MICROBIAL COMPOSITION - QUICK OVERVIEW",
@@ -531,15 +510,11 @@ class TaxonomyReporter(BaseReporter):
         """Export complete taxonomy table to CSV."""
         bracken_df = pd.read_csv(bracken_file, sep='\t')
         
-        # Add risk level column
         pathogen_dict = {p['species']: p['risk_level'] for p in risk['pathogens_detected']}
         bracken_df['risk_level'] = bracken_df['name'].map(pathogen_dict).fillna('Low')
         
-        # Add clinical notes
         bracken_df['clinical_notes'] = bracken_df['name'].apply(self._get_clinical_notes)
         
-        # Export
         bracken_df.to_csv(output_file, index=False)
-        self.logger.info(f"Taxonomy table exported to {output_file}")
-
-
+        # --- Use formatter ---
+        self.formatter.success(f"Taxonomy table exported to {output_file.name}")

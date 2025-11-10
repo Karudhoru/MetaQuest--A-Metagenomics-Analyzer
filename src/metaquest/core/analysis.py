@@ -16,7 +16,7 @@ import numpy as np
 import json
 from .taxonomic_analysis import run_kraken, run_bracken, run_fasta_blast_taxonomy
 from .pathogen_analysis import run_pathogen_scan
-from .functional_analysis import run_prokka, run_functional_annotation
+from .functional_analysis import run_prokka, run_functional_annotation, run_pathway_analysis
 from ..config import *
 from ..io.file_validator import FileValidator
 from ..ml.pathogen_predictor import run_ml_pathogen_prediction
@@ -210,6 +210,10 @@ def analyze_fastq(reads, output_dir: Path, args):
             annotation_threads = getattr(args, 'annotation_threads', 8)
             swissprot_results = run_functional_annotation(prokka_dir, output_dir, 
                                                           threads=annotation_threads)
+            
+            pathway_data_file = None
+            if swissprot_results:
+                pathway_data_file = run_pathway_analysis(swissprot_results, output_dir)
 
             # ►►► IMMEDIATE REPORTING & VISUALIZATION ◄◄◄
             fmt.section_header("► Generating Functional Reports")
@@ -219,15 +223,19 @@ def analyze_fastq(reads, output_dir: Path, args):
 
             # *** FIX: Add column names ***
             ann_cols = ['query_id', 'subject_id', 'identity', 'length', 'mismatches', 
-                        'gaps', 'q_start', 'q_end', 's_start', 's_end', 'evalue', 
-                        'bitscore', 'description']
+            'gaps', 'q_start', 'q_end', 's_start', 's_end', 'evalue', 
+            'bitscore', 'description', 'query_title']
             functional_df.columns = ann_cols[:len(functional_df.columns)]
 
             pathogen_hits_file = output_dir / "pathogen_results.txt"
 
             if pathogen_hits_file.exists():
                 pathogen_df = pd.read_csv(pathogen_hits_file, sep='\t', header=None)
-                pathogen_df.columns = ann_cols[:len(pathogen_df.columns)]
+                if len(pathogen_df.columns) <= len(ann_cols):
+                    pathogen_df.columns = ann_cols[:len(pathogen_df.columns)]
+                else:
+                    extra_cols = [f'extra_{i}' for i in range(len(pathogen_df.columns) - len(ann_cols))]
+                    pathogen_df.columns = ann_cols + extra_cols
                 
                 # *** FIX: Calculate total_cds and pass it ***
                 total_cds = len(functional_df['query_id'].unique())
@@ -255,6 +263,7 @@ def analyze_fastq(reads, output_dir: Path, args):
             functional_report = reporter.generate_functional_report(
                 sample_info_file=sample_info_file,
                 functional_annotations_file=Path(swissprot_results),
+                pathway_data_file=pathway_data_file,
                 risk_data=preliminary_risk_data
             )
             
@@ -281,9 +290,6 @@ def analyze_fastq(reads, output_dir: Path, args):
                            "Check DIAMOND database configuration."])
         import traceback
         traceback.print_exc()
-
-    # CRITICAL FIX: In analysis.py around line 240-260
-    # Replace the pathogen detection section with this:
 
     # ========================================================================
     # STEP 4: PATHOGEN DETECTION → IMMEDIATE REPORTING
@@ -402,13 +408,14 @@ def analyze_fastq(reads, output_dir: Path, args):
         
         # Use MainReporter to generate complete integrated report
         comprehensive_report = reporter.generate_report(
-            bracken_file=Path(bracken_file),
-            sample_info_file=sample_info_file,
-            functional_annotations_file=functional_file,
-            pathogen_hits_file=pathogen_hits_file if pathogen_hits_file else output_dir / "pathogen_results.txt",
-            ml_predictions_file=output_dir / "ml_pathogen_predictions.json",
-            pathogen_organism_file=pathogen_organism_db
-        )
+        bracken_file=Path(bracken_file),
+        sample_info_file=sample_info_file,
+        functional_annotations_file=functional_file,
+        pathogen_hits_file=pathogen_hits_file if pathogen_hits_file else output_dir / "pathogen_results.txt",
+        ml_predictions_file=output_dir / "ml_pathogen_predictions.json",
+        pathway_data_file=pathway_data_file,  # <-- ADD THIS LINE!
+        pathogen_organism_file=pathogen_organism_db
+    )
         
         fmt.success("✓ Comprehensive integrated report generated")
         fmt.info(f"Main report: {output_dir / 'comprehensive_report.txt'}")
@@ -636,6 +643,10 @@ def analyze_fasta(fasta_path: Path, output_dir: Path, args):
             swissprot_results = run_functional_annotation(
                 prokka_dir, output_dir, threads=annotation_threads
             )
+
+            pathway_data_file = None
+            if swissprot_results:
+                pathway_data_file = run_pathway_analysis(swissprot_results, output_dir)
             
             # ►►► IMMEDIATE REPORTING & VISUALIZATION ◄◄◄
             fmt.section_header("► Generating Functional Reports")
@@ -652,7 +663,8 @@ def analyze_fasta(fasta_path: Path, output_dir: Path, args):
             
             functional_report = reporter.generate_functional_report(
                 sample_info_file=sample_info_file,
-                functional_annotations_file=Path(swissprot_results),
+                functional_annotations_file=Path(swissprot_results) if swissprot_results else None,
+                pathway_data_file=pathway_data_file,
                 risk_data=preliminary_risk_data
             )
             
@@ -715,7 +727,7 @@ def analyze_fasta(fasta_path: Path, output_dir: Path, args):
                 fmt.section_header("► Generating ML Prediction Report")
                 
                 # Use the original FASTA reporting logic, as it's built for BLAST data
-                blast_pathogens = extract_pathogens_from_blast_taxonomy(blast_results_data) if blast_results_data else []
+                blast_pathogens = extract_pathogens_from_blast_taxonomy(blast_results_data,formatter=fmt) if blast_results_data else []
                 
                 ml_risk_data = {
                     'taxonomic': {'score': 0, 'pathogens_detected': blast_pathogens},

@@ -1,6 +1,7 @@
 """
 MetaQuest Functional Reporter
 Enhanced functional annotation reporting with COG categories and transposase analysis
+*** UPDATED TO USE GLOBAL OUTPUTFORMATTER ***
 """
 
 import pandas as pd
@@ -8,8 +9,9 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from collections import Counter
 import re
+import json
 from .base_reporter import BaseReporter
-
+# (No need to import formatter, it's in BaseReporter)
 
 class FunctionalReporter(BaseReporter):
     """
@@ -21,7 +23,7 @@ class FunctionalReporter(BaseReporter):
         super().__init__(output_dir)
         self.section_name = "Functional Report"
         
-        # COG category mapping (standard categories)
+        # ... (COG category map) ...
         self.cog_categories = {
             'J': 'Translation, ribosomal structure',
             'K': 'Transcription',
@@ -49,41 +51,30 @@ class FunctionalReporter(BaseReporter):
     def generate_report(self,
                        sample_info_file: Path,
                        annotation_file: Path,
+                       pathway_data_file: Optional[Path], # <-- Added this
                        functional_risk: Optional[Dict] = None) -> str:
         """
         Generate complete functional annotation report.
-        
-        Args:
-            sample_info_file: Path to sample.txt with assembly stats
-            annotation_file: Path to functional_annotations.tsv
-            functional_risk: Optional risk assessment from RiskScorer
-        
-        Returns:
-            Formatted report string
         """
-        self.print_section_header("FUNCTIONAL ANNOTATION REPORT")
+        # --- Use formatter ---
+        self.formatter.section_header("FUNCTIONAL ANNOTATION REPORT")
 
-        # Parse sample info FIRST to check for valid data
         stats = self._parse_sample_info(sample_info_file)
                 
-        # DEBUG: Log what we found
-        self.logger.info(f"📊 Gene counts from sample.txt:")
-        self.logger.info(f"   Total genes: {stats['gene']}")
-        self.logger.info(f"   CDS: {stats['CDS']}")
-        self.logger.info(f"   rRNA: {stats['rRNA']}")
-        self.logger.info(f"   tRNA: {stats['tRNA']}")
+        # --- Use formatter ---
+        self.formatter.debug(f"Func Report: Gene counts from sample.txt:")
+        self.formatter.debug(f"   Total genes: {stats['gene']}")
+        self.formatter.debug(f"   CDS: {stats['CDS']}")
         
         if stats['gene'] == 0:
-            self.logger.warning("⚠️ Zero genes detected - report will be limited")
+            self.formatter.warning("Zero genes detected - functional report will be limited.")
 
         report_parts = []
         
         # 1. Genomic Features Overview
         report_parts.append(self._generate_features_overview(sample_info_file))
 
-        # Only continue if we have genes
         if stats['gene'] == 0 or stats['CDS'] == 0:
-            # Return early with just the warning
             return '\n\n'.join(report_parts)
         
         # 2. Annotation Statistics
@@ -92,7 +83,7 @@ class FunctionalReporter(BaseReporter):
         # 3. COG Functional Categories
         report_parts.append(self._generate_cog_analysis(annotation_file))
         
-        # 4. Transposase Analysis (Critical for HGT)
+        # 4. Transposase Analysis
         report_parts.append(self._generate_transposase_analysis(annotation_file))
         
         # 5. Top Annotated Functions
@@ -100,6 +91,9 @@ class FunctionalReporter(BaseReporter):
         
         # 6. Annotation Quality Assessment
         report_parts.append(self._generate_quality_assessment(sample_info_file, annotation_file))
+        
+        # 7. Pathway Report
+        report_parts.append(self._generate_pathway_report(pathway_data_file))
         
         return '\n\n'.join(report_parts)
     
@@ -394,6 +388,78 @@ class FunctionalReporter(BaseReporter):
         
         return '\n'.join(lines)
     
+    def _generate_pathway_report(self, pathway_data_file: Optional[Path]) -> str:
+        """
+        Generates a human-readable metabolic pathway report from
+        the pre-parsed EC count JSON file.
+        """
+        lines = [
+            "",
+            "=" * 70,
+            "🔬 METABOLIC PATHWAY ANALYSIS (Lightweight)",
+            "=" * 70,
+        ]
+
+        if not pathway_data_file or not pathway_data_file.exists():
+            lines.append("\nNo EC number data found. Pathway analysis skipped.")
+            return '\n'.join(lines)
+
+        try:
+            with open(pathway_data_file, 'r') as f:
+                ec_counts = Counter(json.load(f))
+        except Exception as e:
+            lines.append(f"\nError loading pathway data: {e}")
+            return '\n'.join(lines)
+
+        if not ec_counts:
+            lines.append("\nNo EC numbers found in annotations.")
+            return '\n'.join(lines)
+
+        lines.append(f"\nFound {len(ec_counts)} unique EC numbers with {sum(ec_counts.values())} total enzyme hits.")
+
+        # This map stays in the reporter, as it's for presentation
+        pathway_map = {
+            'Glycolysis / Gluconeogenesis': ('1.1.1.1', '2.7.1.1', '5.3.1.9', '4.1.2.13', '1.2.1.12'),
+            'TCA Cycle (Citrate Cycle)': ('4.1.3.7', '1.1.1.37', '1.2.4.1', '1.8.1.4', '2.3.1.12'),
+            'Pentose Phosphate Pathway': ('1.1.1.49', '5.3.1.6', '3.1.1.31', '2.2.1.1', '5.1.3.1'),
+            'Amino Acid Metabolism': ('1.4.1.', '2.6.1.', '4.1.1.', '6.1.1.'),
+            'Fatty Acid Metabolism': ('1.1.1.35', '1.3.1.', '4.2.1.17', '1.1.1.211', '2.3.1.16'),
+            'Nucleotide Metabolism': ('2.7.4.', '2.4.2.', '3.6.1.', '1.17.4.1'),
+            'Antibiotic Biosynthesis': ('6.3.2.', '2.3.1.165', '1.1.1.238'),
+        }
+
+        pathway_counts = Counter()
+        ec_to_pathway = {}
+
+        for pathway, ec_prefixes in pathway_map.items():
+            for ec, count in ec_counts.items():
+                for prefix in ec_prefixes:
+                    if ec.startswith(prefix):
+                        pathway_counts[pathway] += count
+                        ec_to_pathway[ec] = pathway
+                        break
+
+        lines.extend([
+            "\n--- Pathway Summary ---",
+            f"\n{'Metabolic Pathway':<40} | {'Gene Hits':>10}",
+            f"{'-'*40:<40} | {'-'*10:>10}",
+        ])
+
+        for pathway, count in pathway_counts.most_common():
+            lines.append(f"{pathway:<40} | {count:>10}")
+
+        lines.extend([
+            "\n\n--- Top 20 Most Abundant Enzymes ---",
+            f"\n{'EC Number':<15} | {'Count':>7} | {'Pathway':<40}",
+            f"{'-'*15:<15} | {'-'*7:>7} | {'-'*40:<40}",
+        ])
+
+        for ec, count in ec_counts.most_common(20):
+            pathway = ec_to_pathway.get(ec, "Other")
+            lines.append(f"{ec:<15} | {count:>7} | {pathway:<40}")
+
+        return '\n'.join(lines)
+    
     def _generate_transposase_analysis(self, annotation_file: Path) -> str:
         """Detailed analysis of transposases (critical for pathogenicity)."""
         lines = [
@@ -608,18 +674,13 @@ class FunctionalReporter(BaseReporter):
     def _parse_sample_info(self, sample_file: Path) -> Dict:
         """Parse sample.txt file for assembly statistics."""
         stats = {
-            'organism': '',
-            'contigs': 0,
-            'bases': 0,
-            'CDS': 0,
-            'gene': 0,
-            'rRNA': 0,
-            'tRNA': 0,
-            'removed_contigs': 0  # Track filtered contigs
+            'organism': '', 'contigs': 0, 'bases': 0, 'CDS': 0,
+            'gene': 0, 'rRNA': 0, 'tRNA': 0, 'removed_contigs': 0
         }
         
         if not sample_file.exists():
-            self.logger.warning(f"Sample info file not found: {sample_file}")
+            # --- Use formatter ---
+            self.formatter.warning(f"Sample info file not found: {sample_file}")
             return stats
         
         with open(sample_file) as f:
@@ -652,7 +713,8 @@ class FunctionalReporter(BaseReporter):
         
         # FIX: If gene count is 0 but we have a Prokka directory, try reading from there
         if stats['gene'] == 0 and stats['CDS'] == 0:
-            self.logger.warning("No genes in sample.txt - attempting to read from Prokka files")
+            # --- Use formatter ---
+            self.formatter.warning("No genes in sample.txt - attempting fallback")
             prokka_stats = self._load_prokka_stats_fallback(sample_file.parent)
             if prokka_stats:
                 stats.update(prokka_stats)
@@ -662,24 +724,24 @@ class FunctionalReporter(BaseReporter):
     def _load_prokka_stats_fallback(self, output_dir: Path) -> Dict:
         """
         Fallback: Read gene counts directly from Prokka TSV file.
-        Also attempt to get base counts from assembly files.
         """
         stats = {}
-        
-        # Look for Prokka output directory
         prokka_dir = output_dir / "prokka_annotation"
+        
         if not prokka_dir.exists():
-            self.logger.warning(f"Prokka directory not found: {prokka_dir}")
+            # --- Use formatter ---
+            self.formatter.warning(f"Prokka directory not found: {prokka_dir}")
             return stats
         
-        # Find the TSV file (usually sample.tsv)
         tsv_files = list(prokka_dir.glob("*.tsv"))
         if not tsv_files:
-            self.logger.warning(f"No TSV files found in {prokka_dir}")
+            # --- Use formatter ---
+            self.formatter.warning(f"No TSV files found in {prokka_dir}")
             return stats
         
         tsv_file = tsv_files[0]
-        self.logger.info(f"Reading Prokka annotations from: {tsv_file.name}")
+        # --- Use formatter ---
+        self.formatter.info(f"Reading Prokka annotations from: {tsv_file.name}")
         
         try:
             # Read Prokka TSV (tab-separated, with header)
@@ -699,9 +761,9 @@ class FunctionalReporter(BaseReporter):
                 else:
                     stats['gene'] = len(df[df['ftype'] == 'gene'])
                 
-                self.logger.info(f"✓ Loaded from Prokka TSV: {stats['gene']} total genes, {stats['CDS']} CDS")
+                self.formatter.success(f"Loaded from Prokka TSV: {stats['gene']} genes, {stats['CDS']} CDS")
             else:
-                self.logger.warning("Prokka TSV missing 'ftype' column")
+                self.formatter.error(f"Failed to read Prokka TSV: {e}")
             
             # *** ADD THIS: Get base count from assembly file ***
             # Look for the FASTA file used for annotation
@@ -714,7 +776,7 @@ class FunctionalReporter(BaseReporter):
                 from Bio import SeqIO
                 total_bases = sum(len(record.seq) for record in SeqIO.parse(fasta_files[0], 'fasta'))
                 stats['bases'] = total_bases
-                self.logger.info(f"✓ Calculated bases from assembly: {total_bases:,} bp")
+                self.formatter.info(f"✓ Calculated bases from assembly: {total_bases:,} bp")
             
             # Get contig count from filter log
             filter_log = output_dir / "contig_filtering.log"
@@ -725,7 +787,7 @@ class FunctionalReporter(BaseReporter):
                             stats['contigs'] = int(line.split(':')[1].strip())
                         
         except Exception as e:
-            self.logger.error(f"Failed to read Prokka TSV: {e}")
+            self.formatter.error(f"Failed to read Prokka TSV: {e}")
         
         return stats
     
@@ -809,7 +871,7 @@ class FunctionalReporter(BaseReporter):
     def export_annotations_table(self, annotation_file: Path, output_file: Path):
         """Export detailed annotations table to CSV."""
         if not annotation_file.exists():
-            self.logger.warning(f"Annotation file not found: {annotation_file}")
+            self.formatter.warning(f"Annotation file not found: {annotation_file}")
             return
         
         df = pd.read_csv(annotation_file, sep='\t', header=None)
@@ -825,7 +887,7 @@ class FunctionalReporter(BaseReporter):
         
         # Export
         df.to_csv(output_file, index=False)
-        self.logger.info(f"Annotations table exported to {output_file}")
+        self.formatter.success(f"Annotations table exported to {output_file.name}")
     
     def _categorize_function(self, description: str) -> str:
         """Categorize function into broad category."""

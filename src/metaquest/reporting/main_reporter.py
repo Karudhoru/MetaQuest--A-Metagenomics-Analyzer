@@ -1,12 +1,13 @@
 """
 MetaQuest Main Reporter - Enhanced Orchestrator
 Coordinates all reporting modules with integrated risk scoring
+*** REFACTORED to use global OutputFormatter ***
 """
 
 import json
 from pathlib import Path
 from typing import Dict, Optional
-import logging
+# import logging <-- REMOVED
 
 from .taxonomy_reporter import TaxonomyReporter
 from .functional_reporter import FunctionalReporter
@@ -29,7 +30,7 @@ class MainReporter(BaseReporter):
             output_dir: Output directory for reports
             view_mode: 'clinician', 'researcher', or 'both'
         """
-        super().__init__(output_dir)
+        super().__init__(output_dir) # This now sets up self.formatter
         self.view_mode = view_mode
         
         # Initialize sub-reporters
@@ -46,28 +47,18 @@ class MainReporter(BaseReporter):
                        functional_annotations_file: Path,
                        pathogen_hits_file: Path,
                        ml_predictions_file: Path,
+                       pathway_data_file: Optional[Path], # <-- Added this from our previous step
                        pathogen_organism_file: Optional[Path] = None) -> str:
         """
         Generate complete integrated report.
-        
-        Args:
-            bracken_file: Bracken taxonomy report
-            sample_info_file: Sample assembly statistics
-            functional_annotations_file: Functional annotations (SwissProt)
-            pathogen_hits_file: Pathogen database hits
-            ml_predictions_file: ML predictions JSON
-            pathogen_organism_file: Pathogen organism risk levels
-        
-        Returns:
-            Complete formatted report
         """
-        self.logger.info("Generating comprehensive MetaQuest report...")
+        self.formatter.info("Generating comprehensive MetaQuest report...") # <-- CHANGE
         
         # Initialize risk scorer
         self.risk_scorer = RiskScorer(pathogen_organism_file)
         
         # Calculate all risk scores
-        self.logger.info("Calculating risk scores...")
+        self.formatter.info("Calculating risk scores...") # <-- CHANGE
         risk_data = calculate_all_risks(
             bracken_file=bracken_file,
             functional_file=functional_annotations_file,
@@ -91,7 +82,10 @@ class MainReporter(BaseReporter):
         
         # 3. Functional Report
         report_sections.append(self.generate_functional_report(
-            sample_info_file, functional_annotations_file, risk_data
+            sample_info_file, 
+            functional_annotations_file, 
+            pathway_data_file, # <-- Pass this
+            risk_data
         ))
         
         # 4. Pathogen Risk Report
@@ -110,7 +104,7 @@ class MainReporter(BaseReporter):
         with open(report_file, 'w') as f:
             f.write(complete_report)
         
-        self.logger.info(f"Complete report saved to {report_file}")
+        self.formatter.success(f"Complete report saved to {report_file.name}") # <-- CHANGE
         
         # Export data for visualizations
         self._export_visualization_data(risk_data, bracken_file, 
@@ -123,15 +117,8 @@ class MainReporter(BaseReporter):
                                 risk_data: Dict) -> str:
         """
         Generate standalone taxonomy report with risk assessment.
-        
-        Args:
-            bracken_file: Path to Bracken taxonomy TSV
-            risk_data: Complete risk assessment data
-        
-        Returns:
-            Formatted taxonomy report
         """
-        self.logger.info("Generating taxonomy report...")
+        self.formatter.info("Generating taxonomy report...") # <-- CHANGE
         
         return self.taxonomy_reporter.generate_report(
             bracken_file=bracken_file,
@@ -142,23 +129,17 @@ class MainReporter(BaseReporter):
     def generate_functional_report(self,
                                    sample_info_file: Path,
                                    functional_annotations_file: Path,
+                                   pathway_data_file: Optional[Path], # <-- ADD
                                    risk_data: Dict) -> str:
         """
         Generate standalone functional annotation report.
-        
-        Args:
-            sample_info_file: Path to sample.txt with assembly stats
-            functional_annotations_file: Path to functional_annotations.tsv
-            risk_data: Complete risk assessment data
-        
-        Returns:
-            Formatted functional report
         """
-        self.logger.info("Generating functional report...")
+        self.formatter.info("Generating functional report...") # <-- CHANGE
         
         return self.functional_reporter.generate_report(
             sample_info_file=sample_info_file,
             annotation_file=functional_annotations_file,
+            pathway_data_file=pathway_data_file, # <-- PASS
             functional_risk=risk_data['functional']
         )
     
@@ -168,16 +149,8 @@ class MainReporter(BaseReporter):
                                 ml_predictions_file: Path) -> str:
         """
         Generate standalone pathogen risk assessment report.
-        
-        Args:
-            risk_data: Complete risk assessment data
-            pathogen_hits_file: Path to pathogen database hits
-            ml_predictions_file: Path to ML predictions JSON
-        
-        Returns:
-            Formatted pathogen risk report
         """
-        self.logger.info("Generating pathogen risk report...")
+        self.formatter.info("Generating pathogen risk report...") # <-- CHANGE
         
         return self.pathogen_reporter.generate_report(
             integrated_risk=risk_data['integrated'],
@@ -192,17 +165,13 @@ class MainReporter(BaseReporter):
                                bracken_file: Path,
                                sample_file: Path,
                                risk_data: Dict) -> str:
-        """Generate executive summary card."""
+        # This function just returns strings, no logging needed
+        # ... (no changes needed) ...
         import pandas as pd
         
         # Load basic data
         bracken_df = pd.read_csv(bracken_file, sep='\t')
         
-        # *** FIX: Properly handle Pandas Series check ***
-        # Old buggy code: dominant = bracken_df.iloc[0] if not bracken_df.empty else None
-        # Old buggy check: if dominant:
-        
-        # New fixed code with explicit None check
         if not bracken_df.empty:
             dominant = bracken_df.iloc[0]
             has_dominant = True
@@ -221,7 +190,7 @@ class MainReporter(BaseReporter):
             'High': '🔴',
             'Moderate': '🟡',
             'Low': '🟢'
-        }[integrated['risk_level']]
+        }.get(integrated['risk_level'], '⚪') # Added .get for safety
         
         lines = [
             "╔" + "═" * 68 + "╗",
@@ -233,7 +202,6 @@ class MainReporter(BaseReporter):
             f"║  🧬 Assembly: {sample_stats['gene']} genes | {sample_stats['bases']:,} bp | {sample_stats['contigs']} contigs" + " " * (15 - len(str(sample_stats['contigs']))) + "║",
         ]
         
-        # *** FIX: Use explicit boolean check instead of Series truthiness ***
         if has_dominant and dominant is not None:
             dominant_name = str(dominant['name'])[:40] if len(str(dominant['name'])) > 40 else str(dominant['name'])
             dominant_fraction = float(dominant['fraction_total_reads']) * 100
@@ -251,10 +219,11 @@ class MainReporter(BaseReporter):
             )
         
         ml_flagged = risk_data['ml']['high_confidence_pathogenic']
-        ml_percentage = (ml_flagged / 40 * 100) if 40 > 0 else 0
+        ml_total = risk_data['ml'].get('total_sequences', 1) # Avoid division by zero
+        ml_percentage = (ml_flagged / ml_total * 100) if ml_total > 0 else 0
         padding_length = max(0, 20 - len(str(ml_flagged)))
         lines.append(
-            f"║  🧪 ML Risk: {ml_flagged}/40 sequences flagged ({ml_percentage:.0f}%)" + " " * padding_length + "║"
+            f"║  🧪 ML Risk: {ml_flagged}/{ml_total} sequences flagged ({ml_percentage:.0f}%)" + " " * padding_length + "║"
         )
         
         lines.append("╚" + "═" * 68 + "╝")
@@ -262,7 +231,8 @@ class MainReporter(BaseReporter):
         return '\n'.join(lines)
     
     def _generate_final_summary(self, risk_data: Dict) -> str:
-        """Generate final summary with actionable recommendations."""
+        # This function just returns strings, no logging needed
+        # ... (no changes needed) ...
         integrated = risk_data['integrated']
         
         lines = [
@@ -276,7 +246,6 @@ class MainReporter(BaseReporter):
             "KEY FINDINGS:",
         ]
         
-        # Taxonomic findings
         taxonomic = risk_data['taxonomic']
         if taxonomic['pathogens_detected']:
             lines.append(
@@ -290,7 +259,6 @@ class MainReporter(BaseReporter):
         else:
             lines.append("  • No significant pathogenic species detected")
         
-        # Functional findings
         functional = risk_data['functional']
         if functional['transposase_count'] > 5:
             lines.append(
@@ -302,14 +270,12 @@ class MainReporter(BaseReporter):
                 f"  • {functional['virulence_count']} virulence-associated genes identified"
             )
         
-        # ML findings
         ml = risk_data['ml']
         if ml['high_confidence_pathogenic'] > 0:
             lines.append(
                 f"  • ML analysis flagged {ml['high_confidence_pathogenic']} sequences as pathogenic"
             )
         
-        # Recommendations
         lines.extend([
             "",
             "ACTIONABLE RECOMMENDATIONS:",
@@ -336,7 +302,6 @@ class MainReporter(BaseReporter):
                 "  3. Document baseline for future comparisons",
             ])
         
-        # Data quality note
         lines.extend([
             "",
             "DATA QUALITY NOTES:",
@@ -361,21 +326,19 @@ class MainReporter(BaseReporter):
                                   annotation_file: Path):
         """Export all data needed for visualizations."""
         viz_dir = self.output_dir / 'visualization_data'
-        viz_dir.mkdir(exist_ok=True)
+        viz_dir.mkdir(exist_ok=True, parents=True)
         
         # Taxonomy visualization data
         taxonomy_viz = self.taxonomy_reporter.generate_visualization_data(
             bracken_file, risk_data['taxonomic']
         )
-        with open(viz_dir / 'taxonomy_viz_data.json', 'w') as f:
-            json.dump(taxonomy_viz, f, indent=2)
+        self.save_json(taxonomy_viz, viz_dir / 'taxonomy_viz_data.json')
         
         # Functional visualization data
         functional_viz = self.functional_reporter.generate_visualization_data(
             sample_file, annotation_file
         )
-        with open(viz_dir / 'functional_viz_data.json', 'w') as f:
-            json.dump(functional_viz, f, indent=2)
+        self.save_json(functional_viz, viz_dir / 'functional_viz_data.json')
         
         # Pathogen visualization data
         pathogen_viz = self.pathogen_reporter.generate_visualization_data(
@@ -384,14 +347,12 @@ class MainReporter(BaseReporter):
             risk_data['functional'],
             risk_data['ml']
         )
-        with open(viz_dir / 'pathogen_viz_data.json', 'w') as f:
-            json.dump(pathogen_viz, f, indent=2)
+        self.save_json(pathogen_viz, viz_dir / 'pathogen_viz_data.json')
         
         # Integrated risk data
-        with open(viz_dir / 'integrated_risk_data.json', 'w') as f:
-            json.dump(risk_data['integrated'], f, indent=2, default=str)
+        self.save_json(risk_data['integrated'], viz_dir / 'integrated_risk_data.json')
         
-        self.logger.info(f"Visualization data exported to {viz_dir}")
+        self.formatter.info(f"Visualization data exported to {viz_dir.name}") # <-- CHANGE
     
     def export_tables(self,
                      bracken_file: Path,
@@ -420,8 +381,7 @@ class MainReporter(BaseReporter):
             tables_dir / 'risk_summary.json'
         )
         
-        self.logger.info(f"Data tables exported to {tables_dir}")
-
+        self.formatter.info(f"Data tables exported to {tables_dir.name}") # <-- CHANGE
 
 def generate_report(output_dir: Path,
                    bracken_file: Path,

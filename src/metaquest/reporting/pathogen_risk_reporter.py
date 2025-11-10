@@ -20,7 +20,7 @@ class PathogenRiskReporter(BaseReporter):
     
     def __init__(self, output_dir: Path):
         super().__init__(output_dir)
-        self.section_name = "Pathogen Risk Assessment"
+        self.section_name = "Pathogen Risk Assessment"  
         
         # Risk level styling
         self.risk_emojis = {
@@ -56,7 +56,7 @@ class PathogenRiskReporter(BaseReporter):
         Returns:
             Formatted report string
         """
-        self.print_section_header("PATHOGEN RISK ASSESSMENT")
+        self.formatter.section_header("PATHOGEN RISK ASSESSMENT")
         
         report_parts = []
         
@@ -95,9 +95,9 @@ class PathogenRiskReporter(BaseReporter):
             f"│{' ' * 25}{emoji} {risk_level.upper()} RISK{' ' * (27 - len(risk_level))}│",
             "│" + " " * 68 + "│",
             "├" + "─" * 68 + "┤",
-            f"│  Taxonomic Risk:      {risk['taxonomic_score']:.0f}/100  (Known pathogens present)" + " " * (16 - len(str(int(risk['taxonomic_score'])))) + "│",
-            f"│  Functional Risk:     {risk['functional_score']:.0f}/100  (Mobile elements + markers)" + " " * (15 - len(str(int(risk['functional_score'])))) + "│",
-            f"│  ML Prediction Risk:  {risk['ml_score']:.0f}/100  ({risk.get('ml_score', 0):.0f}% sequences flagged)" + " " * (10 - len(str(int(risk.get('ml_score', 0))))) + "│",
+            f"│  Taxonomic Risk:      {risk.get('taxonomic_score', 0):.0f}/100  (Known pathogens present)" + " " * (16 - len(str(int(risk.get('taxonomic_score', 0))))) + "│",
+            f"│  Functional Risk:     {risk.get('functional_score', 0):.0f}/100  (Mobile elements + markers)" + " " * (15 - len(str(int(risk.get('functional_score', 0))))) + "│",
+            f"│  ML Prediction Risk:  {risk.get('ml_score', 0):.0f}/100  ({risk.get('ml_score', 0):.0f}% sequences flagged)" + " " * (10 - len(str(int(risk.get('ml_score', 0))))) + "│",
             "└" + "─" * 68 + "┘",
         ]
         
@@ -477,13 +477,13 @@ class PathogenRiskReporter(BaseReporter):
         ]
         
         # Add context-specific considerations
-        if risk['taxonomic_score'] > 50:
+        if risk.get('taxonomic_score', 0) > 50:
             lines.append("  • Known pathogenic species detected - correlate with symptoms")
         
-        if risk['functional_score'] > 50:
+        if risk.get('functional_score', 0) > 50:
             lines.append("  • Significant mobile genetic elements - potential for gene transfer")
         
-        if risk['ml_score'] > 40:
+        if risk.get('ml_score', 0) > 40:
             lines.append("  • ML model flags concerning sequences - consider further validation")
         
         lines.extend([
@@ -705,9 +705,9 @@ class PathogenRiskReporter(BaseReporter):
                 'risk_level': integrated_risk['risk_level'],
                 'base_score': integrated_risk['base_score'],
                 'tier_scores': {
-                    'taxonomic': integrated_risk['taxonomic_score'],
-                    'functional': integrated_risk['functional_score'],
-                    'ml': integrated_risk['ml_score']
+                    'taxonomic': integrated_risk.get('taxonomic_score', 0),
+                    'functional': integrated_risk.get('functional_score', 0),
+                    'ml': integrated_risk.get('ml_score', 0)
                 },
                 'multipliers_applied': integrated_risk['multipliers_applied'],
                 'interpretation': integrated_risk['interpretation']
@@ -718,4 +718,4 @@ class PathogenRiskReporter(BaseReporter):
         with open(output_file, 'w') as f:
             json.dump(summary, f, indent=2)
         
-        self.logger.info(f"Risk summary exported to {output_file}")
+        self.formatter.info(f"Risk summary exported to {output_file}")

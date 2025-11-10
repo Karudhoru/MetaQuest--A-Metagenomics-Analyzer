@@ -19,7 +19,7 @@ class PathogenVisualizer(BaseVisualizer):
     def _create_summary_risk_chart(self, report_data):
         """Create a summary chart when only aggregate data is available"""
         try:
-            print("  ℹ️ Creating summary risk chart from aggregate data")
+            self.formatter.info("Creating summary risk chart from aggregate data")
             
             counts = report_data.get('pathogen_counts', {})
             markers = report_data.get('functional_markers', {})
@@ -73,7 +73,7 @@ class PathogenVisualizer(BaseVisualizer):
                 hover_text.append(f"Transposases: {markers['transposases']} genes detected")
             
             if not categories:
-                print("  ⚠️ No data available for summary chart")
+                self.formatter.warning("No data available for summary chart") 
                 return None
             
             fig = go.Figure(data=[go.Bar(
@@ -103,11 +103,11 @@ class PathogenVisualizer(BaseVisualizer):
             )
             
             filepath = self.save_plot(fig, "pathogen_risk_summary.html")
-            print(f"  ✓ Risk summary chart saved: {filepath}")
+            self.formatter.success(f"Risk summary chart saved: {Path(filepath).name}")
             return filepath
             
         except Exception as e:
-            print(f"  ✗ Error creating summary chart: {e}")
+            self.formatter.error(f"Error creating summary chart: {e}")
             import traceback
             traceback.print_exc()
             return None
@@ -125,7 +125,7 @@ class PathogenVisualizer(BaseVisualizer):
             
             # Check if this is an integrated risk summary (no detailed detections)
             if 'pathogen_counts' in report_data and 'data' not in report_data:
-                print("  ℹ️ Detected integrated risk summary format")
+                self.formatter.info("Detected integrated risk summary format")
                 return self._create_summary_risk_chart(report_data)
             
             # Extract the nested data structure
@@ -138,19 +138,19 @@ class PathogenVisualizer(BaseVisualizer):
             # Try multiple paths to find pathogen data
             if 'FASTA' in analysis_type or 'BLAST' in analysis_type:
                 detections = data_section.get('blast_taxonomy', {}).get('organisms', {})
-                print("  ✓ Processing FASTA+ML pathogen report")
+                self.formatter.info("Processing FASTA+ML pathogen report")
             else:
                 # For FASTQ reports, try multiple possible locations
                 detections = (data_section.get('pathogen_detections') or 
                             data_section.get('pathogens') or
                             report_data.get('pathogen_detections') or
                             report_data.get('pathogens') or {})
-                print("  ✓ Processing FASTQ pathogen report")
+                self.formatter.info("Processing FASTQ pathogen report")
             
             if not detections:
-                print("  ⚠️ No pathogen detections found in report")
-                print(f"  ℹ️ Available keys in report root: {list(report_data.keys())}")
-                print(f"  ℹ️ Available keys in data section: {list(data_section.keys())}")
+                self.formatter.warning("No pathogen detections found in report")
+                self.formatter.debug(f"Available keys in report root: {list(report_data.keys())}")
+                self.formatter.debug(f"Available keys in data section: {list(data_section.keys())}")
                 return None
 
             # Convert to DataFrame
@@ -185,10 +185,10 @@ class PathogenVisualizer(BaseVisualizer):
 
             df = pd.DataFrame(data_rows)
             if df.empty:
-                print("  ⚠️ No pathogen data to visualize")
+                self.formatter.warning("No pathogen data to visualize")
                 return None
 
-            print(f"  ℹ️ Loaded {len(df)} pathogens for risk assessment chart")
+            self.formatter.info(f"Loaded {len(df)} pathogens for risk assessment chart")
 
             # Sort by risk and relevant metric
             risk_order = {'CRITICAL': 4, 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1, 'Unknown': 0}
@@ -260,11 +260,11 @@ class PathogenVisualizer(BaseVisualizer):
             )
 
             filepath = self.save_plot(fig, "pathogen_risk_assessment.html")
-            print(f"  ✓ Risk assessment chart saved: {filepath}")
+            self.formatter.success(f"Risk assessment chart saved: {Path(filepath).name}")
             return filepath
 
         except Exception as e:
-            print(f"  ✗ Error creating risk assessment chart: {e}")
+            self.formatter.error(f"Error creating risk assessment chart: {e}")
             import traceback
             traceback.print_exc()
             return None
@@ -278,7 +278,7 @@ class PathogenVisualizer(BaseVisualizer):
             
             # Check for integrated summary format
             if 'pathogen_counts' in report_data and 'data' not in report_data:
-                print("  ℹ️ Skipping WHO chart - integrated summary lacks WHO priority data")
+                self.formatter.info("Skipping WHO chart - integrated summary lacks WHO priority data")
                 return None
             
             # Extract nested data
@@ -296,7 +296,7 @@ class PathogenVisualizer(BaseVisualizer):
                             report_data.get('pathogens') or {})
             
             if not detections:
-                print("  ⚠️ No detections for WHO priority chart")
+                self.formatter.warning("No detections for WHO priority chart")
                 return None
             
             # Count by WHO priority
@@ -306,9 +306,10 @@ class PathogenVisualizer(BaseVisualizer):
                 who_counts[priority] += 1
             
             if not who_counts:
+                self.formatter.warning("No WHO priority data to plot")
                 return None
             
-            print(f"  ℹ️ WHO priority breakdown: {dict(who_counts)}")
+            self.formatter.info(f"WHO priority breakdown: {dict(who_counts)}")
             
             # Create pie chart
             labels = list(who_counts.keys())
@@ -347,11 +348,11 @@ class PathogenVisualizer(BaseVisualizer):
             )
             
             filepath = self.save_plot(fig, "who_priority_distribution.html")
-            print(f"  ✓ WHO priority chart saved: {filepath}")
+            self.formatter.success(f"WHO priority chart saved: {Path(filepath).name}")
             return filepath
             
         except Exception as e:
-            print(f"  ✗ Error creating WHO priority chart: {e}")
+            self.formatter.error(f"Error creating WHO priority chart: {e}")
             import traceback
             traceback.print_exc()
             return None
@@ -365,7 +366,7 @@ class PathogenVisualizer(BaseVisualizer):
             
             # Check for integrated summary format
             if 'pathogen_counts' in report_data and 'data' not in report_data:
-                print("  ℹ️ Skipping confidence chart - integrated summary lacks detailed detection data")
+                self.formatter.info("Skipping confidence chart - integrated summary lacks detailed detection data")
                 return None
             
             # Extract nested data
@@ -383,7 +384,7 @@ class PathogenVisualizer(BaseVisualizer):
                             report_data.get('pathogens') or {})
             
             if not detections:
-                print("  ⚠️ No detections for confidence chart")
+                self.formatter.warning("No detections for confidence chart")
                 return None
             
             # Prepare data for scatter plot
@@ -404,7 +405,7 @@ class PathogenVisualizer(BaseVisualizer):
                 abundances.append(details.get('abundance_percentage', 0))
             
             if not confidences:
-                print("  ⚠️ No confidence scores available")
+                self.formatter.warning("No confidence scores available")
                 return None
             
             df = pd.DataFrame({
@@ -418,7 +419,7 @@ class PathogenVisualizer(BaseVisualizer):
             # Sort by confidence descending
             df = df.sort_values('confidence', ascending=False).head(20)
             
-            print(f"  ℹ️ Creating confidence chart for {len(df)} pathogens")
+            self.formatter.info(f"Creating confidence chart for {len(df)} pathogens")
             
             # Create scatter plot
             risk_colors = {
@@ -477,11 +478,11 @@ class PathogenVisualizer(BaseVisualizer):
             )
             
             filepath = self.save_plot(fig, "detection_confidence.html")
-            print(f"  ✓ Confidence chart saved: {filepath}")
+            self.formatter.success(f"Confidence chart saved: {Path(filepath).name}")
             return filepath
             
         except Exception as e:
-            print(f"  ✗ Error creating confidence chart: {e}")
+            self.formatter.error(f"Error creating confidence chart: {e}")
             import traceback
             traceback.print_exc()
             return None

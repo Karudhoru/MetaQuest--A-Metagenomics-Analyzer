@@ -8,6 +8,9 @@ from Bio import SeqIO
 import threading
 from typing import Optional
 import time
+import re
+import json
+from collections import Counter
 import psutil
 from ..io.utils import parse_diamond_progress
 from ..config import SWISSPROT_DB
@@ -245,38 +248,41 @@ def run_prokka(
 
         sample_txt = prokka_dir / "sample.txt"
     filter_log = output_dir / "contig_filtering.log"
+    main_sample_txt = output_dir / "sample.txt"
     
-    if filter_log.exists():
-        # Read filter stats
-        filter_stats = {}
-        with open(filter_log, 'r') as f:
+    # Merge Prokka stats with filter stats
+    if sample_txt.exists():
+        # Read Prokka's sample.txt (has gene counts)
+        prokka_stats = {}
+        with open(sample_txt, 'r') as f:
             for line in f:
-                if 'Final bases:' in line:
-                    filter_stats['bases'] = int(line.split(':')[1].strip())
-                elif 'Filtered contigs:' in line:
-                    filter_stats['contigs'] = int(line.split(':')[1].strip())
+                if ':' in line:
+                    key, value = line.strip().split(':', 1)
+                    prokka_stats[key.strip()] = value.strip()
         
-        # Append/update sample.txt
-        if filter_stats and sample_txt.exists():
-            # Read existing content
-            with open(sample_txt, 'r') as f:
-                lines = f.readlines()
-            
-            # Update or append bases field
-            bases_found = False
-            with open(sample_txt, 'w') as f:
-                for line in lines:
-                    if line.startswith('bases:'):
-                        f.write(f"bases: {filter_stats['bases']}\n")
-                        bases_found = True
-                    else:
-                        f.write(line)
-                
-                # If bases wasn't in file, append it
-                if not bases_found:
-                    f.write(f"bases: {filter_stats['bases']}\n")
-            
-            formatter.info(f"Updated sample.txt with filtered assembly stats: {filter_stats['bases']:,} bp")
+        # Read filter stats if available
+        filter_stats = {}
+        if filter_log.exists():
+            with open(filter_log, 'r') as f:
+                for line in f:
+                    if 'Final bases:' in line:
+                        filter_stats['bases'] = int(line.split(':')[1].strip())
+                    elif 'Filtered contigs:' in line:
+                        filter_stats['contigs'] = int(line.split(':')[1].strip())
+        
+        # Write merged sample.txt to main output directory
+        with open(main_sample_txt, 'w') as f:
+            # Write Prokka stats first (they have gene counts)
+            for key, value in prokka_stats.items():
+                # Override bases/contigs with filtered values if available
+                if key == 'bases' and 'bases' in filter_stats:
+                    f.write(f"{key}: {filter_stats['bases']}\n")
+                elif key == 'contigs' and 'contigs' in filter_stats:
+                    f.write(f"{key}: {filter_stats['contigs']}\n")
+                else:
+                    f.write(f"{key}: {value}\n")
+        
+        formatter.info(f"Merged Prokka and filter stats into {main_sample_txt.name}")
 
     else:
         missing = [f.name for f in essential_files if not f.exists()]
@@ -346,4 +352,55 @@ def run_functional_annotation(prokka_dir: Path, output_dir: Path, threads: int =
         return diamond_output
     else:
         formatter.warning("DIAMOND produced no results or failed.")
+        return None
+    
+def run_pathway_analysis(annotation_file: Path, output_dir: Path):
+    """
+    Performs a lightweight metabolic pathway analysis by parsing
+    EC numbers from an existing annotation file and saving the raw counts.
+    """
+    formatter = get_formatter()
+    formatter.section_header("Metabolic Pathway Analysis")
+    
+    output_json = output_dir / "pathway_ec_counts.json"
+    
+    if not annotation_file or not annotation_file.exists() or annotation_file.stat().st_size == 0:
+        formatter.warning("Annotation file missing or empty. Skipping pathway analysis.")
+        return None
+
+    # Regex to find EC numbers like [EC:1.1.1.1] or [EC:1.1.1.-]
+    ec_regex = re.compile(r'\[EC:([\d\.-]+)\]')
+    
+    ec_counts = Counter()
+    total_annotations_parsed = 0
+    
+    # 1. Read the annotation file and find all EC numbers
+    try:
+        with open(annotation_file, 'r') as f:
+            for line in f:
+                total_annotations_parsed += 1
+                matches = ec_regex.findall(line)
+                for ec in matches:
+                    if ec != '-' and not ec.endswith('.-'): # Ignore incomplete EC numbers
+                        ec_counts[ec] += 1
+    except Exception as e:
+        formatter.error(f"Failed to parse annotation file for EC numbers: {e}")
+        return None
+    
+    if not ec_counts:
+        formatter.info("No EC numbers found in annotations. Cannot generate pathway report.")
+        return None
+
+    formatter.success(f"Found {len(ec_counts)} unique EC numbers from {sum(ec_counts.values())} total hits.")
+    
+    # 2. Save the raw EC counts to a JSON file
+    try:
+        with open(output_json, 'w') as f:
+            json.dump(ec_counts, f, indent=2)
+        
+        formatter.success(f"Metabolic pathway raw data saved to {output_json.name}")
+        return output_json
+        
+    except Exception as e:
+        formatter.error(f"Failed to save EC counts JSON: {e}")
         return None

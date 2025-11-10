@@ -23,7 +23,7 @@ class FunctionalVisualizer(BaseVisualizer):
         try:
             swissprot_path = Path(swissprot_results)
             if not swissprot_path.exists() or swissprot_path.stat().st_size == 0:
-                print("  ⚠️ SwissProt results file missing or empty")
+                self.formatter.warning("SwissProt results file missing or empty")
                 return None
             
             df = pd.read_csv(swissprot_path, sep='\t', header=None,
@@ -31,7 +31,7 @@ class FunctionalVisualizer(BaseVisualizer):
                                   'evalue', 'bitscore', 'stitle'])
             
             if df.empty:
-                print("  ⚠️ No annotation data found")
+                self.formatter.warning("No annotation data found")
                 return None
             
             # Create 2x2 subplot dashboard
@@ -146,11 +146,11 @@ class FunctionalVisualizer(BaseVisualizer):
             )
             
             filepath = self.save_plot(fig, "annotation_quality_dashboard.html")
-            print(f"  ✓ Annotation quality dashboard saved: {filepath}")
+            self.formatter.success(f"Annotation quality dashboard saved: {Path(filepath).name}")
             return filepath
             
         except Exception as e:
-            print(f"  ✗ Error creating annotation quality dashboard: {e}")
+            self.formatter.error(f"Error creating annotation quality dashboard: {e}")
             import traceback
             traceback.print_exc()
             return None
@@ -163,14 +163,14 @@ class FunctionalVisualizer(BaseVisualizer):
             faa_files = list(prokka_path.glob("*.faa"))
             
             if not faa_files:
-                print("  ⚠️ No protein FASTA files found")
+                self.formatter.warning("No protein FASTA files found")
                 return None
             
             from Bio import SeqIO
             proteins = list(SeqIO.parse(faa_files[0], "fasta"))
             
             if not proteins:
-                print("  ⚠️ No proteins in FASTA file")
+                self.formatter.warning("No proteins in FASTA file")
                 return None
             
             lengths = [len(seq.seq) for seq in proteins]
@@ -293,11 +293,11 @@ class FunctionalVisualizer(BaseVisualizer):
             )
             
             filepath = self.save_plot(fig, "protein_length_analysis.html")
-            print(f"  ✓ Protein length analysis saved: {filepath}")
+            self.formatter.success(f"Protein length analysis saved: {Path(filepath).name}")
             return filepath
             
         except Exception as e:
-            print(f"  ✗ Error creating protein length analysis: {e}")
+            self.formatter.error(f"Error creating protein length analysis: {e}")
             import traceback
             traceback.print_exc()
             return None
@@ -309,7 +309,7 @@ class FunctionalVisualizer(BaseVisualizer):
             gff_files = list(prokka_path.glob("*.gff"))
             
             if not gff_files:
-                print("  ⚠️ No GFF files found")
+                self.formatter.warning("No GFF files found")
                 return None
             
             # Parse GFF to extract product annotations
@@ -326,7 +326,7 @@ class FunctionalVisualizer(BaseVisualizer):
                             products.append(product)
             
             if not products:
-                print("  ⚠️ No product annotations found")
+                self.formatter.warning("No product annotations found")
                 return None
             
             # Categorize products (simplified functional categories)
@@ -383,9 +383,9 @@ class FunctionalVisualizer(BaseVisualizer):
             )
             
             filepath = self.save_plot(fig, "functional_categories.html")
-            print(f"  ✓ Functional category chart saved: {filepath}")
+            self.formatter.success(f"Functional category chart saved: {Path(filepath).name}")
             return filepath
             
         except Exception as e:
-            print(f"  ✗ Error creating functional category chart: {e}")
+            self.formatter.error(f"Error creating functional category chart: {e}")
             return None

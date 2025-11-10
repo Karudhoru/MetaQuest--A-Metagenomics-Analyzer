@@ -597,33 +597,35 @@ def calculate_all_risks(bracken_file: Path,
                        pathogen_hits_file: Path,
                        ml_predictions_file: Path,
                        pathogen_organism_file: Optional[Path] = None) -> Dict:
-    """
-    Convenience function to calculate all risk scores from files.
-    
-    Args:
-        bracken_file: Path to Bracken report TSV
-        functional_file: Path to functional annotations TSV
-        pathogen_hits_file: Path to pathogen DB hits TSV
-        ml_predictions_file: Path to ML predictions JSON
-        pathogen_organism_file: Path to pathogen organism risk levels
-    
-    Returns:
-        Complete risk assessment dict
-    """
+    """Calculate all risk scores from files."""
     scorer = RiskScorer(pathogen_organism_file)
     
     # Load data
     bracken_df = pd.read_csv(bracken_file, sep='\t')
+    
+    # *** FIX: Read files first to check column count ***
     functional_df = pd.read_csv(functional_file, sep='\t', header=None)
     pathogen_df = pd.read_csv(pathogen_hits_file, sep='\t', header=None)
     
-    # Add column names to annotation files
+    # Add column names - handle variable column counts
     ann_cols = ['query_id', 'subject_id', 'identity', 'length', 'mismatches', 
                 'gaps', 'q_start', 'q_end', 's_start', 's_end', 'evalue', 
                 'bitscore', 'description']
-    functional_df.columns = ann_cols[:len(functional_df.columns)]
-    pathogen_df.columns = ann_cols[:len(pathogen_df.columns)]
     
+    # *** CRITICAL FIX: Only assign columns that exist ***
+    if len(functional_df.columns) <= len(ann_cols):
+        functional_df.columns = ann_cols[:len(functional_df.columns)]
+    else:
+        # More columns than expected - use positional names
+        functional_df.columns = ann_cols + [f'extra_{i}' for i in range(len(functional_df.columns) - len(ann_cols))]
+    
+    if len(pathogen_df.columns) <= len(ann_cols):
+        pathogen_df.columns = ann_cols[:len(pathogen_df.columns)]
+    else:
+        # More columns than expected - use positional names
+        pathogen_df.columns = ann_cols + [f'extra_{i}' for i in range(len(pathogen_df.columns) - len(ann_cols))]
+    
+    # Rest of function continues...
     ml_predictions = []
     if ml_predictions_file and ml_predictions_file.exists():
         try:
@@ -648,3 +650,4 @@ def calculate_all_risks(bracken_file: Path,
         'ml': ml,
         'integrated': integrated
     }
+

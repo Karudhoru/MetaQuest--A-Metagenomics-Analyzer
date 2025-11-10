@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 import numpy as np
 from pathlib import Path
 
-from .visualization import BaseVisualizer
+from .base_visualizer import BaseVisualizer
 
 class ComparativeVisualizer(BaseVisualizer):
     """Generates visualizations for the comparative analysis module."""
@@ -54,7 +54,7 @@ class ComparativeVisualizer(BaseVisualizer):
         fig.update_traces(marker=dict(size=12, line=dict(width=1, color='DarkSlateGrey')))
 
         self.save_plot(fig, "beta_diversity_pcoa.html")
-        print("  ✓ PCoA plot created: beta_diversity_pcoa.html")
+        self.formatter.success("PCoA plot created: beta_diversity_pcoa.html")
 
     def create_heatmap(self, abundance_df: pd.DataFrame, top_n: int = 50):
         """Creates an interactive heatmap of the top N most abundant species."""
@@ -98,13 +98,13 @@ class ComparativeVisualizer(BaseVisualizer):
         )
 
         self.save_plot(fig, "taxonomic_heatmap.html")
-        print("  ✓ Heatmap visualization created: taxonomic_heatmap.html")
+        self.formatter.success("Heatmap visualization created: taxonomic_heatmap.html")
 
     def create_volcano_plot(self, diff_abundance_df: pd.DataFrame, p_value_threshold: float = 0.1, fold_change_threshold: float = 2.0):
         """Creates an interactive volcano plot to visualize differential abundance."""
         
         if diff_abundance_df is None or diff_abundance_df.empty:
-            print("  ⚠️ Warning: No differential abundance data available for volcano plot")
+            self.formatter.warning("No differential abundance data available for volcano plot")
             return
         
         plot_df = diff_abundance_df.copy()
@@ -192,13 +192,13 @@ class ComparativeVisualizer(BaseVisualizer):
         )
 
         self.save_plot(fig, "volcano_plot.html")
-        print("  ✓ Volcano plot created: volcano_plot.html")
+        self.formatter.success("Volcano plot created: volcano_plot.html")
 
     def create_alpha_diversity_boxplot(self, alpha_diversity_df: pd.DataFrame):
         """Creates a comprehensive box plot comparing alpha diversity between groups."""
         
         if alpha_diversity_df is None or alpha_diversity_df.empty:
-            print("  ⚠️ Warning: No alpha diversity data available for box plot")
+            self.formatter.warning("No alpha diversity data available for box plot")
             return
         
         # Available metrics to plot
@@ -206,7 +206,7 @@ class ComparativeVisualizer(BaseVisualizer):
         available_metrics = [m for m in metrics if m in alpha_diversity_df.columns]
         
         if not available_metrics:
-            print("  ⚠️ Warning: No recognized alpha diversity metrics found")
+            self.formatter.warning("No recognized alpha diversity metrics found")
             return
         
         # Create subplot layout
@@ -271,7 +271,7 @@ class ComparativeVisualizer(BaseVisualizer):
             fig.update_xaxes(title_text="Group", row=row, col=col)
 
         self.save_plot(fig, "alpha_diversity_boxplot.html")
-        print("  ✓ Alpha diversity box plot created: alpha_diversity_boxplot.html")
+        self.formatter.success("Alpha diversity box plot created: alpha_diversity_boxplot.html")
         
     def create_abundance_barplot(self, abundance_df: pd.DataFrame, metadata_df: pd.DataFrame, top_n: int = 20):
         """Creates a stacked bar plot showing top species abundance by group."""
@@ -328,4 +328,4 @@ class ComparativeVisualizer(BaseVisualizer):
         )
         
         self.save_plot(fig, "abundance_barplot.html")
-        print("  ✓ Abundance bar plot created: abundance_barplot.html")
+        self.formatter.success("Abundance bar plot created: abundance_barplot.html")
