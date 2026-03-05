@@ -120,7 +120,7 @@ class MetaQuestProteinFeatureExtractor(BaseEstimator, TransformerMixin):
         """Fit the feature extractor (sklearn compatibility)"""
         print("🔧 Fitting MetaQuest Feature Extractor v2.1...")
         self.is_fitted = True
-        print("✅ Feature extractor fitted successfully!")
+        print("Feature extractor fitted successfully!")
         return self
     
     def transform(self, sequences):
@@ -445,7 +445,7 @@ def save_feature_extractor(feature_extractor, output_path):
         with open(metadata_file, 'w') as f:
             json.dump(metadata, f, indent=2)
         
-        print(f"✅ Feature extractor saved to: {extractor_file}")
+        print(f"Feature extractor saved to: {extractor_file}")
         return {'feature_extractor': str(extractor_file), 'metadata': str(metadata_file)}
         
     except Exception as e:
@@ -457,7 +457,7 @@ def load_feature_extractor(extractor_path):
     """Load a saved feature extractor"""
     try:
         feature_extractor = joblib.load(extractor_path)
-        print(f"✅ Feature extractor loaded from: {extractor_path}")
+        print(f"Feature extractor loaded from: {extractor_path}")
         return feature_extractor
     except Exception as e:
         print(f"❌ Error loading feature extractor: {e}")

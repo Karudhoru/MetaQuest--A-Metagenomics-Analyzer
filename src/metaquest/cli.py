@@ -1,14 +1,15 @@
 """
-MetaQuest CLI - Command Line Interface
-=======================================
+MetaQuest CLI - Command Line Interface (FASTQ-only version)
+============================================================
 
 A professional command-line interface for the MetaQuest metagenomics pipeline.
-Provides intuitive commands for validation, analysis, and comparative studies.
+Now exclusively supports FASTQ input for streamlined workflow.
 
 Author: MetaQuest Development Team
 """
 
 import argparse
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -16,135 +17,186 @@ from textwrap import dedent
 from datetime import datetime
 
 from .core.analysis import run_analysis
-from .core.comparative_analysis import run_comparison 
+from .core.comparative_analysis import run_comparison
 from .io.file_validator import FileValidator
 from .io.utils import run_system_check
 from .io.output_formatter import OutputFormatter, set_formatter
+from .config import __version__
 
-# Version and metadata
-__version__ = "4.0.0"
+# ============================================================================
+# APP METADATA
+# ============================================================================
+
 __app_name__ = "MetaQuest"
 __tagline__ = "An Integrated Metagenomics Analysis Pipeline"
 __author__ = "MetaQuest Development Team"
 
 
+# ============================================================================
+# ARGUMENT GROUP SETUP FUNCTIONS
+# ============================================================================
+
 def setup_fastq_validation_args(parser):
-    """Add FASTQ-specific validation arguments to a parser."""
+    """
+    Add FASTQ-specific validation arguments to a parser.
+    
+    Configures quality control thresholds for FASTQ validation including:
+    - Minimum quality scores
+    - Sequence count requirements
+    - Overrepresentation detection
+    """
     val_group = parser.add_argument_group(
         'FASTQ Validation Options',
-        'Configure quality control parameters for FASTQ files'
+        'Configure quality control parameters for FASTQ input files'
     )
+    
     val_group.add_argument(
         '-q', '--min-quality',
         type=int,
         default=20,
         metavar='SCORE',
-        help="Minimum mean quality score (default: 20)"
+        help="Minimum mean Phred quality score threshold (default: 20)"
     )
+    
     val_group.add_argument(
         '-n', '--min-sequences',
         type=int,
         default=100,
         metavar='NUM',
-        help="Minimum number of sequences (default: 100)"
+        help="Minimum number of sequences required for analysis (default: 100)"
     )
+    
     val_group.add_argument(
         '--overrep-threshold',
         type=float,
         default=0.1,
         metavar='PCT',
-        help="Threshold to flag overrepresented sequences (default: 0.1)"
+        help="Fraction threshold for flagging overrepresented sequences (default: 0.1)"
     )
-
 
 def setup_annotation_args(parser):
-    """Add annotation control arguments to a parser."""
+    """
+    Add functional annotation control arguments to a parser.
+    
+    Configures Prokka annotation parameters including:
+    - Process timeout settings
+    - Thread allocation
+    
+    Note: Prokka's default minimum contig length (200bp) is used.
+    """
     annot_group = parser.add_argument_group(
         'Annotation Control Options',
-        'Fine-tune the functional annotation process'
+        'Fine-tune the functional annotation process with Prokka'
     )
-    annot_group.add_argument(
-        '--no-filter-contigs',
-        dest='filter_contigs',
-        action='store_false',
-        default=True,
-        help="Skip contig filtering before Prokka annotation"
-    )
-    annot_group.add_argument(
-        '--min-contig-length',
-        type=int,
-        default=1000,
-        metavar='BP',
-        help="Minimum contig length for filtering (default: 1000)"
-    )
+    
     annot_group.add_argument(
         '--no-kill-tbl2asn',
         dest='kill_tbl2asn',
         action='store_false',
         default=True,
-        help="Don't auto-kill long-running tbl2asn process"
+        help="Disable automatic termination of long-running tbl2asn processes"
     )
+    
     annot_group.add_argument(
         '--tbl2asn-timeout',
         type=int,
-        default=300,
+        default=30,
         metavar='SEC',
-        help="Timeout for tbl2asn process in seconds (default: 300)"
+        help="Maximum allowed runtime for tbl2asn process in seconds (default: 30)"
     )
+    
     annot_group.add_argument(
         '--annotation-threads',
         type=int,
         default=8,
         metavar='NUM',
-        help="Number of threads for functional annotation (default: 8)"
+        help="Number of CPU threads for functional annotation (default: 8)"
     )
 
+# ============================================================================
+# VALIDATION HANDLER
+# ============================================================================
 
-def handle_validation(file_paths, file_type, args, formatter):
+def handle_validation(file_paths, args, formatter):
     """
-    Run file validation and return validation status.
+    Run comprehensive FASTQ file validation and return validation status.
     
     Args:
-        file_paths: List of file paths to validate
-        file_type: Type of files ('fasta' or 'fastq')
-        args: Command line arguments
-        formatter: OutputFormatter instance
+        file_paths: List of FASTQ file paths to validate
+        args: Command line arguments containing validation parameters
+        formatter: OutputFormatter instance for consistent logging
         
     Returns:
-        bool: True if all files are valid, False otherwise
+        bool: True if all files are valid, False if any file fails validation
     """
-    formatter.section_header("File Validation")
+    formatter.section_header("FILE VALIDATION")
     
     validator = FileValidator()
     
-    if file_type == 'fastq':
-        validator.quality_threshold = args.min_quality
-        validator.min_sequences = args.min_sequences
-        validator.overrep_threshold = args.overrep_threshold
+    # Configure FASTQ validation parameters
+    validator.quality_threshold = args.min_quality
+    validator.min_sequences = args.min_sequences
+    validator.overrep_threshold = args.overrep_threshold
+    
+    formatter.info("Validation Configuration:")
+    formatter.result({
+        'Quality threshold': f"Q{args.min_quality}",
+        'Minimum sequences': f"{args.min_sequences:,}",
+        'Overrepresentation cutoff': f"{args.overrep_threshold:.1%}"
+    }, indent=2)
 
     all_valid = True
     total_files = len(file_paths)
     
+    # Validate each file individually
     for i, file_path in enumerate(file_paths, 1):
-        formatter.info(f"Validating file {i}/{total_files}: {file_path}")
-        is_valid, _ = validator.validate_and_analyze(file_path, file_type)
+        if total_files > 1:
+            formatter.info(f"Validating file {i}/{total_files}: {Path(file_path).name}")
+        else:
+            formatter.info(f"Validating file: {Path(file_path).name}")
+        
+        is_valid, report = validator.validate_and_analyze(file_path, 'fastq')
         
         if not is_valid:
             all_valid = False
-            formatter.error(f"Validation failed for {file_path}")
+            formatter.error(f"Validation failed: {file_path}")
         else:
-            formatter.success(f"Validation passed for {file_path}")
+            formatter.success(f"Validation passed: {file_path}")
+    
+    print()  # Add spacing
+    
+    if total_files > 1:
+        formatter.info(f"Validation Summary: {total_files} file(s) processed")
+    
+    if all_valid:
+        formatter.success("All files validated successfully")
+        formatter.info("Files meet quality standards and are ready for analysis")
+    else:
+        formatter.error("Validation failed for one or more files")
+        formatter.info("Please address quality issues before proceeding")
     
     return all_valid
 
 
+# ============================================================================
+# CUSTOM HELP FORMATTER
+# ============================================================================
+
 class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):
-    """Custom formatter for better help text formatting."""
+    """
+    Enhanced help text formatter with improved readability.
+    
+    Features:
+    - Extended help position for better alignment
+    - Consistent column widths
+    - Cleaner option string formatting
+    """
     
     def __init__(self, prog):
         super().__init__(prog, max_help_position=35, width=100)
     
     def _format_action_invocation(self, action):
+        """Format command-line option strings with consistent styling."""
         if not action.option_strings:
             metavar, = self._metavar_formatter(action, action.dest)(1)
             return metavar
@@ -161,27 +213,62 @@ class CustomHelpFormatter(argparse.RawDescriptionHelpFormatter):
             return ', '.join(parts)
 
 
+# ============================================================================
+# PARSER CREATION
+# ============================================================================
+
 def create_parser():
-    """Create and configure the argument parser."""
+    """
+    Create and configure the main argument parser with all subcommands.
+    
+    Returns:
+        argparse.ArgumentParser: Fully configured parser with all commands and options
+    """
     
     description = dedent(f"""
-    MetaQuest v{__version__} - {__tagline__}
+    ═══════════════════════════════════════════════════════════════════════
+                           MetaQuest v{__version__}
+              {__tagline__}
+    ═══════════════════════════════════════════════════════════════════════
     
-    A comprehensive pipeline for metagenomic analysis featuring:
-      * Taxonomic classification (FASTQ/FASTA)
-      * Pathogen detection with risk assessment
-      * Machine learning-based predictions
-      * Statistical comparative analysis
-      * Interactive HTML reports
+    OVERVIEW:
+        MetaQuest is a comprehensive bioinformatics pipeline for metagenomic
+        FASTQ data analysis, integrating state-of-the-art tools for taxonomic
+        classification, functional annotation, and pathogen detection.
     
-    Quick Start:
-      metaquest check                              # Verify system setup
-      metaquest validate fastq --single reads.fq   # Validate input files
-      metaquest analyze fastq --single reads.fq    # Run full analysis
-      metaquest compare -i sample1/ sample2/ -m metadata.tsv
+    KEY CAPABILITIES:
+        • Taxonomic Profiling       - Kraken2/Bracken classification
+        • Pathogen Detection         - Multi-tier risk assessment system
+        • Machine Learning           - AI-powered pathogenicity prediction
+        • Functional Analysis        - Prokka gene prediction + SwissProt annotation
+        • Comparative Studies        - Statistical comparison across samples
+        • Interactive Reports        - Dynamic HTML dashboards with visualizations
     
-    Documentation:
-      GitHub: https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer
+    QUICK START EXAMPLES:
+        # Verify system configuration
+        metaquest check
+        
+        # Validate input files before analysis
+        metaquest validate --single reads.fastq.gz
+        
+        # Run complete analysis pipeline
+        metaquest analyze --single reads.fastq.gz -o results/
+        
+        # Compare multiple samples statistically
+        metaquest compare -m metadata.tsv -i sample1/ sample2/ sample3/ -o comparison_results/
+    
+    COMMON WORKFLOWS:
+        Single-end FASTQ:
+            metaquest analyze --single reads.fq -o output/
+        
+        Paired-end with custom assembler:
+            metaquest analyze --paired R1.fq R2.fq --assembler megahit
+        
+        Fast taxonomic profiling only:
+            metaquest analyze --single reads.fq --skip-annotation
+    
+    DOCUMENTATION:
+        GitHub: https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer
     """)
     
     parser = argparse.ArgumentParser(
@@ -191,68 +278,73 @@ def create_parser():
         epilog=f"Developed by {__author__}"
     )
     
+    # Global options
     parser.add_argument(
         '-v', '--version',
         action='version',
         version=f'MetaQuest version {__version__}'
     )
     
-    # Global verbosity options
     parser.add_argument(
         '--debug',
         action='store_true',
-        help='Full diagnostic output (includes all tool commands and output)'
+        help='Enable debug mode with full diagnostic output (includes all commands and stderr)'
     )
     
+    # Create subcommand parsers
     subparsers = parser.add_subparsers(
         dest='command',
         required=True,
         title='Available Commands',
-        description='Choose a command to run',
+        description='Choose a command to execute',
         metavar='COMMAND'
     )
 
-    # ========== CHECK COMMAND ==========
+    # ========================================================================
+    # CHECK COMMAND
+    # ========================================================================
     parser_check = subparsers.add_parser(
         'check',
         help='Verify system dependencies and database status',
-        description='Check if all required dependencies and databases are properly configured.',
+        description=dedent("""
+            System Dependency Verification
+            ==============================
+            
+            Performs comprehensive validation of:
+                • Command-line tools (Kraken2, Prokka, DIAMOND, SPAdes, MEGAHIT)
+                • Python package dependencies (Biopython, scikit-learn, etc.)
+                • Machine learning model artifacts
+                • Reference database files and indices
+            
+            Run this before your first analysis to ensure proper configuration.
+            Identifies missing dependencies with installation suggestions.
+        """),
         formatter_class=CustomHelpFormatter
     )
 
-    # ========== VALIDATE COMMAND ==========
+    # ========================================================================
+    # VALIDATE COMMAND
+    # ========================================================================
     parser_validate = subparsers.add_parser(
         'validate',
-        help='Validate input files without running analysis',
-        description='Perform quality control checks on input files.',
+        help='Validate FASTQ input files without running analysis',
+        description=dedent("""
+            FASTQ File Validation
+            =====================
+            
+            Quality control checks for FASTQ files:
+                • Format validation (proper headers, sequences)
+                • Quality score analysis
+                • Sequence count verification
+                • Overrepresentation detection
+                • File integrity checks
+            
+            Recommended to run before analysis to catch issues early.
+        """),
         formatter_class=CustomHelpFormatter
     )
     
-    validate_subparsers = parser_validate.add_subparsers(
-        dest='type',
-        required=True,
-        title='File Types',
-        metavar='TYPE'
-    )
-
-    # Validate FASTA
-    validate_fasta = validate_subparsers.add_parser(
-        'fasta',
-        help='Validate FASTA file(s)',
-        formatter_class=CustomHelpFormatter
-    )
-    validate_fasta.add_argument(
-        'input_file',
-        help="Path to the FASTA file"
-    )
-
-    # Validate FASTQ
-    validate_fastq = validate_subparsers.add_parser(
-        'fastq',
-        help='Validate FASTQ file(s)',
-        formatter_class=CustomHelpFormatter
-    )
-    validate_mode = validate_fastq.add_mutually_exclusive_group(required=True)
+    validate_mode = parser_validate.add_mutually_exclusive_group(required=True)
     validate_mode.add_argument(
         '--single',
         metavar='READS.fastq',
@@ -269,74 +361,58 @@ def create_parser():
         metavar='INTERLEAVED.fastq',
         help="Interleaved paired-end FASTQ file"
     )
-    setup_fastq_validation_args(validate_fastq)
+    setup_fastq_validation_args(parser_validate)
 
-    # ========== ANALYZE COMMAND ==========
+    # ========================================================================
+    # ANALYZE COMMAND
+    # ========================================================================
     parser_analyze = subparsers.add_parser(
         'analyze',
-        help='Run complete analysis pipeline',
-        description='Execute the full MetaQuest analysis pipeline on your data.',
+        help='Run complete FASTQ analysis pipeline',
+        description=dedent("""
+            Complete Metagenomics Analysis Pipeline
+            ========================================
+            
+            Executes the full MetaQuest pipeline on FASTQ reads:
+            
+            Pipeline Steps:
+                1. Taxonomic Classification (Kraken2 + Bracken)
+                2. Metagenomic Assembly (SPAdes or MEGAHIT)
+                3. Gene Prediction (Prokka)
+                4. Functional Annotation (DIAMOND → SwissProt + COG)
+                5. Pathway Analysis (KEGG mapping)
+                6. Pathogen Detection (Custom Marker Database + ML)
+                7. Risk Assessment (Multi-tier scoring)
+                8. Report Generation (HTML + text)
+            
+            Use --skip-annotation for rapid taxonomic classification only.
+        """),
         formatter_class=CustomHelpFormatter
     )
     
-    # Shared arguments for analysis
-    analysis_parent = argparse.ArgumentParser(add_help=False)
-    analysis_parent.add_argument(
+    # Add all standard arguments
+    parser_analyze.add_argument(
         '-o', '--output',
         default='results',
         metavar='DIR',
-        help="Output directory (default: results)"
+        help="Output directory for results (default: results)"
     )
-    analysis_parent.add_argument(
+    parser_analyze.add_argument(
         '--skip-validation',
         action='store_true',
-        help="Skip input validation (not recommended)"
+        help="Skip input file validation (not recommended for production use)"
     )
-    analysis_parent.add_argument(
+    parser_analyze.add_argument(
         '--skip-annotation',
         action='store_true',
-        help="Skip annotation for faster taxonomic-only analysis"
+        help="Skip annotation and functional analysis for faster taxonomic-only results"
     )
     
-    # Add annotation control arguments to shared parent
-    setup_annotation_args(analysis_parent)
+    # Add argument groups
+    setup_annotation_args(parser_analyze)
+    setup_fastq_validation_args(parser_analyze)
     
-    analysis_subparsers = parser_analyze.add_subparsers(
-        dest='type',
-        required=True,
-        title='Analysis Types',
-        metavar='TYPE'
-    )
-    
-    # Analyze FASTA
-    analyze_fasta = analysis_subparsers.add_parser(
-        'fasta',
-        help='Analyze FASTA sequences',
-        parents=[analysis_parent],
-        formatter_class=CustomHelpFormatter
-    )
-    analyze_fasta.add_argument(
-        'input_file',
-        help="Path to the FASTA file"
-    )
-    analyze_fasta.add_argument(
-        '-s', '--blast-sample-size',
-        type=int,
-        default=50,
-        metavar='NUM',
-        help="Number of sequences to BLAST (default: 50)"
-    )
-    
-    # Analyze FASTQ
-    analyze_fastq = analysis_subparsers.add_parser(
-        'fastq',
-        help='Analyze FASTQ sequences',
-        parents=[analysis_parent],
-        formatter_class=CustomHelpFormatter
-    )
-    setup_fastq_validation_args(analyze_fastq)
-    
-    fastq_mode = analyze_fastq.add_mutually_exclusive_group(required=True)
+    fastq_mode = parser_analyze.add_mutually_exclusive_group(required=True)
     fastq_mode.add_argument(
         '--single',
         metavar='READS.fastq',
@@ -346,7 +422,7 @@ def create_parser():
         '--paired',
         nargs=2,
         metavar=('R1.fastq', 'R2.fastq'),
-        help="Paired-end FASTQ files"
+        help="Paired-end FASTQ files (forward and reverse reads)"
     )
     fastq_mode.add_argument(
         '--interleaved',
@@ -354,11 +430,48 @@ def create_parser():
         help="Interleaved paired-end FASTQ file"
     )
 
-    # ========== COMPARE COMMAND ==========
+    # ========================================================================
+    # COMPARE COMMAND
+    # ========================================================================
     parser_compare = subparsers.add_parser(
         'compare',
         help='Perform comparative analysis across samples',
-        description='Statistical comparison of multiple MetaQuest analysis results.',
+        description=dedent("""
+            Comparative Metagenomic Analysis
+            =================================
+            
+            Statistical comparison of multiple MetaQuest results:
+            
+            Diversity Analysis:
+                • Alpha diversity metrics (Shannon, Simpson, Chao1)
+                • Rarefaction curves
+                • Species richness estimation
+            
+            Beta Diversity:
+                • Bray-Curtis dissimilarity
+                • Principal Coordinate Analysis (PCoA)
+                • PERMANOVA testing
+            
+            Differential Abundance:
+                • Statistical testing between groups
+                • Effect size calculation
+                • Multiple testing correction
+            
+            Functional Comparison:
+                • Pathway enrichment analysis
+                • Differential pathway testing
+                • Functional profile clustering
+            
+            Requirements:
+                • Multiple MetaQuest output directories
+                • Metadata file (TSV) with sample-to-group mappings
+            
+            Metadata Format:
+                sample_id    group    [optional_columns]
+                sample1      control  ...
+                sample2      control  ...
+                sample3      treatment ...
+        """),
         formatter_class=CustomHelpFormatter
     )
     parser_compare.add_argument(
@@ -366,71 +479,136 @@ def create_parser():
         nargs='+',
         required=True,
         metavar='DIR',
-        help="MetaQuest output directories to compare"
+        help="MetaQuest output directories to compare (space-separated list)"
     )
     parser_compare.add_argument(
         '-m', '--metadata',
         required=True,
         metavar='FILE',
-        help="Metadata file (TSV) linking samples to groups"
+        help="Metadata file (TSV format) linking sample IDs to experimental groups"
     )
     parser_compare.add_argument(
         '-o', '--output',
         default='comparison_results',
         metavar='DIR',
-        help="Output directory (default: comparison_results)"
+        help="Output directory for comparison results (default: comparison_results)"
+    )
+
+    # ========================================================================
+    # SETUP-DB COMMAND
+    # ========================================================================
+    parser_setup_db = subparsers.add_parser(
+        'setup-db',
+        help='Download and configure required reference databases',
+        description=dedent("""
+            Database Setup Utility
+            ======================
+            
+            Automated download and configuration of reference databases:
+                • Kraken2/Bracken database (MiniKraken ~8GB)
+                • Custom pathogen marker database (DIAMOND)
+                • SwissProt + COG combined database (DIAMOND)
+            
+            Options:
+                --all          Setup all databases (recommended for first-time setup)
+                --kraken       Setup only Kraken2 database
+                --pathogen     Setup only pathogen marker database
+                --swissprot    Setup only SwissProt+COG database
+            
+            Note: Requires wget, tar, gunzip, and diamond to be installed.
+        """),
+        formatter_class=CustomHelpFormatter
+    )
+
+    db_options = parser_setup_db.add_argument_group('Database Selection')
+    db_options.add_argument(
+        '--all',
+        action='store_true',
+        help='Setup all databases (Kraken2, pathogen markers, SwissProt+COG)'
+    )
+    db_options.add_argument(
+        '--kraken',
+        action='store_true',
+        help='Setup Kraken2/Bracken database only'
+    )
+    db_options.add_argument(
+        '--pathogen',
+        action='store_true',
+        help='Setup custom pathogen marker database only'
+    )
+    db_options.add_argument(
+        '--swissprot',
+        action='store_true',
+        help='Setup SwissProt+COG combined database only'
     )
 
     return parser
 
+# ============================================================================
+# MAIN ENTRY POINT
+# ============================================================================
 
 def main():
-    """Main entry point for the MetaQuest CLI."""
+    """
+    Main entry point for the MetaQuest CLI.
+    
+    Orchestrates:
+        • Argument parsing and validation
+        • Output formatter initialization
+        • Command execution routing
+        • Error handling and user feedback
+        • Runtime tracking and reporting
+    """
     
     parser = create_parser()
     args = parser.parse_args()
     
-    # Determine verbosity level
+    # Determine verbosity level from command-line flags
     verbosity = 'debug' if args.debug else 'standard'
     
-    # Setup log file path if output directory is specified
+    # Setup log file path if output directory specified
     log_file = None
     if hasattr(args, 'output') and args.output:
         log_file = Path(args.output) / 'metaquest.log'
     
-    # Initialize global formatter
+    # Initialize global output formatter
     formatter = OutputFormatter(verbosity=verbosity, log_file=log_file)
     set_formatter(formatter)
     
-    # Show banner (unless --version or --help)
+    # Show banner (unless version or help requested)
     if not any(arg in sys.argv for arg in ['-v', '--version', '-h', '--help']):
         formatter.banner(__app_name__, __version__, __tagline__)
 
     start_time = time.time()
 
     try:
-        # ========== COMMAND: CHECK ==========
+        # ====================================================================
+        # COMMAND: CHECK
+        # ====================================================================
         if args.command == 'check':
-            formatter.section_header("System Check")
-            run_system_check(formatter) # Pass formatter here
+            formatter.section_header("SYSTEM DEPENDENCY CHECK")
+            formatter.info("Verifying installation of required tools and databases...")
+            
+            run_system_check(formatter)
+            
             formatter.success("System check completed successfully")
+            formatter.info("All required dependencies are properly configured")
             sys.exit(0)
 
-        # ========== VALIDATE FILE PATHS ==========
+        # ====================================================================
+        # FILE PATH VALIDATION (for analyze and validate commands)
+        # ====================================================================
         if args.command in ['analyze', 'validate']:
             file_paths = []
             
-            if args.type == 'fasta':
-                file_paths = [args.input_file]
-            elif args.type == 'fastq':
-                if args.single:
-                    file_paths = [args.single]
-                elif args.paired:
-                    file_paths = args.paired
-                elif args.interleaved:
-                    file_paths = [args.interleaved]
+            if args.single:
+                file_paths = [args.single]
+            elif args.paired:
+                file_paths = args.paired
+            elif args.interleaved:
+                file_paths = [args.interleaved]
 
-            # Check file existence
+            # Check file existence before proceeding
             for f in file_paths:
                 if not Path(f).exists():
                     formatter.error(
@@ -438,90 +616,177 @@ def main():
                         solutions=[
                             "Check the file path for typos",
                             "Verify the file exists in the current directory",
-                            "Use absolute path instead of relative path"
+                            "Use absolute path instead of relative path",
+                            "Check file permissions"
                         ]
                     )
                     sys.exit(1)
 
-        # ========== COMMAND: VALIDATE ==========
+        # ====================================================================
+        # COMMAND: VALIDATE
+        # ====================================================================
         if args.command == 'validate':
-            is_valid = handle_validation(file_paths, args.type, args, formatter)
+            is_valid = handle_validation(file_paths, args, formatter)
             
             if is_valid:
                 formatter.success("All files validated successfully")
-                formatter.info("Files are ready for analysis")
+                formatter.info("Files meet quality standards and are ready for analysis")
             else:
                 formatter.error("Validation failed for one or more files")
-                formatter.info("Please fix the issues before proceeding with analysis")
+                formatter.info("Please address the quality issues before proceeding with analysis")
             
             sys.exit(0 if is_valid else 1)
         
-        # ========== COMMAND: ANALYZE ==========
+        # ====================================================================
+        # COMMAND: ANALYZE
+        # ====================================================================
         elif args.command == 'analyze':
-            formatter.section_header("Analysis Pipeline")
+            formatter.section_header("ANALYSIS PIPELINE INITIALIZATION")
 
             # System check
-            with formatter.spinner("Verifying system dependencies"):
-                run_system_check(formatter) # Pass formatter here
-            formatter.success("System check passed")
+            formatter.info("Performing system dependency check...")
+            with formatter.spinner("Verifying required tools and databases"):
+                run_system_check(formatter)
+            formatter.success("System check passed - all dependencies available")
 
             # File validation (unless skipped)
             if not args.skip_validation:
-                is_valid = handle_validation(file_paths, args.type, args, formatter)
+                is_valid = handle_validation(file_paths, args, formatter)
                 if not is_valid:
                     formatter.error(
                         "Analysis aborted due to validation failure",
                         solutions=[
-                            "Fix validation errors and try again",
+                            "Fix validation errors reported above",
+                            "Improve input file quality if needed",
                             "Use --skip-validation flag to bypass (not recommended)"
                         ]
                     )
                     sys.exit(1)
-                formatter.success("Input validation passed")
+                formatter.success("Input validation completed - files meet quality standards")
             else:
-                formatter.warning("Skipping file validation (--skip-validation flag)")
+                formatter.warning("Skipping file validation (--skip-validation flag detected)")
+                formatter.info("Proceeding with unvalidated data")
+            
+            formatter.section_header("ASSEMBLY CONFIGURATION")
+            formatter.result({
+                'Read type': 'Single-end' if args.single else 'Paired-end' if args.paired else 'Interleaved',
+                'Assembler': 'MEGAHIT'
+            })
 
             # Display annotation settings if not skipping annotation
             if not args.skip_annotation:
-                formatter.section_header("Annotation Settings")
+                formatter.section_header("ANNOTATION SETTINGS")
                 formatter.result({
-                    'Contig filtering': 'Enabled' if args.filter_contigs else 'Disabled',
-                    'Min contig length': f"{args.min_contig_length} bp" if args.filter_contigs else 'N/A',
+                    'Min contig length': '200 bp (Prokka default)',
                     'tbl2asn auto-kill': 'Enabled' if args.kill_tbl2asn else 'Disabled',
                     'tbl2asn timeout': f"{args.tbl2asn_timeout}s" if args.kill_tbl2asn else 'N/A',
                     'Annotation threads': str(args.annotation_threads)
                 })
-
-            # Run analysis
-            formatter.section_header(f"{args.type.upper()} Analysis")
+                
+            # Run analysis pipeline
+            formatter.section_header("FASTQ ANALYSIS")
             formatter.info(f"Input: {', '.join(file_paths)}")
             formatter.info(f"Output: {args.output}")
+            formatter.info("Initiating analysis pipeline...\n")
             
-            run_analysis(file_paths, args.type, args.output, args)
+            run_analysis(file_paths, args.output, args)
 
-            # Show elapsed time
+            # Show elapsed time and results location
             elapsed = time.time() - start_time
             formatter.success(f"Analysis completed in {formatter._format_time(elapsed)}")
             formatter.info(f"Results: {Path(args.output) / 'analysis_dashboard.html'}")
 
-        # ========== COMMAND: COMPARE ==========
+        # ====================================================================
+        # COMMAND: COMPARE
+        # ====================================================================
         elif args.command == 'compare':
-            formatter.section_header("Comparative Analysis")
+            formatter.section_header("COMPARATIVE ANALYSIS")
             
             formatter.result({
-                'Samples': str(len(args.inputs)),
-                'Metadata': args.metadata,
-                'Output': args.output
+                'Samples to compare': str(len(args.inputs)),
+                'Metadata file': args.metadata,
+                'Output directory': args.output
             })
             
+            formatter.info("Initiating comparative statistical analysis...")
             run_comparison(args.inputs, args.metadata, args.output)
             
             elapsed = time.time() - start_time
             formatter.success(f"Comparison completed in {formatter._format_time(elapsed)}")
             formatter.info(f"Results: {args.output}")
 
+        # ====================================================================
+        # COMMAND: SETUP-DB
+        # ====================================================================
+        elif args.command == 'setup-db':
+            formatter.section_header("DATABASE SETUP")
+            
+            # Check if at least one database option is selected
+            if not (args.all or args.kraken or args.pathogen or args.swissprot):
+                formatter.error(
+                    "No database selected",
+                    solutions=[
+                        "Use --all to setup all databases",
+                        "Use --kraken, --pathogen, or --swissprot for specific databases",
+                        "Run 'metaquest setup-db --help' for more information"
+                    ]
+                )
+                sys.exit(1)
+            
+            # Locate the setup script
+            script_dir = Path(__file__).parent.parent.parent
+            setup_script = script_dir / 'scripts' / 'setup_databases.sh'
+            
+            if not setup_script.exists():
+                formatter.error(
+                    f"Setup script not found: {setup_script}",
+                    solutions=[
+                        "Ensure MetaQuest is properly installed",
+                        "Check if scripts/setup_databases.sh exists in the installation directory"
+                    ]
+                )
+                sys.exit(1)
+            
+            # Build command arguments
+            script_args = []
+            if args.all:
+                script_args.append('--all')
+            else:
+                if args.kraken:
+                    script_args.append('--kraken')
+                if args.pathogen:
+                    script_args.append('--pathogen')
+                if args.swissprot:
+                    script_args.append('--swissprot')
+                        
+            formatter.info(f"Executing database setup script: {setup_script}")
+            formatter.info(f"Arguments: {' '.join(script_args)}")
+            formatter.warning("This may take some time and require significant disk space")
+            
+            try:
+                result = subprocess.run(
+                    ['bash', str(setup_script)] + script_args,
+                    check=True,
+                    capture_output=False
+                )
+                
+                elapsed = time.time() - start_time
+                formatter.success(f"Database setup completed in {formatter._format_time(elapsed)}")
+                
+            except subprocess.CalledProcessError as e:
+                formatter.error(
+                    "Database setup failed",
+                    solutions=[
+                        "Check that wget, tar, gunzip, and diamond are installed",
+                        "Ensure sufficient disk space is available",
+                        "Check network connectivity for downloads",
+                        "Review error messages above for specific issues"
+                    ]
+                )
+                sys.exit(1)
+
     except KeyboardInterrupt:
-        formatter.warning("Operation interrupted by user")
+        formatter.warning("Operation interrupted by user (Ctrl+C)")
         sys.exit(130)
     
     except Exception as e:
