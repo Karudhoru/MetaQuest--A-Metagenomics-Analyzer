@@ -65,6 +65,10 @@ results/
 output/
 *.log
 
+# ── Test Data & Pipeline Outputs ─────────────────────────────────────────────
+test_data/
+test_results/
+
 # ── Temporary / Scratch ───────────────────────────────────────────────────────
 tmp/
 temp/
