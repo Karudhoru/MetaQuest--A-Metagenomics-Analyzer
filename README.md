@@ -2,541 +2,361 @@
 
 **A Comprehensive Metagenomics Analysis Pipeline**
 
------
+---
 
 ## Overview
 
-MetaQuest is an integrated bioinformatics pipeline that addresses the complex challenges of metagenomic data analysis. By combining state-of-the-art tools and databases, MetaQuest provides researchers with a streamlined workflow for understanding microbial community composition, identifying potential pathogens, and assessing antimicrobial resistance profiles from sequencing data.
+MetaQuest is an integrated bioinformatics pipeline for metagenomic data analysis. It combines state-of-the-art tools and databases to provide researchers with a streamlined workflow for understanding microbial community composition, identifying potential pathogens, and assessing antimicrobial resistance profiles from sequencing data.
 
 **Key Capabilities:**
 
-  - **Taxonomic Classification**: High-accuracy taxonomic profiling.
-  - **Pathogen Detection**: **Perfected 100% specificity** by filtering housekeeping genes.
-  - **Machine learning-enhanced pathogen prediction** (Also in FASTQ).
-  - **Advanced Comparative Analysis (v2.0)**: Compositional data normalization (CLR, rarefaction), multi-group stats (Kruskal-Wallis), effect sizes (Cliff's Delta, R²), and statistical power analysis.
-  - **Comprehensive File Validation** and quality control.
-  - **Interactive Visualizations** and professional reporting via a new **Output Formatter**.
-  - **Enhanced Functional Annotation** with COG and SwissProt databases.
-  - **Professional Logging System** with debug mode.
+- **Taxonomic Classification** — High-accuracy taxonomic profiling via Kraken2/Bracken.
+- **Pathogen Detection** — Fragment-aware confidence scoring with 100% specificity (v4.1 DB).
+- **Functional Annotation** — Dual-database system: COG + SwissProt via DIAMOND/Prokka.
+- **Machine Learning** — ML-enhanced pathogen prediction and biomarker discovery.
+- **Comparative Analysis** — Compositional normalization (CLR/TSS), multi-group stats, effect sizes, power analysis.
+- **Validation Engine** — Multi-evidence gene-to-species linkage with Bracken confidence scoring.
+- **Professional Reporting** — Publication-ready text reports with scientific formatting.
+- **Interactive Visualizations** — Modular, publication-ready dashboard and plots.
 
------
+---
 
 ## Table of Contents
 
-  - [Development Status](#development-status)
-  - [What's New in Version 5.0.0](#whats-new-in-version-500)
-  - [Features](#features)
-  - [System Architecture](#system-architecture)
-  - [Benchmark Performance](#benchmark-performance)
-  - [Installation](#installation)
-  - [Quick Start](#quick-start)
-  - [Documentation](#documentation)
-  - [Contributing](#contributing)
-  - [Support](#support)
+- [Development Status](#development-status)
+- [What's New in v5.0.0](#whats-new-in-v500)
+- [Features](#features)
+- [System Architecture](#system-architecture)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [Support](#support)
 
------
+---
 
 ## Development Status
 
 **Current Version:** 5.0.0 (March 2026)
 
-MetaQuest continues active development with major improvements to statistical analysis, database accuracy, and user experience.
-
 ### Completed Features
 
 | Component | Status | Description |
-|-----------|---------|-------------|
-| **File Validation & Quality Control** | ✅ Complete | Comprehensive validation with detailed statistics for both FASTQ and FASTA inputs. |
-| **Taxonomic Classification** | ✅ Complete | Both FASTQ and FASTA taxonomic profiling are accurate and fully functional. |
-| **Pathogen Detection** | ✅ Complete | **v4.1**: Comprehensive detection with **100% specificity** (housekeeping genes filtered). |
-| **Machine Learning Integration** | ✅ Complete | Advanced ML-based pathogen prediction with feature extraction and model artifacts. |
-| **Comparative Analysis** | ✅ Complete | **v2.0**: Advanced statistical comparison with normalization, power analysis, multi-group stats, and effect sizes. |
-| **Beta Diversity Analysis** | ✅ Complete | PERMANOVA (with **R²**) and ANOSIM statistical tests with PCoA visualization. |
-| **Alpha Diversity Analysis** | ✅ Complete | **Multi-group stats (Kruskal-Wallis)**, post-hoc tests, and **effect sizes (Cliff's Delta)**. |
-| **Differential Abundance Testing** | ✅ Complete | Enhanced with **prevalence filtering** and **Cliff's Delta effect size**. |
-| **Machine Learning Biomarker Discovery** | ✅ Complete | Enhanced with **hyperparameter tuning (GridSearchCV)** and **feature selection (SelectKBest)**. |
-| **Enhanced Functional Annotation** | ✅ Complete | Dual-database annotation system combining COG and SwissProt with detailed reporting. |
-| **Advanced Gene Prediction** | ✅ Complete | Prokka annotation with customizable contig filtering and timeout controls. |
-| **Professional Logging System** | ✅ Complete | Dual-mode output (standard/debug) via **OutputFormatter**. |
-| **Enhanced Reporting System** | ✅ Complete | Comprehensive text-based reports with clinical and research perspectives. |
+|-----------|--------|-------------|
+| **File Validation & Quality Control** | ✅ Complete | Comprehensive validation for both FASTQ and FASTA inputs with detailed statistics. |
+| **Taxonomic Classification** | ✅ Complete | FASTQ and FASTA taxonomic profiling via Kraken2/Bracken. |
+| **Pathogen Detection** | ✅ Complete | Fragment-aware confidence scoring with 100% specificity (housekeeping genes filtered). |
+| **Validation Engine** | ✅ Complete | Vectorized gene-to-species linkage, Bracken confidence scoring, multi-evidence validation. |
+| **Machine Learning Integration** | ✅ Complete | ML-based pathogen prediction with feature extraction and pre-trained model artifacts. |
+| **Comparative Analysis** | ✅ Complete | v2.0: CLR/TSS normalization, power analysis, Kruskal-Wallis, Cliff's Delta, R². |
+| **Beta Diversity** | ✅ Complete | PERMANOVA (with R²) and ANOSIM with PCoA visualization. |
+| **Alpha Diversity** | ✅ Complete | Multi-group Kruskal-Wallis with post-hoc tests and Cliff's Delta effect size. |
+| **Differential Abundance** | ✅ Complete | Prevalence filtering and Cliff's Delta effect size. |
+| **ML Biomarker Discovery** | ✅ Complete | GridSearchCV hyperparameter tuning + SelectKBest feature selection. |
+| **Functional Annotation** | ✅ Complete | COG + SwissProt dual-database with methodology-accurate reporting. |
+| **Gene Prediction** | ✅ Complete | Prokka with contig filtering, tbl2asn timeout controls, configurable threading. |
+| **Professional Logging** | ✅ Complete | Dual-mode (standard/debug) via OutputFormatter. |
+| **Reporting System** | ✅ Complete | Publication-ready taxonomic, functional, and pathogen risk reports. |
 
 ### In Development
 
-| Component | Status | Target Completion |
-|-----------|---------|-------------------|
-| **Pathogen DB Benchmarking** | In Progress | Q1 2026 |
+| Component | Status | Target |
+|-----------|--------|--------|
+| **Pathogen DB Benchmarking** | In Progress | Q2 2026 |
 | **Metabolic Pathway Reconstruction** | Planning | Q3 2026 |
 | **Advanced ML Models (v4.2)** | Planning | Q2 2026 |
 
-### Recent Releases
+### Release History
 
-| Version | Date | Key Features |
-|---------|------|-------------|
-| **v5.0.0** | Mar 2026 | **Publication-ready reports**: Scientific audit and fixes for all reporters. **Validation Engine**: Vectorized gene-species linkage, robust error handling. **Code Refinement**: Standardized output formatting, version consistency, and cleanup. |
-| **v4.1.0** | Nov 2025 | **Advanced Comparative Analysis (v2.0)**: Complete overhaul with compositional data normalization (CLR, rarefaction), multi-group stats (Kruskal-Wallis), effect sizes (Cliff's Delta, R²), statistical power analysis, and enhanced ML biomarker discovery (hyperparameter tuning). **Pathogen DB v4.1**: Perfected 100% specificity by filtering housekeeping genes. |
-| **v4.0.0** | Oct 2025 | Enhanced COG+SwissProt annotation with comprehensive reporting, new and updated ML model v2.1, advanced gene prediction controls, professional logging system with debug mode. |
-| **v3.6.0** | Oct 2025 | SPAdes metagenomic assembly, enhanced COG+SwissProt annotation, modular visualization system with specialized plotters. |
-| **v3.5.0** | Aug 2025 | Enhanced statistical testing, advanced ML biomarker discovery, comprehensive comparative visualizations. |
-| **v3.3.0** | Aug 2025 | Comparative analysis pipeline, statistical testing, beta diversity visualization, alpha diversity visualization. |
+See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
------
+| Version | Date | Summary |
+|---------|------|---------|
+| **v5.0.0** | Mar 2026 | Validation engine, fragment-aware pathogen scoring, publication-ready reports, scientific audit fixes, code cleanup. |
+| **v4.1.0** | Nov 2025 | Comparative Analysis v2.0, Pathogen DB v4.1 (100% sensitivity & specificity), effect sizes. |
+| **v4.0.0** | Oct 2025 | COG+SwissProt annotation, ML model v2.1, professional logging system. |
+| **v3.6.0** | Oct 2025 | SPAdes assembly, modular visualization system. |
 
-## What's New in Version 5.0.0
+---
 
-### Major Improvements
+## What's New in v5.0.0
 
-**1. Advanced Comparative Analysis (v2.0)**
+### 1. Validation Engine
 
-  - **Compositional Data Handling**: Full support for **TSS** (relative abundance), **CLR** (Centered Log-Ratio), and **rarefaction** normalization.
-  - **Statistical Power Assessment**: Automatically analyzes your cohort size and provides recommendations and estimates of detectable effect sizes.
-  - **Multi-Group Statistics**: Upgraded alpha diversity to use **Kruskal-Wallis** for \>2 groups, with automated pairwise post-hoc tests.
-  - **Effect Size Metrics**: Integrated robust effect size calculations (**Cliff's Delta** for differential abundance, **epsilon-squared** for alpha diversity, **R²** for PERMANOVA) for measuring the magnitude of findings.
-  - **Enhanced ML Biomarkers**: The biomarker discovery pipeline now uses **SelectKBest** for feature selection and **GridSearchCV** for hyperparameter tuning, resulting in more accurate and reliable models.
-  - **Prevalence Filtering**: Smarter differential abundance testing that filters out extremely rare species for more meaningful results.
+A new `validation_engine.py` provides multi-evidence pathogen validation:
 
-**2. Pathogen Database v4.1 (Critical Update)**
+- **Vectorized gene-to-species linkage** via pandas merge (5–10× faster than previous loop implementation).
+- **Bracken confidence scoring** — distinguishes direct Kraken hits from inferred reads to assign HIGH/MODERATE/LOW species confidence. Risk scores reduced 30% for low-confidence dominant taxa.
+- **Exact species matching** — no genus-level mismatches.
 
-  - **Perfected Specificity**: The database build process now actively filters common housekeeping genes (*rpoB*, *gyrA*, etc.), eliminating major sources of false positives and achieving **100% specificity**.
-  - **Benchmark-Proven**: Achieves **100% sensitivity** and **100% specificity** on our critical marker test suite (see Benchmark section).
-  - **Comprehensive Coverage**: Retains 100% coverage for all critical markers, including **mecA (MRSA)**, **mcr-1 (Colistin)**, and all major carbapenemases (KPC, NDM, OXA).
+### 2. Fragment-Aware Pathogen Detection
 
-**3. Standardized Output & Logging**
+Replaced simple identity/coverage filter with a 7-factor confidence model:
 
-  - The professional `OutputFormatter` is now fully integrated into the **reporting** and **visualization** modules, ensuring all console output is consistent, clean, and professional.
-  - Better progress tracking for comparative analysis and visualization steps.
+- Fragment completeness (sigmoid curve), sequence identity × coverage, organism abundance (log₁₀ scale), contig sequencing depth, critical motif detection, Prokka cross-validation, signal peptide detection.
+- Tiers: **HIGH** (≥70), **MEDIUM** (45–69), **LOW** (<45).
 
-**4. Code Refinement & Bug Fixes**
+### 3. Scientific Report Fixes
 
-  - General code cleanup and performance optimizations.
-  - Fixed bugs in command-line argument parsing (e.g., removed non-existent `ident` arg).
+- **Risk scoring**: z-score baseline (gut microbiome-specific) replaced with sample-agnostic absolute functional density scoring.
+- **Taxonomic reporter**: classification rate now from Kraken2 `unclassified` row, not Bracken estimates.
+- **Functional reporter**: annotation counts properly distinguish unique annotated proteins from total DIAMOND alignments.
+- **All reporters**: version unified to 5.0.0.
 
------
+### 4. New I/O Modules
+
+- `io/data_loaders.py` — centralized, memory-efficient data loading.
+- `io/text_parsers.py` — shared parsing utilities.
+- `config/pathogen_config.json` — externalized configuration for easier DB updates.
+
+---
 
 ## Features
 
 ### Core Analysis Capabilities
 
-**Advanced File Validation**
+**File Validation & QC**
+- FASTQ: quality score analysis, contamination detection, MD5 checksums.
+- FASTA: sequence type detection, composition analysis, N50 metrics.
 
-  - FASTQ quality control with quality score analysis and contamination detection.
-  - FASTA format validation with sequence type detection and composition analysis.
-  - Comprehensive statistics including MD5 checksums and N50 metrics.
+**Taxonomic Classification**
+- Kraken2/Bracken classification with confidence-weighted species assignment.
+- True classification rate from Kraken2 unclassified read counts.
 
-**Enhanced Functional Annotation**
+**Pathogen Detection**
+- v4.1 database: housekeeping genes filtered, 100% sensitivity and specificity.
+- 7-factor fragment confidence scoring with tiered output (HIGH/MEDIUM/LOW).
+- Bracken confidence integration to flag low-evidence detections.
 
-  - Dual-database annotation system combining COG and SwissProt.
-  - COG database: Comprehensive functional categories and orthologous groups.
-  - SwissProt database: High-quality, manually curated protein annotations.
-  - Increased annotation coverage and functional depth.
-  - Mobile genetic element analysis with IS family classification.
-
-**Advanced Gene Prediction Controls**
-
-  - Prokka annotation with customizable parameters.
-  - Contig filtering options (enable/disable, custom length thresholds).
-  - tbl2asn timeout management with auto-kill functionality.
-  - Configurable threading for optimal performance.
-
-**Professional Logging System**
-
-  - **Standard Mode**: Clean, user-friendly progress output powered by the **OutputFormatter**.
-  - **Debug Mode** (`--debug`): Comprehensive diagnostic output.
-  - Full command-line tool invocations.
-
-**Machine Learning Integration**
-
-  - Automated feature extraction for ML models.
-  - Pre-trained pathogen classification models.
-  - Random Forest biomarker discovery with cross-validation.
-
-**Pathogen Screening (v4.1 DB)**
-
-  - **100% Specificity**: New database filters housekeeping genes to prevent false positives.
-  - **100% Sensitivity**: Correctly identifies all critical markers like `mecA` and `mcr-1`.
-  - Clinical risk assessment with comprehensive risk stratification.
-
-**Advanced Statistical Analysis (v2.0)**
-
-  - **Statistical Power Assessment**: Provides recommendations based on sample size.
-  - **Compositional Data Normalization**: Supports **TSS**, **CLR**, and **rarefaction**.
-  - **Alpha Diversity**: Multi-group comparisons (Kruskal-Wallis) with post-hoc tests and **Cliff's Delta** effect size.
-  - **Beta Diversity**: PERMANOVA (with **R² effect size**) and ANOSIM statistical tests.
-  - **Differential Abundance**: Enhanced with prevalence filtering and **Cliff's Delta** effect size.
-  - **Machine Learning Biomarkers**: Upgraded with **hyperparameter tuning** (GridSearchCV) and **feature selection** (SelectKBest).
-
-**Enhanced Reporting System**
-
-  - **Powered by OutputFormatter** for consistent, professional console output.
-  - **Taxonomic Reports**: Clinical and research perspectives with diversity metrics.
-  - **Functional Reports**: Detailed COG category analysis, mobile element tracking.
-  - **Pathogen Risk Reports**: Three-tier assessment with integrated scoring.
-
-**Modular Visualization System**
-
-  - **Powered by OutputFormatter** for standardized logging during plot generation.
-  - Completely redesigned with modular architecture.
-  - Modern, publication-ready visualizations.
-
-### Analysis Workflows
-
-**FASTQ Analysis (Clinical Focus)**
-
-  - Quality control and preprocessing.
-  - Rapid Kraken2/Bracken classification.
-  - **High-specificity** pathogen screening with clinical recommendations.
-  - Enhanced functional annotation with COG+SwissProt.
-  - Detailed text reports for all analysis components.
-
-**FASTA Analysis (Research Focus)**
-
-  - High-accuracy BLAST classification.
-  - Machine learning pathogen prediction.
-  - Comprehensive taxonomic profiling.
-  - Detailed functional annotation with dual databases.
-  - Research-oriented detailed reports.
+**Functional Annotation**
+- Prokka gene prediction with configurable contig filtering and timeout management.
+- DIAMOND against COG + SwissProt databases.
+- COG category analysis, IS family classification, mobile genetic element tracking.
 
 **Comparative Analysis (v2.0)**
+- Normalization: TSS (relative abundance), CLR (compositional). Rarefaction deprecated.
+- Alpha diversity: Shannon, Simpson, Chao1 with Kruskal-Wallis and post-hoc tests.
+- Beta diversity: Bray-Curtis, PERMANOVA (R²), ANOSIM.
+- Differential abundance with prevalence filtering and Cliff's Delta.
+- ML biomarker discovery with GridSearchCV + SelectKBest.
+- Statistical power assessment with detectable effect size estimates.
 
-  - Statistical comparison across sample groups with **power analysis**.
-  - Beta diversity analysis (PCoA) with **R² effect size**.
-  - Alpha diversity comparison with **multi-group stats** and **effect sizes**.
-  - Differential abundance testing with volcano plots.
-  - Interactive taxonomic heatmaps with enhanced styling.
-  - Machine learning biomarker discovery with **hyperparameter tuning**.
-  - Publication-ready figure generation.
+**Reporting**
+- Taxonomic report: classification metrics, BSL lookup, confidence-annotated species tables.
+- Functional report: annotation coverage, COG categories, methodology notes.
+- Pathogen risk report: three-tier scoring (taxonomic + functional + ML), sample-agnostic interpretation.
 
------
+**Visualization**
+- Interactive HTML dashboard.
+- Taxonomic, functional, pathogen, and comparative visualizations.
+- PCoA, volcano plots, heatmaps, alpha diversity boxplots.
+
+---
 
 ## System Architecture
 
 ```
-src/metaquest/
-├── cli.py                          # Enhanced CLI with annotation controls
-├── config.py                       # Central configuration management
-│
-├── core/                           # Core analysis modules
-│   ├── analysis.py                 # Main analysis orchestration
-│   ├── taxonomic_analysis.py       # Taxonomic classification
-│   ├── pathogen_analysis.py        # Pathogen detection
-│   ├── comparative_analysis.py     # v2.0: Advanced comparison (normalization, power, multi-group stats)
-│   └── functional_analysis.py      # Enhanced functional annotation (COG+SwissProt)
-│
-├── io/                             # Input/Output and validation
-│   ├── file_validator.py           # File validation & QC
-│   ├── output_formatter.py         # Professional logging & output system
-│   └── utils.py                    # I/O utilities
-│
-├── ml/                             # Machine Learning components
-│   ├── feature_extractor.py        # Feature extraction for ML
-│   ├── pathogen_predictor.py       # ML pathogen prediction
-│   └── model_artifacts/            # Pre-trained models
-│
-├── reporting/                      # Enhanced reporting engine (uses OutputFormatter)
-│   ├── main_reporter.py            # Report orchestrator
-│   ├── base_reporter.py            # Base class with formatting utilities
-│   ├── taxonomy_reporter.py        # Enhanced taxonomic reports
-│   ├── pathogen_risk_reporter.py   # Pathogen risk reports
-│   ├── functional_reporter.py      # Expanded functional reports
-│   └── risk_scoring.py             # Risk calculation engine
-│
-└── visualization/                  # Modular visualization system (uses OutputFormatter)
-    ├── base_visualizer.py          # Base class for all visualizers
-    ├── taxonomic_visualizer.py     # Taxonomic visualization module
-    ├── pathogenic_visualizer.py    # Pathogen detection plots
-    ├── functional_visualizer.py    # Functional annotation visualizations
-    ├── compare_visuals.py          # Multi-sample comparison plots
-    ├── dashboard.py                # Interactive dashboard orchestrator
-    └── main_visualizer.py          # Main visualization coordinator
+MetaQuest/
+├── README.md
+├── CHANGELOG.md
+├── setup.py
+├── requirements.txt
+├── environment/
+│   └── environment.yml
+├── scripts/
+│   └── setup_databases.sh
+├── docs/
+│   ├── installation.md
+│   └── annotation.md
+└── src/metaquest/
+    ├── cli.py                              # CLI entry point and argument parsing
+    ├── config.py                           # Central configuration and constants
+    │
+    ├── config/                             # Externalized configuration
+    │   └── pathogen_config.json            # Pathogen DB config and critical motifs
+    │
+    ├── core/                               # Core analysis modules
+    │   ├── analysis.py                     # Main pipeline orchestration
+    │   ├── taxonomic_analysis.py           # Kraken2/Bracken classification
+    │   ├── pathogen_analysis.py            # Fragment-aware pathogen detection (v2)
+    │   ├── functional_analysis.py          # Prokka + DIAMOND annotation
+    │   ├── assembly.py                     # MEGAHIT/SPAdes assembly wrapper
+    │   └── comparative_analysis.py         # Multi-sample statistical comparison (v2.0)
+    │
+    ├── io/                                 # Input/Output modules
+    │   ├── file_validator.py               # FASTQ/FASTA validation and QC
+    │   ├── output_formatter.py             # Professional logging and output system
+    │   ├── data_loaders.py                 # Centralized data loading utilities
+    │   ├── text_parsers.py                 # Shared text parsing utilities
+    │   └── utils.py                        # General I/O utilities
+    │
+    ├── ml/                                 # Machine Learning
+    │   ├── feature_extractor.py            # Feature extraction for ML models
+    │   ├── pathogen_predictor.py           # ML pathogen classification
+    │   └── model_artifacts/               # Pre-trained model files
+    │
+    ├── reporting/                          # Report generation
+    │   ├── main_reporter.py               # Report orchestration
+    │   ├── base_reporter.py               # Base class with formatting utilities
+    │   ├── validation_engine.py           # Multi-evidence validation and confidence
+    │   ├── taxonomy_reporter.py           # Taxonomic reports
+    │   ├── functional_reporter.py         # Functional annotation reports
+    │   ├── pathogen_risk_reporter.py      # Pathogen risk reports
+    │   └── risk_scoring.py                # Risk score calculation engine
+    │
+    └── visualization/                     # Visualization system
+        ├── main_visualizer.py             # Visualization coordinator
+        ├── base_visualizer.py             # Base class
+        ├── dashboard.py                   # Interactive HTML dashboard
+        ├── taxonomic_visualizer.py        # Taxonomic plots
+        ├── functional_visualizer.py       # Functional annotation plots
+        ├── pathogenic_visualizer.py       # Pathogen detection plots
+        └── compare_visuals.py             # Comparative analysis plots
 ```
 
------
-
------
-
-## Benchmark Performance
-
-MetaQuest has been rigorously benchmarked against established tools using standardized datasets. The results demonstrate superior performance across all analysis categories, especially with the new **Pathogen DB v4.1**.
-
-### Key Performance Metrics
-
-#### Taxonomic Classification Excellence
-
-  - **3.1× lower error rate** than MetaPhlAn4 (1.69% vs 5.23% MAE).
-  - **100% species detection rate** for all expected organisms.
-  - **Perfect consistency**: All predictions within ±3.5% of expected values.
-  - **Statistically indistinguishable** from gold standard (p = 0.920).
-
-#### Functional Annotation Leadership
-
-  - **98.9% annotation coverage** using COG database.
-  - **99.3% gene detection accuracy** compared to NCBI reference.
-  - **Near-reference quality** with only 1.1% annotation gap.
-  - **18-29% higher coverage** than single-database approaches.
-
-#### Pathogen Detection: Perfected Accuracy & Specificity (v4.1 DB)
-
-The new database (v4.1) was rebuilt to filter housekeeping genes and focus on curated markers. This fixed all previous sensitivity and specificity issues.
-
-| Metric | Old Database | **New Database (v4.1)** | Improvement |
-|--------|--------------|-------------------------|-------------|
-| **Sensitivity** | 33.3% | **100.0%** | **+200%** |
-| **Specificity** | 33.3% | **100.0%** | **+200%** |
-| **Coverage (Colistin Res.)** | 0.0% | **100.0%** | **+100%** |
-| **Coverage (ESKAPE)** | 87.5% | **100.0%** | **+12.5%** |
-| **Database Size** | 70,752 seqs | **21,152 seqs** | **-70.1%** |
-| **Performance** | 1.5 q/s | **3.9 q/s** | **2.6× faster** |
-
-### Benchmarking Standards
-
-MetaQuest was validated using industry-standard datasets:
-
-  - **ZymoBIOMICS Microbial Community Standard** (taxonomic classification).
-  - **E. coli K-12 MG1655 Reference Genome** (functional annotation).
-  - **Critical Marker Test Suite** (mecA, mcr-1, KPC-2, etc.) for pathogen detection.
-
-### Detailed Results
-
-For comprehensive benchmarking methodology, detailed performance metrics, and statistical analyses, see the complete **[Benchmarking Report](benchmark/benchmark.md)**.
-
------
+---
 
 ## Installation
 
-MetaQuest requires a Linux/macOS environment with conda package manager.
+MetaQuest requires a Linux/macOS environment with conda.
 
-**For detailed installation instructions, see [installation.md](installation.md)**
+**For detailed instructions, see [docs/installation.md](docs/installation.md)**
 
 ### System Requirements
 
-  - Linux/macOS operating system
-  - Conda package manager
-  - Minimum 16GB RAM (32GB recommended)
-  - 100GB available disk space for databases
+- Linux or macOS
+- Conda package manager
+- Minimum 16 GB RAM (32 GB recommended)
+- ~100 GB disk space for databases
 
 ### Quick Installation
 
 ```bash
-# Clone repository
 git clone https://github.com/Karudhoru/MetaQuest.git
 cd MetaQuest
 
-# Create conda environment
-conda env create -f environment.yml
+conda env create -f environment/environment.yml
 conda activate metaquest
 
-# Install MetaQuest
 pip install -e .
 
-# Download annotation databases (COG + SwissProt)
+# Download databases (COG + SwissProt + Kraken2)
 ./scripts/setup_databases.sh --swissprot --kraken
 
-# Download and build the new pathogen database (v4.1)
-# (This script downloads sequences and builds the DB)
-python scripts/custom_pathogen_db.py 
-# (This script formats the DB with DIAMOND)
+# Build pathogen database (v4.1)
+python scripts/custom_pathogen_db.py
 ./scripts/setup_databases.sh --pathogen
 
-# Verify installation
+# Verify
 metaquest check
 ```
 
------
+---
 
 ## Quick Start
 
-### 1\. Verify Installation
+### Validate Input Files
 
 ```bash
-metaquest check
-```
-
-### 2\. Validate Input Files
-
-```bash
-# FASTQ validation
 metaquest validate fastq --single sample.fastq.gz
-
-# FASTA validation  
 metaquest validate fasta genome.fasta
 ```
 
-### 3\. Run Analysis
-
-#### Basic Analysis
+### Run Analysis
 
 ```bash
-# FASTQ analysis (uses default annotation settings)
+# FASTQ analysis
 metaquest analyze fastq --single sample.fastq.gz -o results/
 
-# FASTA analysis with enhanced annotation
+# FASTA analysis
 metaquest analyze fasta genome.fasta -o results/ -s 100
-```
 
-#### Advanced Annotation Controls
-
-```bash
-# Custom contig filtering threshold
+# Custom contig filtering
 metaquest analyze fastq --single reads.fq --min-contig-length 500 -o results/
 
-# Disable contig filtering (annotate all contigs)
-metaquest analyze fastq --single reads.fq --no-filter-contigs -o results/
+# Skip annotation (taxonomy only)
+metaquest analyze fastq --single sample.fastq.gz --skip-annotation -o results/
 
-# Skip annotation for faster taxonomic-only analysis
-metaquest analyze fastq --single sample.fastq.gz --skip-annotation -o fast_results/
+# Debug mode
+metaquest --debug analyze fastq --single reads.fq -o results/
 ```
 
-#### Debug Mode for Troubleshooting
+### Comparative Analysis
 
 ```bash
-# Run with full diagnostic output
-metaquest --debug analyze fastq --single reads.fq -o debug_results/
-```
-
-### 4\. Compare Multiple Samples (v2.0)
-
-```bash
-# Create metadata file (metadata.tsv)
+# metadata.tsv format:
 # sample_id    group
 # sample1      Healthy
 # sample2      Diseased
-# sample3      Healthy
-# sample4      Diseased
 
-# Run comparative analysis (default: TSS normalization)
-metaquest compare -i sample1_results/ sample2_results/ sample3_results/ sample4_results/ -m metadata.tsv -o comparison/
+# TSS normalization (default)
+metaquest compare -i sample1/ sample2/ sample3/ -m metadata.tsv -o comparison/
 
-# Run with CLR normalization for compositional data
-metaquest compare -i sample*_results/ -m metadata.tsv -o comparison_clr/ --normalization clr
+# CLR normalization (compositional)
+metaquest compare -i sample*/ -m metadata.tsv -o comparison/ --normalization clr
 ```
 
-### 5\. View Results
+### Output Files
 
-The analysis generates comprehensive outputs:
+| Category | Files |
+|----------|-------|
+| **Reports** | `taxonomic_report.txt`, `functional_report.txt`, `pathogen_risk_report.txt` |
+| **Validation** | `pathogen_detections_validated.json`, `pathogen_results.tsv` |
+| **Taxonomy** | `bracken_report.tsv`, `kraken2_report.txt` |
+| **Annotation** | `functional_annotations.tsv`, `prokka_annotation/` |
+| **Comparative** | `alpha_diversity_metrics.tsv`, `permanova_results.txt`, PCoA/volcano plots |
+| **Visualization** | `dashboard.html`, `*.png` plots |
 
-**Enhanced Text Reports**
-
-  - **Taxonomic Report**: Clinical summary, researcher view, diversity metrics.
-  - **Functional Report**: COG categories, mobile elements, annotation quality.
-  - **Pathogen Risk Report**: Three-tier assessment with clinical interpretation.
-
-**Functional Annotation** (COG + SwissProt)
-
-  - Expanded functional category coverage.
-  - High-confidence protein annotations.
-  - Detailed COG category distributions.
-  - Mobile genetic element analysis.
-
-**Interactive Visualizations**
-
-  - Modern, publication-ready dashboards.
-  - Enhanced color schemes and layouts.
-
------
+---
 
 ## Documentation
 
-### Core Documentation
+- **[Installation Guide](docs/installation.md)**
+- **[Annotation Guide](docs/annotation.md)**
+- **[Changelog](CHANGELOG.md)**
+- API Documentation — *coming soon*
 
-  - **[Usage Guide](usage.md)** - Comprehensive usage examples and command reference
-  - **[Installation Guide](installation.md)** - Detailed installation instructions
-  - **[Annotation Guide](annotation.md)** - COG and SwissProt database information
-  - **API Documentation** - Coming soon
-
-### Analysis Outputs
-
-**FASTQ Results**
-
-  - Interactive dashboard with modern styling.
-  - Pathogen risk assessment with clinical recommendations.
-  - Taxonomic classification reports (text + JSON).
-  - Enhanced functional annotation reports (COG + SwissProt).
-  - Mobile genetic element analysis.
-  - Publication-ready visualizations.
-
-**FASTA Results**
-
-  - BLAST+ML integrated pathogen reports.
-  - High-accuracy taxonomic classification.
-  - Machine learning predictions.
-  - Comprehensive functional annotation with dual databases.
-  - Detailed text reports for all components.
-
-**Comparative Results (v2.0)**
-
-  - **Statistical power assessment report**.
-  - Alpha diversity box plots with **multi-group stats (Kruskal-Wallis)**.
-  - Beta diversity PCoA plots with **PERMANOVA (R²) / ANOSIM results**.
-  - Differential abundance volcano plots with **Cliff's Delta effect size**.
-  - Interactive taxonomic heatmaps with modern color schemes.
-  - **Enhanced ML feature importance reports** (from tuned models).
-  - Publication-ready figure exports.
-
------
+---
 
 ## Contributing
 
-We welcome contributions from the scientific community.
+Contributions are welcome from the scientific community.
 
 ### Priority Areas
 
-| Area | Description | Impact |
-|------|-------------|---------|
-| **Pathogen DB Benchmarking** | Publish comprehensive benchmarks for the new v4.1 DB | High |
-| **Advanced ML Models (v4.2)** | Implement new models beyond Random Forest | High |
-| **Database Expansion** | Add additional functional databases (KEGG, Pfam) | High |
-| **Clinical Validation** | Real-world testing of pathogen detection | Critical |
-| **Statistical Methods** | Additional statistical tests and corrections | High |
-| **Visualization Features** | New plot types and interactive elements | Medium |
-| **Documentation** | User guides and clinical interpretation | Medium |
+| Area | Impact |
+|------|--------|
+| Pathogen DB benchmarking (formal publication) | High |
+| Advanced ML models beyond Random Forest | High |
+| Additional databases (KEGG, Pfam) | High |
+| Clinical validation on real patient samples | Critical |
 
 ### How to Contribute
 
-1.  Fork the repository
-2.  Create a feature branch (`git checkout -b feature/new-analysis`)
-3.  Make your changes with appropriate tests
-4.  Submit a pull request with detailed description
-5.  Participate in code review process
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Commit with descriptive messages
+4. Submit a pull request with a detailed description
 
------
+---
 
 ## Support
 
-### Documentation Resources
+- **Bug Reports**: GitHub Issues with reproduction steps
+- **Feature Requests**: GitHub Discussions
+- **Email**: metaquest-support@example.org
+- **Troubleshooting**: Use `--debug` flag; check `metaquest.log` in output directory
 
-  - **Installation Guide**: [installation.md](installation.md)
-  - **Usage Examples**: [usage.md](usage.md)
-  - **Annotation Guide**: [annotation.md](annotation.md)
-  - **GitHub Wiki**: Additional tutorials and examples
-
-### Getting Help
-
-  - **Bug Reports**: Submit via GitHub issues with detailed reproduction steps
-  - **Feature Requests**: Use GitHub discussions for new feature proposals
-  - **Email Support**: metaquest-support@example.org
-
-### Troubleshooting
-
-  - Use `--debug` flag for detailed diagnostic output.
-  - Check `metaquest.log` in output directory for error details.
-  - Run `metaquest check` to verify system dependencies.
-  - See [usage.md](usage.md) for common issues and solutions.
-
------
+---
 
 ## Citation
 
-*Citation information will be provided upon publication*
-
------
+*Citation information will be provided upon publication.*
 
 ## License
 
-*License information will be added upon publication*
+*License information will be added upon publication.*
 
------
+---
 
-**Last Updated**: March 2026 - Version 5.0.0 with publication-ready reports, validation engine, and comprehensive code cleanup
-
------
-
-*MetaQuest is actively developed with regular updates and improvements. Check our GitHub repository for the latest releases and features.*
+**Last Updated:** March 2026 — v5.0.0
