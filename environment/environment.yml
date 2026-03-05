@@ -1,4 +1,4 @@
-name: metagenomics_app
+name: metaquest
 channels:
   - conda-forge
   - bioconda

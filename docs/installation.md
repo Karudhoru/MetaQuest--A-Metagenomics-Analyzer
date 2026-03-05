@@ -80,16 +80,52 @@ The new modular structure requires proper package installation:
 
 ```
 MetaQuest/
-├── src/metaquest/              # Main package source
-│   ├── cli.py                  # Command-line interface
-│   ├── config.py              # Configuration management
-│   ├── core/                  # Core analysis modules
-│   ├── io/                    # Input/output handling
-│   ├── ml/                    # Machine learning components
-│   ├── reporting/             # Report generation
-│   └── visualization/         # Data visualization
-├── setup.py                   # Package setup configuration
-└── environment.yml           # Conda environment
+├── setup.py
+├── requirements.txt
+├── environment/
+│   └── environment.yml
+├── scripts/
+│   └── setup_databases.sh
+├── docs/
+│   ├── installation.md
+│   └── annotation.md
+└── src/metaquest/
+    ├── cli.py                          # CLI entry point
+    ├── config.py                       # Central configuration
+    ├── config/
+    │   └── pathogen_config.json        # Pathogen DB config
+    ├── core/
+    │   ├── analysis.py
+    │   ├── assembly.py
+    │   ├── taxonomic_analysis.py
+    │   ├── pathogen_analysis.py
+    │   ├── functional_analysis.py
+    │   └── comparative_analysis.py
+    ├── io/
+    │   ├── file_validator.py
+    │   ├── output_formatter.py
+    │   ├── data_loaders.py
+    │   ├── text_parsers.py
+    │   └── utils.py
+    ├── ml/
+    │   ├── feature_extractor.py
+    │   ├── pathogen_predictor.py
+    │   └── model_artifacts/
+    ├── reporting/
+    │   ├── main_reporter.py
+    │   ├── base_reporter.py
+    │   ├── validation_engine.py
+    │   ├── taxonomy_reporter.py
+    │   ├── functional_reporter.py
+    │   ├── pathogen_risk_reporter.py
+    │   └── risk_scoring.py
+    └── visualization/
+        ├── main_visualizer.py
+        ├── dashboard.py
+        ├── taxonomic_visualizer.py
+        ├── functional_visualizer.py
+        ├── pathogenic_visualizer.py
+        └── compare_visuals.py
 ```
 
 ### Installation Process
@@ -109,24 +145,12 @@ MetaQuest/
    metaquest --help
 ```
 
-3. **Installing the Wrapper Script**
+3. **Verifying the entry point**
 ```bash
-   # Navigate to your project root
-   cd /mnt/d/GIT/MetaQuest
-
-   # Update the wrapper script content
-   cat > metaquest << 'EOF'
-   #!/usr/bin/env bash
-   # metaquest wrapper to invoke the installed package
-   python -m metaquest.cli "$@"
-   EOF
-
-   # Make it executable
-   chmod +x metaquest
-
-   # Copy to conda environment bin
-   ENV_BIN=$(dirname "$(which python)")
-   cp metaquest "${ENV_BIN}/metaquest"
+   # pip install -e . registers the entry point automatically
+   # Verify it is on your PATH:
+   which metaquest
+   metaquest --help
 ```
 
 3. **Alternative CLI access methods**
@@ -146,36 +170,27 @@ MetaQuest/
 MetaQuest requires several databases for comprehensive analysis including ML model artifacts. Run the setup script to download and prepare all necessary databases:
 
 ```bash
-# Make setup script executable
 chmod +x scripts/setup_databases.sh
 
-# Run database setup (this may take 60-120 minutes depending on connection)
-./scripts/setup_databases.sh
-
-python .scripts/custom_pathogen_db.py
-```
-
-### What gets downloaded:
-- **Kraken2 Standard Database** (~8GB): For high-accuracy taxonomic classification
-- **Bracken Database**: For abundance estimation (included with Kraken2)
-- **NCBI BLAST Database** (~8GB): For FASTA sequence classification
-- **CARD Database** (~500MB): For antimicrobial resistance gene detection
-- **VFDB Database** (~200MB): For virulence factor identification
-- **Custom Pathogen Database**: Built from CARD and pathogen-specific sequences
-- **ML Model Files** (~1GB): Pre-trained pathogen prediction models
-- **SwissProt Database** (~2GB): For functional protein annotation
-- **Custom Pathogen Database** (~1GBG): For Pathogen detection
-
-### Enhanced Database Setup Features
-
-#### Selective Database Installation
-```bash
-# Install only specific databases
-./scripts/setup_databases.sh --kraken-only
-./scripts/setup_databases.sh --pathogen-only
-./scripts/setup_databases.sh --ml-models
+# Download everything
 ./scripts/setup_databases.sh --all
+
+# Or selectively:
+./scripts/setup_databases.sh --kraken       # MiniKraken2 (~8GB)
+./scripts/setup_databases.sh --swissprot   # SwissProt + COG combined DB
+./scripts/setup_databases.sh --pathogen    # Build DIAMOND pathogen DB from your FASTA
+
+# Then build the custom pathogen marker database
+python scripts/custom_pathogen_db.py
 ```
+
+### What gets downloaded
+
+| Database | Size | Purpose |
+|----------|------|---------|
+| MiniKraken2 | ~8 GB | Taxonomic classification |
+| SwissProt + COG | ~3 GB | Functional annotation |
+| Pathogen markers | ~500 MB | Pathogen detection (built from CARD + VFDB) |
 
 ## ML Model Setup
 
@@ -424,12 +439,13 @@ pip install -e .
 # 4. Setup databases
 chmod +x scripts/setup_databases.sh
 ./scripts/setup_databases.sh --all
+python scripts/custom_pathogen_db.py
 
 # 5. Verify installation
 metaquest --version
 
-# 6. Test with sample data
-metaquest check [type] [input_file]
+# 6. Check all external tools are available
+metaquest check
 ```
 
 ### Development Installation
