@@ -23,22 +23,22 @@ MetaQuest is an integrated bioinformatics pipeline that addresses the complex ch
 
 ## Table of Contents
 
-  - [Development Status](https://www.google.com/search?q=%23development-status)
-  - [What's New in Version 4.1.0](https://www.google.com/search?q=%23whats-new-in-version-410)
-  - [Features](https://www.google.com/search?q=%23features)
-  - [System Architecture](https://www.google.com/search?q=%23system-architecture)
-  - [Benchmark Performance](https://www.google.com/search?q=%23benchmark-performance)
-  - [Installation](https://www.google.com/search?q=%23installation)
-  - [Quick Start](https://www.google.com/search?q=%23quick-start)
-  - [Documentation](https://www.google.com/search?q=%23documentation)
-  - [Contributing](https://www.google.com/search?q=%23contributing)
-  - [Support](https://www.google.com/search?q=%23support)
+  - [Development Status](#development-status)
+  - [What's New in Version 5.0.0](#whats-new-in-version-500)
+  - [Features](#features)
+  - [System Architecture](#system-architecture)
+  - [Benchmark Performance](#benchmark-performance)
+  - [Installation](#installation)
+  - [Quick Start](#quick-start)
+  - [Documentation](#documentation)
+  - [Contributing](#contributing)
+  - [Support](#support)
 
 -----
 
 ## Development Status
 
-**Current Version:** 4.1.0 (November 2025)
+**Current Version:** 5.0.0 (March 2026)
 
 MetaQuest continues active development with major improvements to statistical analysis, database accuracy, and user experience.
 
@@ -72,7 +72,8 @@ MetaQuest continues active development with major improvements to statistical an
 
 | Version | Date | Key Features |
 |---------|------|-------------|
-| **v4.1.0** | Nov 2025 | **Advanced Comparative Analysis (v2.0)**: Complete overhaul with compositional data normalization (CLR, rarefaction), multi-group stats (Kruskal-Wallis), effect sizes (Cliff's Delta, R²), statistical power analysis, and enhanced ML biomarker discovery (hyperparameter tuning). **Pathogen DB v4.1**: Perfected 100% specificity by filtering housekeeping genes. **Code Refinement**: Standardized output formatting and bug fixes. |
+| **v5.0.0** | Mar 2026 | **Publication-ready reports**: Scientific audit and fixes for all reporters. **Validation Engine**: Vectorized gene-species linkage, robust error handling. **Code Refinement**: Standardized output formatting, version consistency, and cleanup. |
+| **v4.1.0** | Nov 2025 | **Advanced Comparative Analysis (v2.0)**: Complete overhaul with compositional data normalization (CLR, rarefaction), multi-group stats (Kruskal-Wallis), effect sizes (Cliff's Delta, R²), statistical power analysis, and enhanced ML biomarker discovery (hyperparameter tuning). **Pathogen DB v4.1**: Perfected 100% specificity by filtering housekeeping genes. |
 | **v4.0.0** | Oct 2025 | Enhanced COG+SwissProt annotation with comprehensive reporting, new and updated ML model v2.1, advanced gene prediction controls, professional logging system with debug mode. |
 | **v3.6.0** | Oct 2025 | SPAdes metagenomic assembly, enhanced COG+SwissProt annotation, modular visualization system with specialized plotters. |
 | **v3.5.0** | Aug 2025 | Enhanced statistical testing, advanced ML biomarker discovery, comprehensive comparative visualizations. |
@@ -80,7 +81,7 @@ MetaQuest continues active development with major improvements to statistical an
 
 -----
 
-## What's New in Version 4.1.0
+## What's New in Version 5.0.0
 
 ### Major Improvements
 
@@ -295,7 +296,7 @@ MetaQuest was validated using industry-standard datasets:
 
 ### Detailed Results
 
-For comprehensive benchmarking methodology, detailed performance metrics, and statistical analyses, see the complete **[Benchmarking Report](https://www.google.com/search?q=benchmark/benchmark.md)**.
+For comprehensive benchmarking methodology, detailed performance metrics, and statistical analyses, see the complete **[Benchmarking Report](benchmark/benchmark.md)**.
 
 -----
 
@@ -303,7 +304,7 @@ For comprehensive benchmarking methodology, detailed performance metrics, and st
 
 MetaQuest requires a Linux/macOS environment with conda package manager.
 
-**For detailed installation instructions, see [installation.md](https://www.google.com/search?q=installation.md)**
+**For detailed installation instructions, see [installation.md](installation.md)**
 
 ### System Requirements
 
@@ -437,8 +438,8 @@ The analysis generates comprehensive outputs:
 ### Core Documentation
 
   - **[Usage Guide](usage.md)** - Comprehensive usage examples and command reference
-  - **[Installation Guide](https://www.google.com/search?q=installation.md)** - Detailed installation instructions
-  - **[Annotation Guide](https://www.google.com/search?q=annotation.md)** - COG and SwissProt database information
+  - **[Installation Guide](installation.md)** - Detailed installation instructions
+  - **[Annotation Guide](annotation.md)** - COG and SwissProt database information
   - **API Documentation** - Coming soon
 
 ### Analysis Outputs
@@ -502,9 +503,9 @@ We welcome contributions from the scientific community.
 
 ### Documentation Resources
 
-  - **Installation Guide**: [installation.md](https://www.google.com/search?q=installation.md)
+  - **Installation Guide**: [installation.md](installation.md)
   - **Usage Examples**: [usage.md](usage.md)
-  - **Annotation Guide**: [annotation.md](https://www.google.com/search?q=annotation.md)
+  - **Annotation Guide**: [annotation.md](annotation.md)
   - **GitHub Wiki**: Additional tutorials and examples
 
 ### Getting Help
@@ -534,7 +535,7 @@ We welcome contributions from the scientific community.
 
 -----
 
-**Last Updated**: November 2025 - Version 4.1.0 with Advanced Comparative Analysis v2.0 and Pathogen DB v4.1
+**Last Updated**: March 2026 - Version 5.0.0 with publication-ready reports, validation engine, and comprehensive code cleanup
 
 -----
 

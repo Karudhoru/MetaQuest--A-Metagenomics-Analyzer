@@ -7,41 +7,63 @@ providing taxonomic classification, pathogen detection, machine learning integra
 and statistical analysis capabilities.
 
 Author: MetaQuest Development Team
-License: TBD
-Python: >=3.8
+License: MIT
+Python: >=3.8,<3.13
 """
 
 from setuptools import setup, find_packages
 from pathlib import Path
+import sys
+
+# Add src to path to import version from config
+sys.path.insert(0, str(Path(__file__).parent / "src"))
+from metaquest.config import __version__, __release_date__
 
 # Read long description from README
 readme_file = Path(__file__).parent / "README.md"
-with open(readme_file, "r", encoding="utf-8") as fh:
-    long_description = fh.read()
+if readme_file.exists():
+    with open(readme_file, "r", encoding="utf-8") as fh:
+        long_description = fh.read()
+else:
+    long_description = __doc__
 
 # Read requirements
 requirements_file = Path(__file__).parent / "requirements.txt"
-with open(requirements_file, "r", encoding="utf-8") as fh:
+if requirements_file.exists():
+    with open(requirements_file, "r", encoding="utf-8") as fh:
+        requirements = [
+            line.strip() 
+            for line in fh 
+            if line.strip() and not line.startswith("#")
+        ]
+else:
+    # Fallback to minimal requirements
     requirements = [
-        line.strip() 
-        for line in fh 
-        if line.strip() and not line.startswith("#")
+        "biopython>=1.81,<2.0",
+        "pandas>=1.5.0,<3.0",
+        "numpy>=1.23.0,<2.0",
+        "matplotlib>=3.6.0,<4.0",
+        "plotly>=5.14.0,<6.0",
+        "tqdm>=4.64.0",
     ]
 
 # Package metadata
-PACKAGE_NAME = "MetaQuest"
-VERSION = "4.0.0"
+PACKAGE_NAME = "metaquest"
+VERSION = __version__
 DESCRIPTION = "Comprehensive metagenomics analysis pipeline with taxonomic classification, pathogen detection, and ML integration"
-AUTHOR = "MetaQuest Development Team"
+AUTHOR = "Dev Patel"
 AUTHOR_EMAIL = "devpatelcambay@gmail.com"
 URL = "https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer"
-LICENSE = "TBD"
-PYTHON_REQUIRES = ">=3.8"
+LICENSE = "MIT"
+PYTHON_REQUIRES = ">=3.8,<3.13"
+
+MAINTAINER = "MetaQuest Development Team"
+MAINTAINER_EMAIL = "devpatelcambay@gmail.com"
 
 # Classifiers for PyPI
 CLASSIFIERS = [
     # Development Status
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 4 - Beta",
     
     # Intended Audience
     "Intended Audience :: Science/Research",
@@ -63,6 +85,7 @@ CLASSIFIERS = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3 :: Only",
     
     # Topics
     "Topic :: Scientific/Engineering :: Bio-Informatics",
@@ -74,6 +97,10 @@ CLASSIFIERS = [
     
     # Environment
     "Environment :: Console",
+    
+    # Additional relevant classifiers
+    "Framework :: Matplotlib",
+    "Typing :: Typed",
 ]
 
 # Keywords for discoverability
@@ -82,20 +109,28 @@ KEYWORDS = [
     "bioinformatics",
     "pathogen-detection",
     "taxonomic-classification",
-    "machine-learning",
-    "microbiome",
+    "microbiome-analysis",
     "genomics",
+    "ngs",
     "fastq",
-    "fasta",
+    "kraken2",
+    "bracken",
+    "prokka",
     "clinical-diagnostics",
+    "machine-learning-biology",
 ]
 
 # Project URLs for additional resources
 PROJECT_URLS = {
-    "Bug Reports": "https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer/issues",
-    "Documentation": "https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer/blob/main/README.md",
-    "Source Code": "https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer",
-    "Changelog": "https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer/releases",
+    "Homepage": URL,
+    "Bug Reports": f"{URL}/issues",
+    "Documentation": f"{URL}/blob/main/README.md",
+    "Source Code": URL,
+    "Changelog": f"{URL}/releases",
+    "Download": f"{URL}/releases/latest",
+    # ADD when ready:
+    # "Paper": "https://doi.org/10.xxxx/xxxxx",
+    # "Tutorial": "https://metaquest.readthedocs.io",
 }
 
 # Optional dependencies for advanced features
@@ -103,25 +138,32 @@ EXTRAS_REQUIRE = {
     "dev": [
         "pytest>=7.0.0",
         "pytest-cov>=4.0.0",
+        "pytest-timeout>=2.1.0",
         "black>=22.0.0",
         "flake8>=5.0.0",
         "mypy>=0.990",
         "pre-commit>=2.20.0",
+        "ipython>=8.0.0",
     ],
     "docs": [
         "sphinx>=5.0.0",
         "sphinx-rtd-theme>=1.0.0",
         "sphinx-autodoc-typehints>=1.19.0",
+        "myst-parser>=1.0.0",
     ],
     "ml": [
-        "scikit-learn>=1.2.0",
-        "pandas>=1.5.0",
-        "numpy>=1.23.0",
-        "matplotlib>=3.6.0",
-        "seaborn>=0.12.0",
-        "xgboost>=1.7.0",
-        "lightgbm>=3.3.0",
-        "catboost>=1.0.0"
+        "scikit-learn>=1.2.0,<2.0",
+        "xgboost>=1.7.0,<3.0",
+        "lightgbm>=3.3.0,<5.0",
+        "catboost>=1.1.0,<2.0",
+        "shap>=0.41.0,<1.0",
+        "optuna>=3.0.0,<4.0",
+    ],
+    "test": [
+        "pytest>=7.0.0",
+        "pytest-cov>=4.0.0",
+        "pytest-timeout>=2.1.0",
+        "coverage>=7.0.0",
     ],
 }
 
@@ -139,23 +181,28 @@ setup(
     # Author information
     author=AUTHOR,
     author_email=AUTHOR_EMAIL,
+    maintainer=MAINTAINER,
+    maintainer_email=MAINTAINER_EMAIL,
     
     # URLs
     url=URL,
     project_urls=PROJECT_URLS,
+    download_url=f"{URL}/archive/v{VERSION}.tar.gz",
     
     # License
     license=LICENSE,
     
     # Package discovery
     package_dir={"": "src"},
-    packages=find_packages(where="src"),
+    packages=find_packages(where="src", exclude=["tests", "tests.*"]),
     
     # Package data
     include_package_data=True,
     package_data={
         "metaquest": [
-            "ml/model_artifacts/*"
+            "ml/model_artifacts/*",
+            "config/pathogen_config.json",
+            "*.json",
         ],
     },
     
@@ -173,9 +220,47 @@ setup(
     
     # PyPI metadata
     classifiers=CLASSIFIERS,
-    keywords=KEYWORDS,
+    keywords=", ".join(KEYWORDS),
     
     # Additional metadata
     platforms=["Linux", "macOS", "Unix"],
     zip_safe=False,  # Important for package data access
+    
+    # Test suite
+    test_suite="tests",
+    tests_require=EXTRAS_REQUIRE["test"],
 )
+
+if __name__ == "__main__":
+    # ============================================================================
+    # POST-INSTALL CHECKS (Only run during direct setup.py execution)
+    # ============================================================================
+    import subprocess
+
+    def check_external_tools():
+        """Check if external bioinformatics tools are installed."""
+        required_tools = ["kraken2", "bracken", "prokka", "diamond"]
+        missing_tools = []
+
+        for tool in required_tools:
+            try:
+                subprocess.run([tool, "--version"],
+                             capture_output=True,
+                             check=True,
+                             timeout=5)
+            except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+                missing_tools.append(tool)
+
+        if missing_tools:
+            print("\n⚠️  WARNING: Missing external tools:")
+            for tool in missing_tools:
+                print(f"  - {tool}")
+            print("\nInstall via conda:")
+            print(f"  conda install -c bioconda {' '.join(missing_tools)}")
+            print("\nOr use: metaquest check")
+
+    if "install" in sys.argv or "develop" in sys.argv:
+        try:
+            check_external_tools()
+        except Exception:
+            pass  # Don't fail install if check fails
