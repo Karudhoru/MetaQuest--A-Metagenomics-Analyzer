@@ -1,453 +1,614 @@
+"""
+Pathogen Analysis Module - Cleaned Version
+==========================================
+Fragment-aware pathogen detection with minimal output
+"""
+
 import subprocess
-import os
+import math
 import json
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import numpy as np
-from Bio import SeqIO
-from typing import List, Optional
 import re
 from pathlib import Path
-from collections import Counter
-from ..config import *
-from ..io.utils import parse_diamond_progress
+from typing import List, Dict, Tuple, Optional
+from collections import defaultdict
+from Bio import SeqIO
+
+from ..config import PATHOGEN_DB_CUSTOM, CRITICAL_MOTIFS
+from ..io.data_loaders import load_protein_sequences_streaming
+from ..io.text_parsers import extract_organism_name
 from ..io.output_formatter import get_formatter
 
 
-def run_pathogen_scan(protein_file, output_dir, bracken_results=None, taxonomy_results=None):
+def build_abundance_lookup(taxonomy_df: pd.DataFrame) -> Dict[str, float]:
     """
-    Enhanced pathogen scan using multiple data sources with professional output.
-    
-    *** REWRITTEN WITH TIGHTER RESTRICTIONS TO IMPROVE PRECISION ***
-    
-    Sources:
-    1. Bracken results (FASTQ taxonomic classification)
-    2. Taxonomy results (BLAST-based)
-    3. Custom pathogen database (sequence-based with strict filters)
-    """
-    formatter = get_formatter()
-    
-    formatter.section_header("Pathogen Detection")
-    
-    # Initialize pathogen lists
-    bracken_pathogens = []
-    taxonomy_pathogens = []
-    sequence_pathogens = []
-    
-    # ===== SOURCE 1: Bracken Results =====
-    if bracken_results and bracken_results.exists():
-        formatter.operation("Scanning Bracken taxonomic results", show_in_standard=True)
-        try:
-            df_bracken = pd.read_csv(bracken_results, sep='\t')
-            
-            pathogen_taxa = {
-            # Existing entries
-            '29459': 'Brucella melitensis',
-            '28901': 'Salmonella enterica', 
-            '562': 'Escherichia coli',
-            '1280': 'Staphylococcus aureus',
-            '1396': 'Bacillus cereus',
-            '1428': 'Bacillus thuringiensis',
-            '573': 'Klebsiella pneumoniae',
-            '470': 'Acinetobacter baumannii',
-            '1513': 'Clostridium tetani',
-            '630': 'Yersinia enterocolitica',
-            '1076': 'Rhodopseudomonas palustris',
-            '1719': 'Corynebacterium pseudotuberculosis',
-            
-            # *** CRITICAL FIX: Add MISSING pathogens ***
-            '1496': 'Clostridioides difficile',  # THIS WAS THE KEY MISSING ONE!
-            '1308': 'Streptococcus thermophilus',
-            '1304': 'Streptococcus salivarius',
-            '824': 'Campylobacter gracilis',
-            '1301': 'Streptococcus',  # Genus level
-            
-            # Additional common pathogens for completeness
-            '1313': 'Streptococcus pneumoniae',
-            '1314': 'Streptococcus pyogenes',
-            '1351': 'Enterococcus faecalis',
-            '1352': 'Enterococcus faecium',
-            '287': 'Pseudomonas aeruginosa',
-            '1763': 'Mycobacterium',  # Genus
-            '1773': 'Mycobacterium tuberculosis',
-            '620': 'Shigella',  # Genus
-            '666': 'Vibrio',  # Genus
-            '197': 'Campylobacter',  # Genus
-        }
-            
-            # Process Bracken results
-            for _, row in df_bracken.iterrows():
-                taxid = str(row['taxonomy_id'])
-                name = row['name']
-                abundance = row['fraction_total_reads']
-                reads = row['new_est_reads']
-                
-                # Direct taxid match
-                if taxid in pathogen_taxa:
-                    bracken_pathogens.append({
-                        'organism': pathogen_taxa[taxid],
-                        'abundance': abundance,
-                        'reads': reads,
-                        'source': 'bracken_taxonomic',
-                        'confidence': 'high',
-                        'taxonomy_id': taxid
-                    })
-                # Name-based matching
-                elif any(pathogen in name.lower() for pathogen in [
-                    'brucella', 'salmonella', 'escherichia', 
-                    'staphylococcus aureus', 'staphylococcus',
-                    'bacillus cereus', 'klebsiella', 'acinetobacter', 
-                    'clostridium', 'clostridioides',  # Both C. difficile names
-                    'yersinia', 'pseudomonas aeruginosa', 
-                    'mycobacterium tuberculosis', 'mycobacterium',
-                    'listeria', 'vibrio', 'campylobacter', 'shigella',
-                    # *** FIX: Make sure all Streptococcus variants are caught ***
-                    'streptococcus thermophilus', 'streptococcus salivarius',
-                    'streptococcus pneumoniae', 'streptococcus pyogenes',
-                    'streptococcus',  # Catch-all for genus
-                ]):
-                    bracken_pathogens.append({
-                        'organism': name,
-                        'abundance': abundance,
-                        'reads': reads,
-                        'source': 'bracken_taxonomic',
-                        'confidence': 'medium',
-                        'taxonomy_id': taxid
-                    })
-            
-            if bracken_pathogens:
-                formatter.success(f"Found {len(bracken_pathogens)} pathogens in Bracken classification")
-            else:
-                formatter.info("No pathogens detected in Bracken results")
-            
-        except Exception as e:
-            formatter.warning(f"Could not parse Bracken results: {e}")
-    
-    # ===== SOURCE 2: Taxonomy Results (BLAST) =====
-    if taxonomy_results and taxonomy_results.exists():
-        formatter.operation("Scanning BLAST taxonomy results", show_in_standard=False)
-        try:
-            with open(taxonomy_results, 'r') as f:
-                for line in f:
-                    if line.strip() and not line.startswith('#'):
-                        parts = line.strip().split('\t')
-                        if len(parts) >= 7:
-                            query_id = parts[0]
-                            subject_id = parts[1]
-                            identity = float(parts[2])
-                            length = int(parts[3])
-                            evalue = float(parts[4])
-                            bitscore = float(parts[5])
-                            description = parts[6]
-                            
-                            # Extract organism
-                            organism_matches = re.findall(r'\[([^\]]+)\]', description)
-                            if organism_matches:
-                                organism = organism_matches[-1]
-                                
-                                # Check if pathogen
-                                org_lower = organism.lower()
-                                if any(pathogen in org_lower for pathogen in [
-                                    'coxiella', 'mycobacterium', 'shigella', 'brucella', 
-                                    'salmonella', 'escherichia', 'staphylococcus', 'bacillus',
-                                    'klebsiella', 'acinetobacter', 'clostridium', 'yersinia',
-                                    'pseudomonas', 'listeria', 'vibrio', 'campylobacter'
-                                ]):
-                                    taxonomy_pathogens.append({
-                                        'organism': organism,
-                                        'identity': identity,
-                                        'evalue': evalue,
-                                        'bitscore': bitscore,
-                                        'length': length,
-                                        'query_id': query_id,
-                                        'source': 'taxonomy_blast',
-                                        'confidence': 'high' if identity > 80 else 'medium'
-                                    })
-            
-            if taxonomy_pathogens:
-                formatter.success(f"Found {len(taxonomy_pathogens)} pathogens in BLAST taxonomy results")
-            else:
-                formatter.info("No pathogens detected in BLAST results")
-            
-        except Exception as e:
-            formatter.warning(f"Could not parse taxonomy results: {e}")
-    
-    # ===== SOURCE 3: Custom Pathogen Database =====
-    
-    # --- NEW: Define strict filter thresholds ---
-    MIN_IDENTITY = 80.0  # Require 80% identity
-    MIN_COVERAGE = 0.8   # Require 80% coverage (alignment_length / query_length)
-    # ---
-    
-    selected_db = PATHOGEN_DB_CUSTOM
-    blast_out = output_dir / "pathogen_results.txt"
-
-    if selected_db and selected_db.exists():
-        try:
-            query_count = len(list(SeqIO.parse(protein_file, "fasta")))
-            formatter.info(f"Scanning {query_count:,} sequences against pathogen database...")
-            formatter.info(f"Applying strict filters: Identity >= {MIN_IDENTITY}%, Coverage >= {MIN_COVERAGE*100}%")
-        except Exception:
-            formatter.warning("Could not count input sequences for progress bar.")
-            query_count = 1
-
-        db_base = selected_db.with_suffix('') if selected_db.suffix == '.dmnd' else selected_db
-        
-        # --- MODIFIED: Add qlen to output format ---
-        outfmt_cols = "qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore stitle qlen"
-        
-        cmd = [
-            "diamond", "blastp",
-            "-d", str(db_base),
-            "-q", str(protein_file),
-            "-o", str(blast_out),
-            "--outfmt", "6", *outfmt_cols.split(),
-            "--top", "5",        # Keep top 5 to allow Python to do the fine-filtering
-            "--evalue", "1e-3", # Lenient e-value, Python will filter
-            "--threads", "4",
-            "--more-sensitive",
-            "--log"  # CRITICAL: Enable progress output
-        ]
-
-        return_code = formatter.run_subprocess_with_progress(
-            cmd=cmd,
-            operation_name="Scanning pathogen database",
-            total=query_count,
-            unit="sequences",
-            parser_func=parse_diamond_progress
-        )
-
-        # Parse results after the run is complete
-        if return_code == 0 and blast_out.exists() and blast_out.stat().st_size > 0:
-            sequence_pathogens = []
-            hits_by_gene = {}  # Key: query_id, Value: best hit info
-            
-            try:
-                with open(blast_out, 'r') as f:
-                    for line in f:
-                        if line.strip() and not line.startswith('#'):
-                            parts = line.strip().split('\t')
-                            
-                            # --- MODIFIED: Check for 14 columns ---
-                            if len(parts) >= 14:
-                                query_id = parts[0]
-                                subject_id = parts[1]
-                                identity = float(parts[2])
-                                align_length = int(parts[3])
-                                evalue = float(parts[10])
-                                bitscore = float(parts[11])
-                                description = parts[12]
-                                query_len = int(parts[13]) # <-- NEW: Get query length
-                                
-                                # --- NEW: Calculate coverage ---
-                                if query_len == 0:
-                                    continue # Avoid division by zero
-                                coverage = align_length / query_len
-                                
-                                # --- NEW: Apply strict filters ---
-                                if identity < MIN_IDENTITY or coverage < MIN_COVERAGE:
-                                    continue # Skip this low-quality hit
-                                
-                                # Extract organism from description [brackets]
-                                organism_matches = re.findall(r'\[([^\]]+)\]', description)
-                                organism = organism_matches[-1] if organism_matches else "Unknown"
-                                
-                                # Keep only BEST hit per gene (lowest e-value) that passes filters
-                                if query_id not in hits_by_gene:
-                                    hits_by_gene[query_id] = {
-                                        'organism': organism,
-                                        'identity': identity,
-                                        'evalue': evalue,
-                                        'bitscore': bitscore,
-                                        'length': align_length,
-                                        'coverage': coverage, # Store for reference
-                                        'query_id': query_id,
-                                        'subject_id': subject_id,
-                                        'description': description,
-                                        'source': 'pathogen_database',
-                                        'confidence': 'high' # Passed strict filter
-                                    }
-                                else:
-                                    # Keep hit with better e-value (lower is better)
-                                    if evalue < hits_by_gene[query_id]['evalue']:
-                                        hits_by_gene[query_id] = {
-                                            'organism': organism,
-                                            'identity': identity,
-                                            'evalue': evalue,
-                                            'bitscore': bitscore,
-                                            'length': align_length,
-                                            'coverage': coverage,
-                                            'query_id': query_id,
-                                            'subject_id': subject_id,
-                                            'description': description,
-                                            'source': 'pathogen_database',
-                                            'confidence': 'high'
-                                        }
-                
-                # Convert to list (now deduplicated - one hit per gene)
-                sequence_pathogens = list(hits_by_gene.values())
-                
-                if sequence_pathogens:
-                    formatter.success(
-                        f"Found {len(sequence_pathogens)} unique genes with high-confidence pathogen hits "
-                        f"(passed {MIN_IDENTITY}% ident, {MIN_COVERAGE*100}% cov filters)"
-                    )
-                else:
-                    formatter.info("No high-confidence pathogen hits found in database search")
-                    
-            except Exception as e:
-                formatter.warning(f"Could not parse pathogen scan results: {e}")
-    
-    # ===== Summary =====
-    all_pathogens = bracken_pathogens + taxonomy_pathogens + sequence_pathogens
-    total_pathogens = len(all_pathogens)
-    results_file = output_dir / "pathogen_detections.json"
-
-    formatter.summary("Pathogen Detection Summary", {
-        'Bracken detections': len(bracken_pathogens),
-        'BLAST detections': len(taxonomy_pathogens),
-        'Database detections (strict)': len(sequence_pathogens),
-        'Total detections': total_pathogens
-    })
-
-    with open(results_file, 'w') as f:
-        json.dump({
-            'summary': {
-                'total_detections': total_pathogens,
-                'bracken': len(bracken_pathogens),
-                'blast': len(taxonomy_pathogens),
-                'database_strict': len(sequence_pathogens)
-            },
-            'detections': all_pathogens,
-            'bracken_pathogens': bracken_pathogens,
-            'taxonomy_pathogens': taxonomy_pathogens,
-            'sequence_pathogens_strict': sequence_pathogens
-        }, f, indent=2)
-
-    if total_pathogens > 0:
-        formatter.info(f"Detailed results saved: {results_file.name}")
-    else:
-        formatter.info(f"No pathogens detected - empty results saved: {results_file.name}")
-
-    # === INTEGRATION: Merge sequence-based detections with taxonomy ===
-    if bracken_results and bracken_results.exists() and blast_out.exists():
-        formatter.operation("Integrating pathogen hits with taxonomic classification")
-        
-        integrated_file = output_dir / "integrated_pathogen_taxonomy.tsv"
-        integrated_df = integrate_pathogen_hits_with_taxonomy(
-            bracken_results,
-            blast_out,  # Pass the path to the raw DIAMOND output
-            integrated_file
-        )
-        
-        formatter.info(f"Integrated taxonomy saved: {integrated_file.name}")
-
-
-    return blast_out
-
-def integrate_pathogen_hits_with_taxonomy(
-    bracken_file: Path,
-    pathogen_hits_file: Path,
-    output_file: Path
-) -> pd.DataFrame:
-    """
-    Integrate sequence-based pathogen hits with Bracken taxonomic classification.
-    
-    *** MODIFIED to parse 14 columns from DIAMOND output ***
-    
-    Args:
-        bracken_file: Path to bracken_report.tsv
-        pathogen_hits_file: Path to pathogen_results.txt (raw DIAMOND output)
-        output_file: Path to save integrated results
+    Build fast O(1) lookup dictionary for organism abundance.
     
     Returns:
-        DataFrame with integrated pathogen detections
+        Dict mapping genus/species names to abundance values
+    """
+    if taxonomy_df is None or taxonomy_df.empty:
+        return {}
+    
+    abundance_lookup = {}
+    
+    for _, row in taxonomy_df.iterrows():
+        species = row['name'].lower()
+        abundance = row.get('fraction_total_reads', 0.0)
+        
+        # Add full species name
+        abundance_lookup[species] = abundance
+        
+        # Also add genus name (for partial matches)
+        genus = species.split()[0] if ' ' in species else species
+        # Keep max abundance if genus appears multiple times
+        abundance_lookup[genus] = max(abundance_lookup.get(genus, 0), abundance)
+    
+    return abundance_lookup
+
+def get_organism_abundance_fast(organism: str, abundance_lookup: Dict[str, float]) -> float:
+    """Fast O(1) organism abundance lookup."""
+    if not abundance_lookup or organism == "Unknown":
+        return 0.0
+    
+    organism_lower = organism.lower()
+    
+    # Try exact match first
+    if organism_lower in abundance_lookup:
+        return abundance_lookup[organism_lower]
+    
+    # Try genus match
+    genus = organism_lower.split()[0] if ' ' in organism_lower else organism_lower
+    if genus in abundance_lookup:
+        return abundance_lookup[genus]
+    
+    return 0.00
+
+# ============================================================================
+# CONFIDENCE SCORING
+# ============================================================================
+
+def calculate_confidence_score(
+    hit: Dict,
+    abundance_lookup: Dict[str, float],
+    contig_coverage: float,
+    motifs_found: List[str],
+    prokka_annotation: str
+) -> Tuple[float, str, List[str]]:
+    """
+    Multi-factor confidence scoring for fragment hits.
+    
+    This function is intentionally quiet - just calculates the score.
+    """
+    evidence = []
+    score = 0.0
+    
+    # FACTOR 1: Fragment Completeness (0-35 points) - CONTINUOUS SCORING
+    query_len = hit['qlen']
+    reference_len = hit.get('reference_length', hit['slen'])
+    completeness = query_len / reference_len
+
+    # Continuous sigmoid scoring (no sharp cliffs)
+    # Formula: score = max_points * (1 / (1 + e^(-k*(completeness - 0.5))))
+    # This gives smooth scaling from 0-35 points
+    k = 8  # Steepness parameter (higher = steeper curve)
+    completeness_score = 35 * (1 / (1 + math.exp(-k * (completeness - 0.5))))
+
+    # Adjust for absolute length (short genes need less coverage)
+    # FACTOR 7: Signal Peptide Check (SOFT PENALTY)
+    # Only penalize if BOTH: very short AND high hydrophobic content
+    if query_len < 60 and is_likely_signal_peptide(hit['sequence']):
+        # Check if this is a known short gene (toxins, small AMR genes)
+        gene_name = hit.get('sseqid', '').lower()
+        known_short_genes = ['mec', 'van', 'mcr', 'ctx', 'oxa', 'kpc', 'ndm']
+        
+        if any(short_gene in gene_name for short_gene in known_short_genes):
+            # Known short gene - no penalty
+            evidence.append("Short gene (known)")
+        else:
+            # Likely just signal peptide - soft penalty
+            score -= 10  # Reduced from 20
+            evidence.append("⚠️ Possible signal peptide fragment")
+    elif query_len < 300:  # Medium gene
+        length_bonus = 1.0
+        evidence.append(f"Medium gene fragment ({query_len}aa, {completeness*100:.0f}% complete)")
+    else:  # Long gene (structural proteins)
+        # Long genes need higher completeness to be confident
+        length_bonus = 0.8 if completeness < 0.7 else 1.0
+        evidence.append(f"Large gene fragment ({query_len}aa, {completeness*100:.0f}% complete)")
+
+    score += completeness_score * length_bonus
+
+    # Add descriptive interpretation
+    if completeness >= 0.9:
+        evidence.append("Near-complete gene")
+    elif completeness >= 0.7:
+        evidence.append("Substantial coverage")
+    elif completeness >= 0.5:
+        evidence.append("Moderate coverage")
+    else:
+        evidence.append("Partial fragment")
+    
+    # FACTOR 2: Sequence Identity with Coverage Context (0-25 points)
+    identity = hit['pident']
+    query_coverage = hit.get('query_coverage', (hit['qend'] - hit['qstart'] + 1) / hit['qlen'])
+
+    # CRITICAL: Low identity OR low coverage = not reliable
+    if identity < 85 or query_coverage < 0.5:
+        # Below 85% identity or <50% coverage = minimal confidence
+        identity_score = 0
+        evidence.append(f"Low confidence: {identity:.1f}% identity, {query_coverage*100:.0f}% coverage")
+    elif identity < 90:
+        # 85-90% identity = moderate confidence (5-15 points)
+        identity_score = 5 + (identity - 85) * 2  # Linear from 5 to 15
+        evidence.append(f"Moderate identity ({identity:.1f}%)")
+    elif identity < 95:
+        # 90-95% identity = high confidence (15-20 points)
+        identity_score = 15 + (identity - 90)  # Linear from 15 to 20
+        evidence.append(f"High identity ({identity:.1f}%)")
+    else:
+        # 95%+ identity = very high confidence (20-25 points)
+        identity_score = 20 + min((identity - 95), 5)  # Up to 25 at 100%
+        evidence.append(f"Very high identity ({identity:.1f}%)")
+
+    # Penalize short alignments even with high identity
+    if hit['length'] < 50:
+        identity_score *= 0.5
+        evidence.append("⚠️ Short alignment (<50aa)")
+
+    score += identity_score
+    
+    # FACTOR 3: Organism Abundance (0-20 points) - OPTIMIZED
+    organism = extract_organism_name(hit.get('stitle', '')) or "Unknown"
+    abundance = get_organism_abundance_fast(organism, abundance_lookup)
+
+    # Continuous scoring based on log10 of abundance
+    # Log scale because abundances span many orders of magnitude
+    if abundance > 0:
+        # Log scale: 0.1% = -3, 1% = -2, 10% = -1, 100% = 0
+        log_abundance = math.log10(abundance * 100)  # Convert to percentage first
+        
+        # Map to 0-20 scale
+        # -4 (0.01%) → 0 points
+        # -3 (0.1%) → 5 points
+        # -2 (1%) → 10 points
+        # -1 (10%) → 15 points
+        # 0 (100%) → 20 points (max)
+        
+        abundance_score = max(0, min(20, 5 * (log_abundance + 4)))
+        
+        if abundance >= 0.05:
+            evidence.append(f"Organism abundant ({abundance*100:.1f}%)")
+        elif abundance >= 0.01:
+            evidence.append(f"Organism present ({abundance*100:.2f}%)")
+        elif abundance >= 0.001:
+            evidence.append(f"Organism detected ({abundance*100:.3f}%)")
+        else:
+            evidence.append(f"Organism rare ({abundance*100:.4f}%)")
+    else:
+        abundance_score = 0
+        evidence.append("Organism not detected in taxonomy")
+
+    score += abundance_score
+    
+    # FACTOR 4: Contig Quality (0-10 points)
+    if contig_coverage >= 20:
+        score += 10
+        evidence.append(f"High coverage contig ({contig_coverage:.0f}x)")
+    elif contig_coverage >= 10:
+        score += 7
+        evidence.append(f"Good coverage contig ({contig_coverage:.0f}x)")
+    elif contig_coverage >= 5:
+        score += 4
+    else:
+        score += 1
+        evidence.append(f"Low coverage contig ({contig_coverage:.1f}x)")
+    
+    # FACTOR 5: Critical Motif Detection (0-15 points)
+    if motifs_found:
+        score += len(motifs_found) * 5
+        evidence.append(f"Critical motifs: {', '.join(motifs_found)}")
+    
+    # FACTOR 6: Prokka Cross-Validation
+    if prokka_annotation and prokka_annotation != "hypothetical protein":
+        gene_name = hit.get('sseqid', '').split('_')[0].lower()
+        
+        if gene_name in prokka_annotation.lower():
+            score += 10
+            evidence.append("Prokka confirms gene identity")
+        elif "hypothetical" not in prokka_annotation.lower():
+            score -= 15
+            evidence.append(f"⚠️ Prokka disagrees: {prokka_annotation[:50]}")
+    
+    # FACTOR 7: Signal Peptide Check (PENALTY)
+    if query_len < 80 and is_likely_signal_peptide(hit['sequence']):
+        score -= 20
+        evidence.append("⚠️ Likely signal peptide only")
+    
+    # Determine Confidence Tier
+    score = max(0, min(score, 100))
+    
+    if score >= 70:
+        tier = "HIGH"
+    elif score >= 45:
+        tier = "MEDIUM"
+    else:
+        tier = "LOW"
+    
+    return score, tier, evidence
+
+
+def is_likely_signal_peptide(sequence: str) -> bool:
+    """Detect if sequence is likely just a signal peptide"""
+    if len(sequence) > 100:
+        return False
+    
+    hydrophobic_count = sum(sequence.count(aa) for aa in 'LIVAFM')
+    hydrophobic_ratio = hydrophobic_count / len(sequence)
+    has_cleavage_site = bool(re.search(r'[AV][ASTG][AS]', sequence[:30]))
+    
+    return (hydrophobic_ratio > 0.4 and len(sequence) < 50) or \
+           (hydrophobic_ratio > 0.35 and has_cleavage_site and len(sequence) < 80)
+
+
+def check_critical_motifs(sequence: str, gene_name: str) -> Tuple[float, List[str]]:
+    """Fast motif-based validation for critical genes"""
+    base_gene = re.split(r'[_\-]', gene_name)[0].upper()
+    
+    motif_data = None
+    for key in CRITICAL_MOTIFS:
+        if key.upper() in base_gene or base_gene in key.upper():
+            motif_data = CRITICAL_MOTIFS[key]
+            break
+    
+    if not motif_data:
+        return 0.0, []
+    
+    found_motifs = []
+    for motif in motif_data['motifs']:
+        regex_pattern = motif.replace('X', '[A-Z]')
+        if re.search(regex_pattern, sequence):
+            found_motifs.append(motif)
+    
+    if len(found_motifs) >= motif_data['min_motifs']:
+        motif_score = 1.0
+    elif found_motifs:
+        motif_score = 0.5
+    else:
+        motif_score = 0.0
+    
+    return motif_score, found_motifs
+
+
+# ============================================================================
+# UTILITY FUNCTIONS
+# ============================================================================
+
+def get_contig_coverage(contig_name: str, contigs_file: Path) -> float:
+    """Extract coverage from contig header"""
+    try:
+        with open(contigs_file) as f:
+            for line in f:
+                if line.startswith('>') and contig_name in line:
+                    match = re.search(r'cov_([\d.]+)', line)
+                    if match:
+                        return float(match.group(1))
+    except Exception:
+        pass
+    return 0.0
+
+
+def get_prokka_annotation(gene_id: str, prokka_files: List[Path]) -> str:
+    """Get Prokka annotation for a gene"""
+    for prokka_file in prokka_files:
+        if prokka_file.suffix == '.tsv':
+            try:
+                df = pd.read_csv(prokka_file, sep='\t')
+                match = df[df['locus_tag'] == gene_id]
+                if not match.empty:
+                    return match.iloc[0].get('product', 'hypothetical protein')
+            except Exception:
+                pass
+    return "hypothetical protein"
+
+def export_legacy_tsv(results_dict: Dict, output_file: Path) -> Path:
+    """
+    Export new JSON format to legacy TSV format for backward compatibility.
+    
+    This ensures the risk scoring module can still read the results.
+    """
+    # Combine HIGH and MEDIUM confidence hits
+    all_hits = results_dict['high_confidence_hits'] + results_dict['medium_confidence_hits']
+    
+    if not all_hits:
+        # Create empty file
+        pd.DataFrame(columns=[
+            'qseqid', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen',
+            'qstart', 'qend', 'sstart', 'send', 'evalue', 'bitscore',
+            'qlen', 'slen', 'stitle'
+        ]).to_csv(output_file, sep='\t', index=False, header=False)
+        return output_file
+    
+    # Convert to flat dataframe format
+    rows = []
+    for hit in all_hits:
+        rows.append({
+            'qseqid': hit['qseqid'],
+            'sseqid': hit['sseqid'],
+            'pident': hit['pident'],
+            'length': hit['length'],
+            'mismatch': 0,
+            'gapopen': 0,
+            'qstart': hit['qstart'],
+            'qend': hit['qend'],
+            'sstart': hit['sstart'],
+            'send': hit['send'],
+            'evalue': hit['evalue'],
+            'bitscore': hit['bitscore'],
+            'qlen': hit['qlen'],
+            'slen': hit['slen'],
+            'stitle': hit['stitle']
+        })
+    
+    df = pd.DataFrame(rows)
+    df.to_csv(output_file, sep='\t', index=False, header=False)
+    
+    return output_file
+
+
+# ============================================================================
+# MAIN PATHOGEN SCANNING FUNCTION
+# ============================================================================
+
+def run_pathogen_scan_v2(
+    protein_file: Path,
+    output_dir: Path,
+    contigs_file: Path,
+    prokka_dir: Path,
+    bracken_results: Optional[Path] = None,
+    min_fragment_length: int = 80,
+    min_identity: float = 80.0,
+    min_query_coverage: float = 0.7,
+    min_subject_coverage: float = 0.7
+) -> Path:
+    """
+    Enhanced pathogen scan with fragment-aware validation.
+    
+    Output is controlled by caller - this function only logs at DEBUG level.
     """
     formatter = get_formatter()
     
-    # Load Bracken results
-    df_bracken = pd.read_csv(bracken_file, sep='\t')
+    formatter.debug("Loading taxonomy and protein data...")
     
-    # Parse pathogen hits to extract organisms
-    pathogen_organisms = {}
-    hit_counts = Counter()
+    # Load taxonomy data
+    taxonomy_df = None
+    abundance_lookup = {}
+    if bracken_results and bracken_results.exists():
+        try:
+            taxonomy_df = pd.read_csv(bracken_results, sep='\t')
+            abundance_lookup = build_abundance_lookup(taxonomy_df)
+            formatter.debug(f"Loaded {len(taxonomy_df)} species from Bracken")
+        except Exception as e:
+            formatter.debug(f"Could not load Bracken: {e}")
     
-    if pathogen_hits_file.exists():
-        with open(pathogen_hits_file, 'r') as f:
-            for line in f:
-                if line.strip() and not line.startswith('#'):
-                    parts = line.strip().split('\t')
-                    
-                    # --- MODIFIED: Check for 14 columns ---
-                    if len(parts) >= 14: 
-                        query_id = parts[0]
-                        description = parts[12]
-                        
-                        # Extract organism name from [brackets]
-                        organism_matches = re.findall(r'\[([^\]]+)\]', description)
-                        if organism_matches:
-                            organism = organism_matches[-1]
-                            hit_counts[organism] += 1
-                            
-                            # Store best hit info (not strictly needed here, but good practice)
-                            if organism not in pathogen_organisms:
-                                pathogen_organisms[organism] = {
-                                    'identity': float(parts[2]),
-                                    'evalue': float(parts[10]),
-                                    'hit_count': 1
-                                }
+    # Get Prokka annotation files
+    prokka_files = list(prokka_dir.glob("*.tsv")) + list(prokka_dir.glob("*.gff"))
     
-    # Find organisms detected by pathogen DB but NOT in Bracken
-    bracken_organisms = set(df_bracken['name'].values)
-    new_pathogens = []
+    # Run DIAMOND
+    selected_db = PATHOGEN_DB_CUSTOM
+    blast_out = output_dir / "pathogen_results_raw.txt"
     
-    for organism, info in pathogen_organisms.items():
-        # Check if organism (or genus) already in Bracken
-        already_present = False
-        for bracken_org in bracken_organisms:
-            if organism.lower() in bracken_org.lower() or bracken_org.lower() in organism.lower():
-                already_present = True
-                break
+    if not selected_db or not selected_db.exists():
+        formatter.error(f"Pathogen database not found: {selected_db}")
+        return None
+    
+    db_base = selected_db.with_suffix('') if selected_db.suffix == '.dmnd' else selected_db
+    
+    outfmt_cols = "qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen slen stitle"
+    
+    cmd = [
+        "diamond", "blastp",
+        "-d", str(db_base),
+        "-q", str(protein_file),
+        "-o", str(blast_out),
+        "--outfmt", "6", *outfmt_cols.split(),
+        "--top", "1",
+        "--evalue", "1e-5",
+        "--id", str(min_identity),
+        "--threads", "4",
+        "--more-sensitive"
+    ]
+    
+    formatter.debug(f"DIAMOND command: {' '.join(cmd)}")
+    
+    # Run DIAMOND - suppress output
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    
+    if result.returncode != 0:
+        formatter.error(f"DIAMOND failed: {result.stderr}")
+        return None
+    
+    if not blast_out.exists() or blast_out.stat().st_size == 0:
+        formatter.debug("No pathogen hits found")
         
-        # --- MODIFIED: Use hit_counts (which is not filtered) ---
-        if not already_present and hit_counts[organism] >= 3:  # At least 3 hits
-            # Add as low-abundance detection
-            # Estimate abundance based on hit count (rough approximation)
-            estimated_abundance = min(0.01, hit_counts[organism] / 1000)  # Max 1%
+        # Create empty results
+        empty_results = {
+            'summary': {
+                'total_hits': 0,
+                'high_confidence': 0,
+                'medium_confidence': 0,
+                'low_confidence': 0,
+                'filters_applied': {}
+            },
+            'high_confidence_hits': [],
+            'medium_confidence_hits': [],
+            'low_confidence_hits': []
+        }
+        
+        filtered_file = output_dir / "pathogen_detections_validated.json"
+        with open(filtered_file, 'w') as f:
+            json.dump(empty_results, f, indent=2)
+        
+        legacy_file = output_dir / "pathogen_results.tsv"
+        export_legacy_tsv(empty_results, legacy_file)
+        
+        return legacy_file
+    
+    # STEP 1: Collect needed protein IDs from BLAST hits (memory efficient)
+    formatter.debug("Collecting protein IDs from pathogen hits...")
+    needed_ids = set()
+    
+    with open(blast_out) as f:
+        for line in f:
+            if not line.strip():
+                continue
+            parts = line.strip().split('\t')
+            if len(parts) >= 1:
+                needed_ids.add(parts[0])  # query ID
+    
+    # STEP 2: Load ONLY the sequences we need (99% memory reduction)
+    formatter.debug(f"Loading {len(needed_ids)} protein sequences (streaming mode)...")
+    protein_sequences = load_protein_sequences_streaming(protein_file, needed_ids)
+    formatter.debug(f"Loaded {len(protein_sequences)} sequences")
+    
+    # STEP 3: Parse and filter results
+    formatter.debug("Processing pathogen hits with confidence scoring...")
+    
+    hits_high_conf = []
+    hits_medium_conf = []
+    hits_low_conf = []
+    
+    with open(blast_out) as f:
+        for line_num, line in enumerate(f, 1):
+            if not line.strip():
+                continue
             
-            new_row = {
-                'name': organism,
-                'taxonomy_id': '0',  # Unknown taxonomy ID
-                'taxonomy_lvl': 'S',
-                'kraken_assigned_reads': 0,
-                'added_reads': hit_counts[organism],
-                'new_est_reads': hit_counts[organism],
-                'fraction_total_reads': estimated_abundance,
-                'source': 'pathogen_database'
+            parts = line.strip().split('\t')
+            if len(parts) < 15:
+                continue
+            
+            try:
+                hit = {
+                    'qseqid': parts[0],
+                    'sseqid': parts[1],
+                    'pident': float(parts[2]),
+                    'length': int(parts[3]),
+                    'qstart': int(parts[6]),
+                    'qend': int(parts[7]),
+                    'sstart': int(parts[8]),
+                    'send': int(parts[9]),
+                    'evalue': float(parts[10]),
+                    'bitscore': float(parts[11]),
+                    'qlen': int(parts[12]),
+                    'slen': int(parts[13]),
+                    'stitle': parts[14] if len(parts) > 14 else ""
+                }
+                
+                # Calculate coverages
+                hit['query_coverage'] = (hit['qend'] - hit['qstart'] + 1) / hit['qlen']
+                hit['subject_coverage'] = abs(hit['send'] - hit['sstart'] + 1) / hit['slen']
+                
+                # Filter
+                if hit['qlen'] < min_fragment_length:
+                    continue
+                if hit['query_coverage'] < min_query_coverage:
+                    continue
+                if hit['subject_coverage'] < min_subject_coverage:
+                    continue
+                
+                # Get additional context
+                hit['sequence'] = protein_sequences.get(hit['qseqid'], '')
+                hit['contig_id'] = hit['qseqid'].rsplit('_', 1)[0]
+                hit['contig_coverage'] = get_contig_coverage(hit['contig_id'], contigs_file)
+                hit['prokka_annotation'] = get_prokka_annotation(hit['qseqid'], prokka_files)
+                
+                # Check for critical motifs
+                motif_score, motifs_found = check_critical_motifs(hit['sequence'], hit['sseqid'])
+                hit['motifs_found'] = motifs_found
+                hit['has_critical_motif'] = motif_score > 0.5
+                
+                # Calculate confidence score
+                confidence_score, confidence_tier, evidence = calculate_confidence_score(
+                    hit, abundance_lookup, hit['contig_coverage'], motifs_found, hit['prokka_annotation']
+                )
+                
+                hit['confidence_score'] = confidence_score
+                hit['confidence_tier'] = confidence_tier
+                hit['evidence'] = evidence
+                
+                # Categorize by confidence
+                if confidence_tier == "HIGH":
+                    hits_high_conf.append(hit)
+                elif confidence_tier == "MEDIUM":
+                    hits_medium_conf.append(hit)
+                else:
+                    hits_low_conf.append(hit)
+                
+            except (ValueError, IndexError) as e:
+                formatter.debug(f"Parse error line {line_num}: {e}")
+                continue
+    
+    # Summary
+    total_hits = len(hits_high_conf) + len(hits_medium_conf) + len(hits_low_conf)
+    
+    formatter.debug(
+        f"Pathogen scan complete: {total_hits} hits "
+        f"(HIGH: {len(hits_high_conf)}, MEDIUM: {len(hits_medium_conf)}, LOW: {len(hits_low_conf)})"
+    )
+    
+    # Save filtered results (JSON)
+    filtered_file = output_dir / "pathogen_detections_validated.json"
+    
+    results = {
+        'summary': {
+            'total_hits': total_hits,
+            'high_confidence': len(hits_high_conf),
+            'medium_confidence': len(hits_medium_conf),
+            'low_confidence': len(hits_low_conf),
+            'filters_applied': {
+                'min_fragment_length': min_fragment_length,
+                'min_identity': min_identity,
+                'min_query_coverage': min_query_coverage,
+                'min_subject_coverage': min_subject_coverage
             }
-            new_pathogens.append(new_row)
-            formatter.info(
-                f"Adding pathogen detected by sequence search: {organism} "
-                f"({hit_counts[organism]} hits, ~{estimated_abundance*100:.2f}%)"
-            )
+        },
+        'high_confidence_hits': hits_high_conf,
+        'medium_confidence_hits': hits_medium_conf,
+        'low_confidence_hits': hits_low_conf
+    }
     
-    # Append new pathogens to Bracken results
-    if new_pathogens:
-        df_integrated = pd.concat([
-            df_bracken,
-            pd.DataFrame(new_pathogens)
-        ], ignore_index=True)
-        
-        formatter.success(
-            f"Integrated {len(new_pathogens)} additional pathogens from sequence search"
-        )
-    else:
-        df_integrated = df_bracken
-        formatter.info("No additional pathogens to integrate")
+    with open(filtered_file, 'w') as f:
+        json.dump(results, f, indent=2, default=str)
     
-    # Save integrated results
-    df_integrated.to_csv(output_file, sep='\t', index=False)
+    # Export legacy TSV format
+    legacy_file = output_dir / "pathogen_results.tsv"
+    export_legacy_tsv(results, legacy_file)
     
-    return df_integrated
+    formatter.debug(f"Results saved: {legacy_file.name}")
+    
+    return legacy_file
+
+
+# ============================================================================
+# BACKWARD COMPATIBILITY WRAPPER
+# ============================================================================
+
+def run_pathogen_scan(protein_file, output_dir, bracken_results=None, taxonomy_results=None):
+    """Backward compatibility wrapper for existing code"""
+    # Find required files
+    contigs_file = output_dir.parent / "megahit_assembly" / "contigs.fasta"
+    prokka_dir = output_dir.parent / "prokka_annotation"
+    
+    if not contigs_file.exists():
+        contigs_file = output_dir / "contigs.fasta"
+    
+    if not prokka_dir.exists():
+        prokka_dir = output_dir
+    
+    return run_pathogen_scan_v2(
+        protein_file=Path(protein_file),
+        output_dir=Path(output_dir),
+        contigs_file=contigs_file,
+        prokka_dir=prokka_dir,
+        bracken_results=Path(bracken_results) if bracken_results else None
+    )
