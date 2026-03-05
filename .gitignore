@@ -52,13 +52,8 @@ Thumbs.db
 desktop.ini
 
 # ── MetaQuest Databases (large binary files) ──────────────────────────────────
-databases/kraken2_db/
-databases/*.dmnd
-databases/*.fasta
-databases/*.fa
-databases/*.faa
-databases/*.gz
-databases/*.tgz
+databases/
+
 
 # ── MetaQuest Analysis Outputs ───────────────────────────────────────────────
 results/
