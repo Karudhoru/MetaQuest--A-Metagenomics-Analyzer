@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MetaQuest Visualization Module v4.0.0
+MetaQuest Visualization Module v5.0.0
 Functional Visualizer Class
 """
 from collections import Counter
@@ -15,7 +15,7 @@ from plotly.subplots import make_subplots
 from .base_visualizer import BaseVisualizer
 
 class FunctionalVisualizer(BaseVisualizer):
-    """Functional annotation visualizations aligned with v4.0.0 reporting"""
+    """Functional annotation visualizations aligned with v5.0.0 reporting"""
     
     def create_annotation_quality_dashboard(self, swissprot_results, 
                                            title="Annotation Quality Dashboard"):

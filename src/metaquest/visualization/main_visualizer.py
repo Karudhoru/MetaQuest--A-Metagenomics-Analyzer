@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MetaQuest Visualization Module v4.0.0
+MetaQuest Visualization Module v5.0.0
 Main Visualizer Functions
 """
 from pathlib import Path
@@ -16,7 +16,7 @@ from ..io.output_formatter import get_formatter
 
 def create_taxonomic_visualizations(output_dir, data, **kwargs):
     """
-    Create all taxonomic visualizations for v4.0.0 reports.
+    Create all taxonomic visualizations for v5.0.0 reports.
     
     Args:
         output_dir: Output directory for visualizations
@@ -54,7 +54,7 @@ def create_taxonomic_visualizations(output_dir, data, **kwargs):
 
 def create_pathogen_visualizations(output_dir, traditional_data=None, **kwargs):
     """
-    Create all pathogen visualizations for v4.0.0 reports.
+    Create all pathogen visualizations for v5.0.0 reports.
     
     Args:
         output_dir: Output directory for visualizations
@@ -93,7 +93,7 @@ def create_pathogen_visualizations(output_dir, traditional_data=None, **kwargs):
 def create_functional_visualizations(output_dir, prokka_results=None, 
                                     swissprot_results=None, **kwargs):
     """
-    Create all functional visualizations for v4.0.0 reports.
+    Create all functional visualizations for v5.0.0 reports.
     
     Args:
         output_dir: Output directory for visualizations

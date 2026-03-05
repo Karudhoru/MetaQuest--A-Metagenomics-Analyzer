@@ -15,7 +15,7 @@ from plotly.subplots import make_subplots
 from .base_visualizer import BaseVisualizer
 
 class TaxonomicVisualizer(BaseVisualizer):
-    """Taxonomic classification visualizations aligned with v4.0.0 reports"""
+    """Taxonomic classification visualizations aligned with v5.0.0 reports"""
 
     def _prepare_dataframe_from_data(self, data):
         """
