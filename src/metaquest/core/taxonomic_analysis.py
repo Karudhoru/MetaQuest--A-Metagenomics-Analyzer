@@ -1,3 +1,11 @@
+"""
+Taxonomic Analysis Module - Kraken2/Bracken Only v2.0.0
+========================================================
+
+Minimal console output - caller controls verbosity via formatter context managers.
+BLAST functionality removed - FASTQ-only pipeline with Kraken2/Bracken.
+"""
+
 import subprocess
 import os
 import pandas as pd
@@ -5,16 +13,24 @@ from pathlib import Path
 from collections import Counter
 import time
 import json
-import hashlib
-from Bio.Blast import NCBIWWW, NCBIXML
-from Bio import SeqIO
-import requests
-from ..config import *
+from ..config import KRAKEN_DB
 from ..io.output_formatter import get_formatter
 
 
 def run_kraken(input_files, output_dir):
-    """Run Kraken2 classification for FASTQ files with professional output"""
+    """
+    Run Kraken2 classification for FASTQ files.
+    
+    Args:
+        input_files: FASTQ file path(s) - single file or list of paired files
+        output_dir: Output directory for Kraken2 results
+        
+    Returns:
+        Path: Path to Kraken2 report file
+        
+    Output is controlled by the caller - this function only logs to debug.
+    Wrap with spinner or suppressed_output() from calling code.
+    """
     formatter = get_formatter()
     
     report = output_dir / "kraken_report.txt"
@@ -32,20 +48,21 @@ def run_kraken(input_files, output_dir):
     # Handle single-end vs paired-end
     if isinstance(input_files, (list, tuple)) and len(input_files) == 2:
         cmd.extend(["--paired", str(input_files[0]), str(input_files[1])])
-        formatter.info("Running Kraken2 on paired-end reads")
+        formatter.debug(f"Kraken2: paired-end mode")
     else:
         input_file = input_files[0] if isinstance(input_files, (list, tuple)) else input_files
         cmd.append(str(input_file))
-        formatter.info("Running Kraken2 on single-end reads")
+        formatter.debug(f"Kraken2: single-end mode")
     
     formatter.debug(f"Kraken2 database: {KRAKEN_DB}")
-    formatter.debug(f"Command: {' '.join(cmd)}")  # Debug: show full command
+    formatter.debug(f"Kraken2 command: {' '.join(cmd)}")
     
-    # Run with smart output handling
+    # Run subprocess - caller controls output via spinner/suppression
     returncode, stdout, stderr = formatter.run_subprocess(
         cmd,
-        operation_name="Kraken2 taxonomic classification",
-        show_command=True
+        operation_name="Kraken2 classification",
+        capture_output=True,
+        show_command=False  # Already logged above
     )
     
     if returncode != 0:
@@ -67,52 +84,48 @@ def run_kraken(input_files, output_dir):
             solutions=[
                 "Check if Kraken2 completed successfully",
                 "Verify database integrity",
-                "Check available disk space",
-                "Review stderr output above for errors"
+                "Check available disk space"
             ]
         )
         raise RuntimeError(f"Kraken2 report missing or empty: {report}")
     
-    # Parse and display key metrics
+    # Log metrics at debug level only
     try:
-        # Count classified sequences from report
         with open(report, 'r') as f:
             lines = f.readlines()
             if lines:
-                # First line is usually unclassified
                 total_reads = sum(int(line.split('\t')[1]) for line in lines if line.strip())
-                
-        formatter.success("Kraken2 classification complete")
-        formatter.result({
-            'Total sequences': f"{total_reads:,}",
-            'Report file': str(report.name),
-            'Output file': str(classified.name)
-        })
+                formatter.debug(f"Kraken2 classified {total_reads:,} sequences")
     except Exception as e:
-        formatter.debug(f"Could not parse metrics: {e}")
+        formatter.debug(f"Could not parse Kraken2 metrics: {e}")
     
     return report
 
 
-def run_bracken(report_path, output_dir, is_fasta=False):
-    """Estimate abundances with Bracken with professional output"""
+def run_bracken(report_path, output_dir):
+    """
+    Estimate abundances with Bracken.
+    
+    Args:
+        report_path: Path to Kraken2 report file
+        output_dir: Output directory for Bracken results
+        
+    Returns:
+        Path: Path to Bracken output file (or original Kraken2 report if Bracken fails)
+        
+    Output is controlled by the caller - this function only logs to debug.
+    """
     formatter = get_formatter()
     
     bracken_out = output_dir / "bracken_report.tsv"
     
-    # Skip Bracken for FASTA files
-    if is_fasta:
-        formatter.info("Skipping Bracken for FASTA input (read-based tool)")
-        formatter.info("Using BLAST-based taxonomic analysis instead")
-        return report_path
-    
     # Wait for Kraken report file
     report_file = Path(report_path)
-    formatter.operation("Waiting for Kraken2 report file", show_in_standard=True)
+    formatter.debug(f"Waiting for Kraken2 report: {report_file}")
     
     for attempt in range(5):
         if report_file.exists() and report_file.stat().st_size > 0:
-            formatter.debug(f"Found Kraken2 report: {report_file}")
+            formatter.debug(f"Found Kraken2 report")
             break
         time.sleep(1)
     else:
@@ -133,254 +146,34 @@ def run_bracken(report_path, output_dir, is_fasta=False):
         "-i", str(report_path),
         "-o", str(bracken_out),
         "-w", str(output_dir / "bracken_report.txt"),
-        "-r", "150",
-        "-l", "S",
-        "-t", "10"
+        "-r", "150",  # Read length
+        "-l", "S",    # Taxonomic level (Species)
+        "-t", "10"    # Threshold
     ]
     
     formatter.debug(f"Bracken parameters: read_len=150, level=Species, threshold=10")
     
-    # Run with smart output handling
+    # Run subprocess - caller controls output
     returncode, stdout, stderr = formatter.run_subprocess(
         cmd,
         operation_name="Bracken abundance estimation",
-        show_command=True
+        capture_output=True,
+        show_command=False
     )
     
     if returncode != 0:
-        formatter.warning("Bracken failed, continuing with Kraken2 report")
+        formatter.warning("Bracken failed, using Kraken2 report instead")
         formatter.debug(f"Bracken stderr: {stderr}")
         return report_path
     
-    # Parse and display results
+    # Log metrics at debug level
     if bracken_out.exists():
         try:
             df = pd.read_csv(bracken_out, sep='\t')
             species_count = len(df)
             total_reads = df['new_est_reads'].sum() if 'new_est_reads' in df.columns else 0
-            
-            formatter.success("Bracken abundance estimation complete")
-            formatter.result({
-                'Species detected': f"{species_count:,}",
-                'Total reads classified': f"{int(total_reads):,}",
-                'Output file': str(bracken_out.name)
-            })
+            formatter.debug(f"Bracken found {species_count:,} species, {int(total_reads):,} reads")
         except Exception as e:
             formatter.debug(f"Could not parse Bracken metrics: {e}")
     
     return bracken_out
-
-
-def get_sequence_cache_key(sequence):
-    """Generate cache key for sequence"""
-    return hashlib.md5(sequence.encode()).hexdigest()
-
-
-def load_blast_cache(cache_dir):
-    """Load existing BLAST cache"""
-    cache_file = cache_dir / "blast_cache.json"
-    if cache_file.exists():
-        try:
-            with open(cache_file, 'r') as f:
-                return json.load(f)
-        except Exception as e:
-            formatter = get_formatter()
-            formatter.debug(f"Could not load cache: {e}")
-    return {}
-
-
-def save_blast_cache(cache_dir, cache_data):
-    """Save BLAST cache to disk"""
-    cache_file = cache_dir / "blast_cache.json"
-    try:
-        with open(cache_file, 'w') as f:
-            json.dump(cache_data, f, indent=2)
-    except Exception as e:
-        formatter = get_formatter()
-        formatter.debug(f"Could not save cache: {e}")
-
-
-def blast_sequence_online(sequence, sequence_id, database="nt", cache=None, cache_key=None):
-    """BLAST a single sequence against NCBI database with caching and rate limiting"""
-    formatter = get_formatter()
-    
-    # Check cache first
-    if cache and cache_key and cache_key in cache:
-        formatter.debug(f"Using cached result for {sequence_id}")
-        return cache[cache_key]
-    
-    # Rate limiting
-    time.sleep(0.4)
-    
-    try:
-        formatter.debug(f"BLASTing {sequence_id} against {database}")
-        
-        # Submit BLAST job
-        result_handle = NCBIWWW.qblast(
-            program="blastn" if database == "nt" else "blastx",
-            database=database,
-            sequence=sequence,
-            hitlist_size=10,
-            expect=1e-5,
-            word_size=28 if database == "nt" else 6
-        )
-        
-        # Parse results
-        blast_records = NCBIXML.parse(result_handle)
-        record = next(blast_records)
-        
-        # Extract taxonomy information
-        taxonomy_results = []
-        for alignment in record.alignments:
-            for hsp in alignment.hsps:
-                if hsp.expect <= 1e-5:
-                    organism = extract_organism_from_description(alignment.hit_def)
-                    
-                    hit_info = {
-                        'hit_id': alignment.hit_id,
-                        'hit_def': alignment.hit_def,
-                        'length': alignment.length,
-                        'e_value': hsp.expect,
-                        'bit_score': hsp.bits,
-                        'identity': hsp.identities / hsp.align_length * 100,
-                        'query_cover': (hsp.query_end - hsp.query_start + 1) / len(sequence) * 100,
-                        'organism': organism
-                    }
-                    taxonomy_results.append(hit_info)
-        
-        result_data = {
-            'query_id': sequence_id,
-            'query_length': len(sequence),
-            'hits': taxonomy_results,
-            'timestamp': time.time()
-        }
-        
-        # Cache the result
-        if cache is not None and cache_key:
-            cache[cache_key] = result_data
-        
-        return result_data
-        
-    except Exception as e:
-        formatter.warning(f"BLAST failed for {sequence_id}: {e}")
-        return {
-            'query_id': sequence_id,
-            'query_length': len(sequence),
-            'hits': [],
-            'error': str(e),
-            'timestamp': time.time()
-        }
-
-
-def extract_organism_from_description(description):
-    """Extract organism name from BLAST hit description"""
-    # Extract text between brackets
-    if '[' in description and ']' in description:
-        organism = description.split('[')[-1].replace(']', '').strip()
-        return organism
-    
-    # Look for genus species pattern
-    words = description.split()
-    for i, word in enumerate(words):
-        if i < len(words) - 1:
-            if (word[0].isupper() and word[1:].islower() and 
-                words[i+1][0].islower() and words[i+1].isalpha()):
-                return f"{word} {words[i+1]}"
-    
-    # Fallback
-    return ' '.join(description.split()[:3])
-
-
-def run_fasta_blast_taxonomy(fasta_path, output_dir, database="nt", max_sequences=100):
-    """Run BLAST taxonomy classification for FASTA files with professional output"""
-    formatter = get_formatter()
-    
-    formatter.section_header("BLAST Taxonomic Classification")
-    formatter.info(f"Database: {database}")
-    formatter.info(f"Input: {fasta_path.name}")
-    
-    # Setup cache
-    cache_dir = output_dir / "blast_cache"
-    cache_dir.mkdir(exist_ok=True)
-    cache = load_blast_cache(cache_dir)
-    
-    # Parse FASTA file
-    sequences = list(SeqIO.parse(fasta_path, "fasta"))
-    total_sequences = len(sequences)
-    
-    formatter.result({
-        'Total sequences': f"{total_sequences:,}",
-        'Cache directory': str(cache_dir.name)
-    })
-    
-    # Limit sequences
-    if total_sequences > max_sequences:
-        formatter.warning(f"Limiting to first {max_sequences} sequences to avoid API overload")
-        sequences = sequences[:max_sequences]
-    
-    blast_results = []
-    
-    formatter.operation("Starting BLAST analysis (this may take several minutes)")
-    
-    # Define the NCBI web API limit
-    NCBI_MAX_LENGTH = 1_000_000
-
-    with formatter.progress_bar(total=len(sequences), desc="   BLAST Progress", unit="seq") as pbar:
-        for i, seq_record in enumerate(sequences):
-            
-            sequence_str = str(seq_record.seq)
-            cache_key = get_sequence_cache_key(sequence_str)
-            
-            # Skip very short sequences
-            if len(sequence_str) < 50:
-                formatter.debug(f"Skipping {seq_record.id} (too short: {len(sequence_str)} bp)")
-                pbar.update(1) # Update bar even when skipping
-                continue
-
-            # Skip sequences that are too long for NCBI web BLAST
-            if len(sequence_str) > NCBI_MAX_LENGTH:
-                formatter.warning(f"Skipping {seq_record.id} ({len(sequence_str):,} bp) - exceeds NCBI web BLAST limit of {NCBI_MAX_LENGTH:,} bp")
-                pbar.update(1) # Update bar even when skipping
-                continue
-            
-            # BLAST the sequence
-            result = blast_sequence_online(
-                sequence_str, 
-                seq_record.id, 
-                database=database,
-                cache=cache,
-                cache_key=cache_key
-            )
-            
-            blast_results.append(result)
-            
-            # Save cache periodically
-            if i % 10 == 0:
-                save_blast_cache(cache_dir, cache)
-
-            # Update the progress bar *after* processing the item
-            pbar.update(1)
-    
-    # Final progress update is no longer needed; the 'with' block handles completion.
-    
-    # Final cache save
-    save_blast_cache(cache_dir, cache)
-    
-    # Save results
-    results_file = output_dir / "blast_taxonomy_results.json"
-    with open(results_file, 'w') as f:
-        json.dump(blast_results, f, indent=2)
-    
-    # Summary
-    successful_blasts = len([r for r in blast_results if r.get('hits')])
-    total_hits = sum(len(r.get('hits', [])) for r in blast_results)
-    
-    formatter.success("BLAST taxonomic classification complete")
-    formatter.result({
-        'Sequences analyzed': f"{len(blast_results):,}",
-        'Successful BLASTs': f"{successful_blasts:,}",
-        'Total hits found': f"{total_hits:,}",
-        'Results file': str(results_file.name)
-    })
-    
-    return results_file
