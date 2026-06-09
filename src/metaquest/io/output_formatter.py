@@ -256,7 +256,8 @@ class OutputFormatter:
         self.current_stage = None
         self._operation_stack = []
         self.is_spinning = False
-        self._suppressed = False  # NEW: Track if we're in suppressed mode
+        self._suppressed = False
+        self._active_spinner = None  # Track current spinner for debug output pausing
         
         if not self.colors_enabled:
             Colors.disable()
@@ -281,7 +282,10 @@ class OutputFormatter:
 
     def _print(self, message: str, min_verbosity: int = STANDARD):
         """Internal print with verbosity check"""
-        if not self._suppressed and self.verbosity >= min_verbosity:
+        # In DEBUG mode, never suppress _print so debug messages from sub-functions
+        # called inside suppressed_output() context managers are still visible
+        is_suppressed = self._suppressed and self.verbosity < self.DEBUG
+        if not is_suppressed and self.verbosity >= min_verbosity:
             print(message)
         self._log(message)
 
@@ -353,7 +357,9 @@ class OutputFormatter:
 ╚{'═' * 73}╝{Colors.END}
 """
             print(banner)
+            # Log banner summary with timestamp
             self._log(f"{title} v{version} - {tagline}")
+            self._log(f"  {tagline}")
 
     def step_header(self, step_num: int, total_steps: int, title: str):
         """Print major pipeline step header"""
@@ -362,16 +368,33 @@ class OutputFormatter:
         if self.verbosity >= self.STANDARD:
             step_text = f"STEP {step_num}/{total_steps}: {title}"
             padding = 71 - len(step_text)
+            # Log the step header as a clean one-liner with timestamp
+            self._log(f"{'=' * 73}")
+            self._log(f"  {step_text}")
+            self._log(f"{'=' * 73}")
+            # Print the decorated version to the terminal
             header = f"""
 ╔{'═' * 73}╗
 ║  {Colors.BOLD}{step_text}{Colors.END}{' ' * padding}║
 ╚{'═' * 73}╝"""
-            self._print(header)
+            print(header)
 
     def section_header(self, title: str):
         """Print subsection header"""
         if self.verbosity >= self.STANDARD:
-            self._print(f"\n  {Colors.BOLD}{Colors.CYAN}🔹 {title}{Colors.END}")
+            # Log clean timestamp-prefixed version to log file
+            self._log(f"")
+            self._log(f"  🔹 {title}")
+            # Print decorated version to terminal only
+            print(f"\n  {Colors.BOLD}{Colors.CYAN}🔹 {title}{Colors.END}")
+
+    def format_step_start(self, title: str) -> str:
+        """Format a step start string - used by validation engine"""
+        return f"{Colors.BOLD}{Colors.CYAN}▶ {title}...{Colors.END}"
+
+    def format_step_complete(self, title: str) -> str:
+        """Format a step complete string - used by validation engine"""
+        return f"{Colors.GREEN}✓ {title} validated successfully{Colors.END}"
 
     # ========================================================================
     # STATUS MESSAGES - Simplified tree structure
@@ -484,6 +507,7 @@ class OutputFormatter:
         """Context manager for spinner animation"""
         if self.verbosity >= self.STANDARD and self.colors_enabled:
             spinner = Spinner(message)
+            self._active_spinner = spinner
             self.is_spinning = True
             spinner.start()
             try:
@@ -491,6 +515,7 @@ class OutputFormatter:
             finally:
                 spinner.stop()
                 self.is_spinning = False
+                self._active_spinner = None
         else:
             # In silent mode, just log without printing
             if self.verbosity >= self.VERBOSE:
@@ -515,42 +540,112 @@ class OutputFormatter:
     
     def run_subprocess(self, cmd: List[str], operation_name: str, 
                       capture_output: bool = True, show_command: bool = False) -> Tuple[int, str, str]:
-        """Run subprocess with controlled output"""
-        if show_command and self.verbosity >= self.DEBUG:
+        """Run subprocess with controlled output. All tool output is structured and timestamped."""
+        if show_command or self.verbosity >= self.DEBUG:
             self.debug(f"Command: {' '.join(cmd)}")
         
         if capture_output:
-            # Suppress output unless in debug mode
             if self.verbosity >= self.DEBUG:
-                result = subprocess.run(cmd, stdout=subprocess.PIPE, 
-                                      stderr=subprocess.PIPE, text=True, encoding='utf-8')
-                if result.stdout:
-                    print(result.stdout)
-                if result.stderr:
-                    print(result.stderr)
+                # DEBUG mode: capture output, print through structured block (no raw sys.stderr writes)
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    bufsize=1,
+                    encoding='utf-8',
+                    errors='replace'
+                )
+                
+                stdout_lines = []
+                stderr_lines = []
+                
+                def read_debug_stream(stream, line_list, tag):
+                    """Collect lines without writing to sys.stderr/stdout directly."""
+                    for line in stream:
+                        line_list.append(line)
+                
+                t1 = threading.Thread(target=read_debug_stream, args=(process.stdout, stdout_lines, "STDOUT"), daemon=True)
+                t2 = threading.Thread(target=read_debug_stream, args=(process.stderr, stderr_lines, "STDERR"), daemon=True)
+                t1.start()
+                t2.start()
+                
+                return_code = process.wait()
+                t1.join(timeout=2)
+                t2.join(timeout=2)
+                
+                stdout_str = "".join(stdout_lines)
+                stderr_str = "".join(stderr_lines)
+                
+                # Print structured block for STDOUT, then STDERR
+                if stdout_str.strip():
+                    self._debug_block_header(operation_name, "STDOUT")
+                    for line in stdout_str.splitlines():
+                        self._debug_tool_line(line, f"STDOUT:{operation_name}")
+                    self._debug_block_footer(operation_name, "STDOUT")
+                else:
+                    # Still log even if nothing to print
+                    if stdout_str:
+                        self._log(f"[STDOUT:{operation_name}] --- begin ---")
+                        for line in stdout_str.splitlines():
+                            self._log(f"[STDOUT:{operation_name}] {line}")
+                        self._log(f"[STDOUT:{operation_name}] --- end ---")
+
+                if stderr_str.strip():
+                    self._debug_block_header(operation_name, "STDERR")
+                    for line in stderr_str.splitlines():
+                        self._debug_tool_line(line, f"STDERR:{operation_name}")
+                    self._debug_block_footer(operation_name, "STDERR")
+                else:
+                    if stderr_str:
+                        self._log(f"[STDERR:{operation_name}] --- begin ---")
+                        for line in stderr_str.splitlines():
+                            self._log(f"[STDERR:{operation_name}] {line}")
+                        self._log(f"[STDERR:{operation_name}] --- end ---")
+                
+                return return_code, stdout_str, stderr_str
             else:
-                # Fully suppress
-                result = subprocess.run(cmd, stdout=subprocess.PIPE, 
-                                      stderr=subprocess.PIPE, text=True, encoding='utf-8')
-            
-            # Always log
-            if result.stdout:
-                self._log(f"STDOUT for '{operation_name}':\n{result.stdout}")
-            if result.stderr:
-                self._log(f"STDERR for '{operation_name}':\n{result.stderr}")
-            
-            return result.returncode, result.stdout, result.stderr
+                # Non-debug: fully suppress terminal output, log everything
+                result = subprocess.run(cmd, stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE, text=True, encoding='utf-8')
+                if result.stdout:
+                    self._log(f"[STDOUT:{operation_name}] --- begin ---")
+                    for line in result.stdout.splitlines():
+                        self._log(f"[STDOUT:{operation_name}] {line}")
+                    self._log(f"[STDOUT:{operation_name}] --- end ---")
+                if result.stderr:
+                    self._log(f"[STDERR:{operation_name}] --- begin ---")
+                    for line in result.stderr.splitlines():
+                        self._log(f"[STDERR:{operation_name}] {line}")
+                    self._log(f"[STDERR:{operation_name}] --- end ---")
+                return result.returncode, result.stdout, result.stderr
         else:
-            if self.verbosity >= self.DEBUG:
-                result = subprocess.run(cmd)
-                return result.returncode, "", ""
-            else:
-                result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                if result.stdout:
-                    self._log(f"STDOUT:\n{result.stdout.decode(errors='ignore')}")
-                if result.stderr:
-                    self._log(f"STDERR:\n{result.stderr.decode(errors='ignore')}")
-                return result.returncode, "", ""
+            # capture_output=False: always capture so we can log/display cleanly
+            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                    text=True, encoding='utf-8', errors='replace')
+            stdout_str = result.stdout or ""
+            stderr_str = result.stderr or ""
+            if stdout_str.strip():
+                self._debug_block_header(operation_name, "STDOUT")
+                for line in stdout_str.splitlines():
+                    self._debug_tool_line(line, f"STDOUT:{operation_name}")
+                self._debug_block_footer(operation_name, "STDOUT")
+            elif stdout_str:
+                self._log(f"[STDOUT:{operation_name}] --- begin ---")
+                for line in stdout_str.splitlines():
+                    self._log(f"[STDOUT:{operation_name}] {line}")
+                self._log(f"[STDOUT:{operation_name}] --- end ---")
+            if stderr_str.strip():
+                self._debug_block_header(operation_name, "STDERR")
+                for line in stderr_str.splitlines():
+                    self._debug_tool_line(line, f"STDERR:{operation_name}")
+                self._debug_block_footer(operation_name, "STDERR")
+            elif stderr_str:
+                self._log(f"[STDERR:{operation_name}] --- begin ---")
+                for line in stderr_str.splitlines():
+                    self._log(f"[STDERR:{operation_name}] {line}")
+                self._log(f"[STDERR:{operation_name}] --- end ---")
+            return result.returncode, stdout_str, stderr_str
             
     def run_subprocess_with_progress(
         self,
@@ -563,22 +658,68 @@ class OutputFormatter:
     ) -> int:
         """
         Run subprocess with real-time progress tracking.
-        
-        Args:
-            cmd: Command to execute
-            operation_name: Name of the operation for display
-            total: Total number of items to process
-            unit: Unit name for progress display
-            parser_func: Function to parse progress from stdout/stderr lines
-            show_command: Whether to show the command being run
-            
-        Returns:
-            Return code of the subprocess
+        In debug mode: shows structured tool output block instead of progress bar.
         """
-        if show_command and self.verbosity >= self.DEBUG:
+        if show_command or self.verbosity >= self.DEBUG:
             self.debug(f"Command: {' '.join(cmd)}")
         
-        # Create progress bar if in standard or verbose mode
+        # In debug mode, show structured output instead of a progress bar
+        if self.verbosity >= self.DEBUG:
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,
+                encoding='utf-8',
+                errors='replace'
+            )
+            
+            stdout_lines = []
+            stderr_lines = []
+
+            def collect_stream(stream, line_list):
+                for line in stream:
+                    line_list.append(line)
+
+            t1 = threading.Thread(target=collect_stream, args=(process.stdout, stdout_lines), daemon=True)
+            t2 = threading.Thread(target=collect_stream, args=(process.stderr, stderr_lines), daemon=True)
+            t1.start()
+            t2.start()
+            return_code = process.wait()
+            t1.join(timeout=2)
+            t2.join(timeout=2)
+
+            stdout_str = "".join(stdout_lines)
+            stderr_str = "".join(stderr_lines)
+
+            if stdout_str.strip():
+                self._debug_block_header(operation_name, "STDOUT")
+                for line in stdout_str.splitlines():
+                    self._debug_tool_line(line, f"STDOUT:{operation_name}")
+                self._debug_block_footer(operation_name, "STDOUT")
+            else:
+                if stdout_str:
+                    self._log(f"[STDOUT:{operation_name}] --- begin ---")
+                    for line in stdout_str.splitlines():
+                        self._log(f"[STDOUT:{operation_name}] {line}")
+                    self._log(f"[STDOUT:{operation_name}] --- end ---")
+
+            if stderr_str.strip():
+                self._debug_block_header(operation_name, "STDERR")
+                for line in stderr_str.splitlines():
+                    self._debug_tool_line(line, f"STDERR:{operation_name}")
+                self._debug_block_footer(operation_name, "STDERR")
+            else:
+                if stderr_str:
+                    self._log(f"[STDERR:{operation_name}] --- begin ---")
+                    for line in stderr_str.splitlines():
+                        self._log(f"[STDERR:{operation_name}] {line}")
+                    self._log(f"[STDERR:{operation_name}] --- end ---")
+
+            return return_code
+
+        # Standard/verbose mode: use progress bar as before
         progress = None
         if self.verbosity >= self.STANDARD:
             progress = ProgressBar(total, operation_name, unit)
@@ -600,16 +741,12 @@ class OutputFormatter:
         
         def read_stream(stream, line_list, is_stderr=False):
             """Read stream line by line and update progress"""
+            tag = "STDERR" if is_stderr else "STDOUT"
             try:
                 for line in stream:
                     line_list.append(line)
-                    
-                    # Log all output
-                    if is_stderr:
-                        self._log(f"STDERR: {line.rstrip()}")
-                    else:
-                        self._log(f"STDOUT: {line.rstrip()}")
-                    
+                    # Log with timestamp only — no terminal print in standard mode
+                    self._log(f"[{tag}:{operation_name}] {line.rstrip()}")
                     # Parse progress if parser provided and progress bar exists
                     if parser_func and progress:
                         try:
@@ -621,37 +758,22 @@ class OutputFormatter:
             except Exception as e:
                 self.debug(f"Stream reading error: {e}")
         
-        # Create threads to read both streams
         stdout_thread = threading.Thread(
-            target=read_stream,
-            args=(process.stdout, stdout_lines, False),
-            daemon=True
+            target=read_stream, args=(process.stdout, stdout_lines, False), daemon=True
         )
         stderr_thread = threading.Thread(
-            target=read_stream,
-            args=(process.stderr, stderr_lines, True),
-            daemon=True
+            target=read_stream, args=(process.stderr, stderr_lines, True), daemon=True
         )
         
         stdout_thread.start()
         stderr_thread.start()
         
-        # Wait for process to complete
         return_code = process.wait()
-        
-        # Wait for threads to finish reading
         stdout_thread.join(timeout=2)
         stderr_thread.join(timeout=2)
         
-        # Ensure progress bar reaches 100% on success
         if progress and return_code == 0:
             progress.update_to(total)
-        
-        # Log full output
-        if stdout_lines:
-            self._log(f"Full STDOUT for '{operation_name}':\n{''.join(stdout_lines)}")
-        if stderr_lines:
-            self._log(f"Full STDERR for '{operation_name}':\n{''.join(stderr_lines)}")
         
         return return_code
 
@@ -691,6 +813,41 @@ class OutputFormatter:
         """Print debug message"""
         if self.verbosity >= self.DEBUG:
             self._print(f"     {Colors.DIM}[DEBUG] {message}{Colors.END}")
+
+    def _debug_tool_line(self, line: str, tag: str):
+        """
+        Print a single tool output line in debug mode.
+        Goes to terminal as a structured dim line — never writes raw to sys.stderr/stdout.
+        Also logs with timestamp via _log().
+        """
+        stripped = line.rstrip()
+        # Print to terminal only — clean, indented, dim
+        if self.verbosity >= self.DEBUG:
+            print(f"  {Colors.DIM}│ {stripped}{Colors.END}")
+        # Always log with timestamp (separate from terminal print)
+        self._log(f"[{tag}] {stripped}")
+
+    def _debug_block_header(self, operation_name: str, tag: str):
+        """Print a clean visual block header for tool output in debug mode."""
+        if self.verbosity >= self.DEBUG:
+            # Stop + clear the spinner line before printing (prevents interleaving)
+            if self._active_spinner and self._active_spinner.spinning:
+                self._active_spinner.spinning = False
+                if self._active_spinner.thread:
+                    self._active_spinner.thread.join(timeout=0.3)
+                # Clear the spinner line
+                sys.stdout.write('\r\033[K')
+                sys.stdout.flush()
+            label = f" {tag}: {operation_name} "
+            bar = "─" * max(0, (73 - len(label)) // 2)
+            print(f"\n  {Colors.DIM}{bar}{label}{bar}{Colors.END}")
+        self._log(f"[{tag}:{operation_name}] --- begin ---")
+
+    def _debug_block_footer(self, operation_name: str, tag: str):
+        """Print a clean visual block footer for tool output in debug mode."""
+        if self.verbosity >= self.DEBUG:
+            print(f"  {Colors.DIM}{'─' * 73}{Colors.END}\n")
+        self._log(f"[{tag}:{operation_name}] --- end ---")
 
     def result(self, metrics: Dict[str, Any], indent: int = 1):
         """Display result metrics"""

@@ -18,6 +18,7 @@ from datetime import datetime
 
 from .core.analysis import run_analysis
 from .core.comparative_analysis import run_comparison
+from .exceptions import MetaQuestError
 from .io.file_validator import FileValidator
 from .io.utils import run_system_check
 from .io.output_formatter import OutputFormatter, set_formatter
@@ -290,6 +291,12 @@ def create_parser():
         action='store_true',
         help='Enable debug mode with full diagnostic output (includes all commands and stderr)'
     )
+
+    parser.add_argument(
+        '--config',
+        metavar='FILE',
+        help='Path to YAML configuration file (overrides defaults). Generate one with: metaquest init-config'
+    )
     
     # Create subcommand parsers
     subparsers = parser.add_subparsers(
@@ -520,6 +527,32 @@ def create_parser():
         formatter_class=CustomHelpFormatter
     )
 
+    # ========================================================================
+    # INIT-CONFIG COMMAND
+    # ========================================================================
+    parser_init_config = subparsers.add_parser(
+        'init-config',
+        help='Generate a default configuration YAML file',
+        description=dedent("""
+            Generate Default Configuration
+            ===============================
+
+            Creates a metaquest.yaml configuration file with all default values.
+            Edit this file to customize pipeline behavior without CLI flags.
+
+            Usage:
+                metaquest init-config
+                metaquest init-config -o my_config.yaml
+        """),
+        formatter_class=CustomHelpFormatter
+    )
+    parser_init_config.add_argument(
+        '-o', '--output',
+        default='metaquest.yaml',
+        metavar='FILE',
+        help='Output path for the config file (default: metaquest.yaml)'
+    )
+
     db_options = parser_setup_db.add_argument_group('Database Selection')
     db_options.add_argument(
         '--all',
@@ -566,9 +599,9 @@ def main():
     # Determine verbosity level from command-line flags
     verbosity = 'debug' if args.debug else 'standard'
     
-    # Setup log file path if output directory specified
+    # Setup log file path if output directory specified (not for init-config)
     log_file = None
-    if hasattr(args, 'output') and args.output:
+    if hasattr(args, 'output') and args.output and args.command not in ('init-config', 'check'):
         log_file = Path(args.output) / 'metaquest.log'
     
     # Initialize global output formatter
@@ -785,10 +818,35 @@ def main():
                 )
                 sys.exit(1)
 
+        # ====================================================================
+        # COMMAND: INIT-CONFIG
+        # ====================================================================
+        elif args.command == 'init-config':
+            import shutil
+            from .settings import _DEFAULT_CONFIG_PATH
+
+            output_path = Path(args.output)
+            if output_path.exists():
+                formatter.warning(f"File already exists: {output_path}")
+                formatter.info("Overwriting with default configuration")
+
+            shutil.copy2(_DEFAULT_CONFIG_PATH, output_path)
+            formatter.success(f"Configuration file created: {output_path}")
+            formatter.info("Edit this file to customize pipeline behavior.")
+            formatter.info("Usage: metaquest analyze --config metaquest.yaml --single reads.fq -o results/")
+
     except KeyboardInterrupt:
         formatter.warning("Operation interrupted by user (Ctrl+C)")
         sys.exit(130)
-    
+
+    except MetaQuestError as e:
+        formatter.error(str(e))
+        if e.suggestions:
+            formatter.info("Suggestions:")
+            for s in e.suggestions:
+                formatter.info(f"  - {s}", indent=2)
+        sys.exit(1)
+
     except Exception as e:
         formatter.error(
             f"Unexpected error: {e}",

@@ -23,6 +23,7 @@ import re
 import json
 
 from .base_reporter import BaseReporter
+from ..io.output_formatter import get_formatter
 
 
 class FunctionalReporter(BaseReporter):
@@ -73,7 +74,7 @@ class FunctionalReporter(BaseReporter):
         stats = self._parse_sample_info(sample_info_file)
         
         if stats['gene'] == 0:
-            print(f"[WARNING] Zero genes detected - functional report will be limited.")
+            get_formatter().warning("Zero genes detected - functional report will be limited.")
         
         report_parts = []
         
@@ -747,7 +748,7 @@ class FunctionalReporter(BaseReporter):
         }
         
         if not sample_file.exists():
-            print(f"[WARNING] Sample info file not found: {sample_file}")
+            get_formatter().warning(f"Sample info file not found: {sample_file}")
             return stats
         
         with open(sample_file) as f:
@@ -890,26 +891,26 @@ class FunctionalReporter(BaseReporter):
                 ann_cols = standard_cols + [f'extra_{i}' for i in range(len(df.columns) - len(standard_cols))]
             else:
                 ann_cols = standard_cols[:len(df.columns)]
-                print(f"[WARNING] Annotation file has only {len(df.columns)} columns (expected {len(standard_cols)})")
+                get_formatter().debug(f"Annotation file has only {len(df.columns)} columns (expected {len(standard_cols)})")
             
             df.columns = ann_cols[:len(df.columns)]
             return df
         
         except Exception as e:
-            print(f"[ERROR] Failed to load annotation file {file_path.name}: {e}")
+            get_formatter().debug(f"Failed to load annotation file {file_path.name}: {e}")
             return pd.DataFrame()
     
     def export_annotations_table(self, annotation_file: Path, output_file: Path):
         """Export functional annotations table to CSV format."""
         try:
             if not annotation_file.exists():
-                print(f"[WARNING] Annotation file not found: {annotation_file}")
+                get_formatter().warning(f"Annotation file not found: {annotation_file}")
                 return
             
             df = pd.read_csv(annotation_file, sep='\t', header=None)
             
             if df.empty:
-                print(f"[WARNING] Annotation file is empty: {annotation_file.name}")
+                get_formatter().warning(f"Annotation file is empty: {annotation_file.name}")
                 return
             
             standard_cols = ['query_id', 'subject_id', 'identity', 'length', 'mismatches',
@@ -935,11 +936,11 @@ class FunctionalReporter(BaseReporter):
                 )
             
             df.to_csv(output_file, index=False)
-            print(f"[SUCCESS] Exported {len(df)} annotations to {output_file.name}")
+            fmt = get_formatter()
+            fmt.success(f"Exported {len(df)} annotations to {output_file.name}")
             
             if 'identity' in df.columns:
-                print(f"  Average identity: {df['identity'].mean():.1f}%")
-                print(f"  High quality (>90%): {(df['identity'] >= 90).sum()} annotations")
+                fmt.debug(f"Avg identity: {df['identity'].mean():.1f}%, high quality (>90%): {(df['identity'] >= 90).sum()}")
         
         except Exception as e:
-            print(f"[ERROR] Failed to export annotations table: {e}")
+            get_formatter().warning(f"Failed to export annotations table: {e}")

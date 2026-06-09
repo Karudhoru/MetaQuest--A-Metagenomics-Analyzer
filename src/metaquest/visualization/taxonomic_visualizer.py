@@ -30,7 +30,7 @@ class TaxonomicVisualizer(BaseVisualizer):
             try:
                 df = pd.read_csv(file_path, sep='\t')
                 if 'fraction_total_reads' in df.columns and 'new_est_reads' in df.columns:
-                    print("  ✓ Loaded Bracken format data")
+                    self.formatter.debug("Loaded Bracken format data")
                     return df, 'bracken'
             except:
                 pass
@@ -164,7 +164,7 @@ class TaxonomicVisualizer(BaseVisualizer):
             df, data_source = self._prepare_dataframe_from_data(data)
             
             if df.empty or data_source not in ['bracken', 'kraken']:
-                print("  ⚠️ Diversity analysis requires Bracken/Kraken data")
+                self.formatter.debug("Diversity analysis requires Bracken/Kraken data")
                 return None
             
             # Calculate diversity metrics
@@ -258,11 +258,11 @@ class TaxonomicVisualizer(BaseVisualizer):
             )
             
             filepath = self.save_plot(fig, output_filename)
-            print(f"  ✓ Diversity metrics saved: {filepath}")
+            self.formatter.success(f"Diversity metrics saved: {Path(filepath).name}")
             return filepath
             
         except Exception as e:
-            print(f"  ✗ Error creating diversity summary: {e}")
+            self.formatter.warning(f"Error creating diversity summary: {e}")
             return None
     
     def create_krona_plot(self, data, output_filename="taxonomy_krona.html"):
@@ -271,13 +271,13 @@ class TaxonomicVisualizer(BaseVisualizer):
             df, data_source = self._prepare_dataframe_from_data(data)
             
             if df.empty:
-                print("  ⚠️ No data for Krona plot")
+                self.formatter.debug("No data for Krona plot")
                 return None
 
             # Filter significant taxa
             significant_df = df[df['fraction_total_reads'] > 0.0001].copy()
             if significant_df.empty:
-                print("  ⚠️ No significant taxa for Krona")
+                self.formatter.debug("No significant taxa for Krona")
                 return None
             
             # Create Krona input file
@@ -295,13 +295,13 @@ class TaxonomicVisualizer(BaseVisualizer):
             result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
             
             if result.returncode == 0:
-                krona_input.unlink()  # Clean up temp file
-                print(f"  ✓ Krona plot created: {krona_output}")
+                krona_input.unlink()
+                self.formatter.success(f"Krona plot created: {Path(krona_output).name}")
                 return str(krona_output)
             else:
-                print(f"  ⚠️ Krona generation warning: {result.stderr}")
+                self.formatter.warning(f"Krona generation warning: {result.stderr}")
                 return None
                 
         except Exception as e:
-            print(f"  ✗ Error creating Krona plot: {e}")
+            self.formatter.warning(f"Error creating Krona plot: {e}")
             return None
