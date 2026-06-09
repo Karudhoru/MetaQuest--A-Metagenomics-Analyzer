@@ -14,10 +14,17 @@ from typing import List, Dict, Tuple, Optional
 from collections import defaultdict
 from Bio import SeqIO
 
-from ..config import PATHOGEN_DB_CUSTOM, CRITICAL_MOTIFS
+from ..config import CRITICAL_MOTIFS
+from ..exceptions import PathogenDetectionError
 from ..io.data_loaders import load_protein_sequences_streaming
 from ..io.text_parsers import extract_organism_name
 from ..io.output_formatter import get_formatter
+
+
+def _get_pathogen_db() -> Path:
+    """Resolve pathogen database path from settings."""
+    from ..settings import get_config
+    return get_config().databases.pathogen_markers
 
 
 def build_abundance_lookup(taxonomy_df: pd.DataFrame) -> Dict[str, float]:
@@ -395,7 +402,7 @@ def run_pathogen_scan_v2(
     prokka_files = list(prokka_dir.glob("*.tsv")) + list(prokka_dir.glob("*.gff"))
     
     # Run DIAMOND
-    selected_db = PATHOGEN_DB_CUSTOM
+    selected_db = _get_pathogen_db()
     blast_out = output_dir / "pathogen_results_raw.txt"
     
     if not selected_db or not selected_db.exists():
@@ -421,11 +428,16 @@ def run_pathogen_scan_v2(
     
     formatter.debug(f"DIAMOND command: {' '.join(cmd)}")
     
-    # Run DIAMOND - suppress output
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    # Run DIAMOND through formatter so output is logged and shown in debug mode
+    returncode, stdout, stderr = formatter.run_subprocess(
+        cmd,
+        operation_name="DIAMOND pathogen scan",
+        capture_output=True,
+        show_command=False
+    )
     
-    if result.returncode != 0:
-        formatter.error(f"DIAMOND failed: {result.stderr}")
+    if returncode != 0:
+        formatter.error(f"DIAMOND failed: {stderr}")
         return None
     
     if not blast_out.exists() or blast_out.stat().st_size == 0:
