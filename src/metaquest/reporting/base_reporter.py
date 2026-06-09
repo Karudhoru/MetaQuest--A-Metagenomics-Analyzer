@@ -210,32 +210,41 @@ class BaseReporter:
     def format_metadata(sample_id: str, analysis_date: Optional[str] = None, **kwargs) -> str:
         """
         Generate standardized metadata section for reports.
-        
+
+        All lines are formatted as ``Key:            Value`` with the key column
+        padded to 20 characters so the report header is consistently aligned.
+
         Args:
             sample_id: Sample identifier
             analysis_date: ISO format datetime (auto-generated if None)
-            **kwargs: Additional metadata key-value pairs
-        
+            **kwargs: Additional metadata key-value pairs (key names are used as-is,
+                      with underscores replaced by spaces and first letter capitalised)
+
         Returns:
             Formatted metadata string
         """
+        KEY_WIDTH = 22  # Characters reserved for the key column (including colon+padding)
+
         if analysis_date is None:
             analysis_date = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
-        
+
+        def _kv(key: str, value: str) -> str:
+            """Return a consistently formatted ``Key:   value`` line."""
+            key_with_colon = f"{key}:"
+            return f"{key_with_colon:<{KEY_WIDTH}}{value}"
+
         lines = [
-            f"Sample ID:          {sample_id}",
-            f"Analysis Date:      {analysis_date}",
+            _kv("Sample ID",       sample_id),
+            _kv("Analysis Date",   analysis_date),
         ]
-        
-        # Add additional metadata in order
+
+        # Additional metadata — preserve original casing, just replace underscores
         for key, value in kwargs.items():
-            # Format key: convert snake_case to Title Case
-            formatted_key = key.replace('_', ' ').title()
-            # Right-pad key to 20 chars for alignment
-            lines.append(f"{formatted_key:<20}{value}")
-        
-        lines.append(f"Pipeline Version:   MetaQuest v{BaseReporter.VERSION}")
-        
+            formatted_key = key.replace('_', ' ').capitalize()
+            lines.append(_kv(formatted_key, str(value)))
+
+        lines.append(_kv("Pipeline Version", f"MetaQuest v{BaseReporter.VERSION}"))
+
         return "\n".join(lines)
     
     @staticmethod

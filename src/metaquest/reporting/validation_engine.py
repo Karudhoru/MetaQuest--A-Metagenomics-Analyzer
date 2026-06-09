@@ -26,6 +26,7 @@ from Bio import SeqIO
 
 from ..io.text_parsers import extract_organism_name
 from ..io.data_loaders import load_annotation_file, load_ml_predictions
+from ..io.output_formatter import get_formatter
 
 
 class ValidationEngine:
@@ -119,14 +120,14 @@ class ValidationEngine:
                         except (ValueError, IndexError) as e:
                             continue
         except FileNotFoundError:
-            print(f"[ERROR] Kraken report not found: {kraken_report}")
+            get_formatter().warning(f"Kraken report not found: {kraken_report}")
             return {}
 
         # Parse Bracken report for final estimates
         try:
             bracken_df = pd.read_csv(bracken_report, sep='\t')
         except Exception as e:
-            print(f"[ERROR] Failed to load Bracken report: {e}")
+            get_formatter().warning(f"Failed to load Bracken report: {e}")
             return {}
 
         # Calculate confidence for each species
@@ -201,10 +202,8 @@ class ValidationEngine:
                 'match_method': match_method
             }
 
-        print(f"  Matched by tax_id: {matched_by_id}")
-        print(f"  Matched by name: {matched_by_name}")
-        print(f"  Not matched: {not_matched}")
-        print(f"  Total confidence entries: {len(confidence_data)}")
+        fmt = get_formatter()
+        fmt.debug(f"Bracken confidence: matched by tax_id={matched_by_id}, by name={matched_by_name}, not matched={not_matched}, total={len(confidence_data)}")
 
         return confidence_data
 
@@ -235,22 +234,19 @@ class ValidationEngine:
             Dict: {gene_id: {'species': str, 'confidence': str, 'identity': float, 'method': str}}
         """
 
-        from ..io.output_formatter import get_formatter
         fmt = get_formatter()
-
-        print(f"\n{fmt.format_step_start('Gene-to-Species Linkage')}")
-        print("  Method: Hybrid (annotation + contig mapping)")
-        print("  Optimization: Vectorized pandas operations")
+        fmt.debug(fmt.format_step_start('Gene-to-Species Linkage'))
+        fmt.debug("Method: Hybrid (annotation + contig mapping) — Vectorized")
 
         # Method A: Parse annotations for organism names
         method_a_full = self._parse_organism_from_annotations_with_identity(
             annotation_file, pathogen_file
         )
-        print(f"  Method A (annotations): {len(method_a_full)} genes")
+        fmt.debug(f"Gene-to-species Method A (annotations): {len(method_a_full)} genes")
 
         # Method B: Map genes via contigs
         method_b_full = self._map_genes_via_contigs(prokka_gff, kraken_classified)
-        print(f"  Method B (contigs): {len(method_b_full)} genes")
+        fmt.debug(f"Gene-to-species Method B (contigs): {len(method_b_full)} genes")
 
 
         import pandas as pd
@@ -285,7 +281,7 @@ class ValidationEngine:
             df_merged['species_a'] = None
             df_merged['identity_a'] = 0
         else:
-            print("  ⚠️ No genes found in either method")
+            fmt.debug("Gene-to-species: no genes found in either method")
             return {}
 
 
@@ -359,18 +355,14 @@ class ValidationEngine:
         moderate = sum(1 for g in gene_to_species.values() if g['confidence'] == 'MODERATE')
         low = sum(1 for g in gene_to_species.values() if g['confidence'] == 'LOW')
 
-        print(f"\n  Results:")
-        print(f"    Total genes linked: {len(gene_to_species)}")
-        print(f"    HIGH confidence: {high} ({high/len(gene_to_species)*100:.1f}%)")
-        print(f"    MODERATE confidence: {moderate} ({moderate/len(gene_to_species)*100:.1f}%)")
-        print(f"    LOW confidence: {low} ({low/len(gene_to_species)*100:.1f}%)")
+        fmt.debug(f"Gene-to-species: total={len(gene_to_species)}, HIGH={high}, MODERATE={moderate}, LOW={low}")
 
         # Cleanup memory
         del df_a, df_b, df_merged, result_df
         import gc
         gc.collect()
 
-        print(f"{fmt.format_step_complete('Gene-to-Species Linkage')}")
+        fmt.debug(fmt.format_step_complete('Gene-to-Species Linkage'))
 
         return gene_to_species
 
@@ -418,7 +410,7 @@ class ValidationEngine:
                             'source': 'functional_annotation'
                         }
             except Exception as e:
-                print(f"[ERROR] Failed to parse functional annotations: {e}")
+                get_formatter().debug(f"Failed to parse functional annotations: {e}")
 
         # Process pathogen database (OVERRIDES functional with higher priority)
         if pathogen_file.exists():
@@ -447,7 +439,7 @@ class ValidationEngine:
                             'source': 'pathogen_db'
                         }
             except Exception as e:
-                print(f"[ERROR] Failed to parse pathogen database: {e}")
+                get_formatter().debug(f"Failed to parse pathogen database: {e}")
 
         return gene_organisms
 
@@ -507,7 +499,7 @@ class ValidationEngine:
                             gene_id = locus_match.group(1)
                             gene_to_contig[gene_id] = contig
         except Exception as e:
-            print(f"[ERROR] Failed to parse Prokka GFF: {e}")
+            get_formatter().debug(f"Failed to parse Prokka GFF: {e}")
 
         return gene_to_contig
 
@@ -549,7 +541,7 @@ class ValidationEngine:
                             'score': 1.0
                         }
         except Exception as e:
-            print(f"[ERROR] Failed to parse Kraken contigs: {e}")
+            get_formatter().debug(f"Failed to parse Kraken contigs: {e}")
 
         return contig_taxonomy
 
@@ -741,7 +733,7 @@ class ValidationEngine:
                 continue
 
             if 'species' not in pathogen or 'abundance' not in pathogen:
-                print(f"  ⚠️ Skipping malformed pathogen entry at index {idx}")
+                get_formatter().debug(f"Skipping malformed pathogen entry at index {idx}")
                 continue
 
             try:
@@ -757,7 +749,7 @@ class ValidationEngine:
                 if idx < len(pathogens):
                     lines.extend(["", "─" * 70, ""])
             except Exception as e:
-                print(f"  ⚠️ Error validating pathogen {idx}: {e}")
+                get_formatter().debug(f"Error validating pathogen {idx}: {e}")
                 lines.extend([
                     f"  ⚠️ Validation failed for pathogen {idx}",
                     f"  Error: {str(e)}",
@@ -782,21 +774,21 @@ class ValidationEngine:
 
         # CRITICAL FIX: Check if pathogens_detected exists and is not empty
         if 'pathogens_detected' not in taxonomic_risk:
-            print("  ⚠️ No 'pathogens_detected' in taxonomic_risk")
+            get_formatter().debug("No 'pathogens_detected' key in taxonomic_risk")
             return candidates
 
         pathogens_list = taxonomic_risk['pathogens_detected']
 
         if not pathogens_list or len(pathogens_list) == 0:
-            print("  ℹ️ No pathogens detected in taxonomic analysis")
+            get_formatter().debug("No pathogens detected in taxonomic analysis")
             return candidates
 
-        print(f"  Processing {len(pathogens_list)} detected pathogens...")
+        get_formatter().debug(f"Processing {len(pathogens_list)} detected pathogens...")
 
         for idx, pathogen in enumerate(pathogens_list):
             # SAFETY: Ensure pathogen is a dict with required fields
             if not isinstance(pathogen, dict):
-                print(f"  ⚠️ Pathogen {idx} is not a dict, skipping")
+                get_formatter().debug(f"Pathogen {idx} is not a dict, skipping")
                 continue
 
             risk_level = pathogen.get('risk_level', 'Unknown')
@@ -823,16 +815,14 @@ class ValidationEngine:
                 if tax_id and tax_id in confidence_data:
                     pathogen['confidence'] = confidence_data[tax_id]
                 else:
-                    if idx < 3:  # Only print details for first 3
-                        print(f"  ℹ️ No confidence data for: {species}")
+                    if idx < 3:
+                        get_formatter().debug(f"No confidence data for: {species}")
 
                 candidates.append(pathogen)
 
         # Summary
         with_confidence = sum(1 for p in candidates if 'confidence' in p)
-        print(f"  Selected: {len(candidates)} pathogens")
-        print(f"  With confidence: {with_confidence}")
-        print(f"  Without confidence: {len(candidates) - with_confidence}")
+        get_formatter().debug(f"Pathogen selection: {len(candidates)} selected, {with_confidence} with confidence, {len(candidates)-with_confidence} without")
 
         # CRITICAL: Sort by abundance (handle missing 'abundance' key)
         candidates.sort(key=lambda x: x.get('abundance', 0), reverse=True)

@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 from Bio import SeqIO
 from typing import Dict, List, Optional, Literal
+from ..io.output_formatter import get_formatter
 
 def load_bracken_report(bracken_file: Path) -> pd.DataFrame:
     """
@@ -66,7 +67,7 @@ def load_annotation_file(file_path: Path) -> pd.DataFrame:
             
         return df
     except Exception as e:
-        print(f"Error loading annotation file: {e}")
+        get_formatter().debug(f"Error loading annotation file: {e}")
         return pd.DataFrame()
     
 def load_ml_predictions(ml_file: Path) -> List[Dict]:
@@ -79,7 +80,7 @@ def load_ml_predictions(ml_file: Path) -> List[Dict]:
             data = json.load(f)
             return data.get('predictions', [])
     except Exception as e:
-        print(f"Warning: Could not load ML predictions: {e}")
+        get_formatter().debug(f"Could not load ML predictions: {e}")
         return []
 
 
@@ -138,7 +139,7 @@ def load_pathogen_hits(pathogen_file: Path) -> pd.DataFrame:
             return df
             
     except Exception as e:
-        print(f"Warning: Could not load pathogen hits from {pathogen_file}: {e}")
+        get_formatter().debug(f"Could not load pathogen hits from {pathogen_file}: {e}")
         return pd.DataFrame()
 
 
@@ -175,7 +176,7 @@ def load_prokka_stats(sample_txt: Path) -> Dict[str, int]:
                     except ValueError:
                         stats[key] = value
     except Exception as e:
-        print(f"Warning: Could not parse Prokka stats: {e}")
+        get_formatter().debug(f"Could not parse Prokka stats: {e}")
     
     return stats
 

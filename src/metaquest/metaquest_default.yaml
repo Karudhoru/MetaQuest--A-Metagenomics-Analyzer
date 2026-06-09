@@ -1,0 +1,98 @@
+# MetaQuest Configuration
+# =======================
+# All pipeline parameters are controlled from this file.
+# CLI arguments: --config <path> --input <file> --output <dir>
+# Environment override: METAQUEST_DB_DIR for database location.
+
+databases:
+  # Resolved as: METAQUEST_DB_DIR env var > this value > ./databases
+  base_dir: null
+  kraken_db: null           # defaults to base_dir
+  pathogen_markers: metaquest_pathogen_markers.dmnd
+  swissprot_cog: SwissProt_COG_db.dmnd
+  kraken_db_version: "Standard-16 (Built: 2024-01-10)"
+
+assembly:
+  assembler: megahit        # megahit | spades
+  threads: 8
+  min_contig_length: 500
+  memory_limit_gb: 8
+  kmer_min: 21
+  kmer_max: 141
+  kmer_step: 12
+
+classification:
+  threads: 8
+  read_length: 150
+  taxonomic_level: S        # S=Species, G=Genus, F=Family
+  min_hit_groups: 2
+  bracken_threshold: 10
+
+annotation:
+  tool: prokka
+  threads: 8
+  evalue: 1.0e-6
+  mode: metagenome          # metagenome | careful | fast
+  kill_tbl2asn: true
+  tbl2asn_timeout: 30
+  rfam: false
+  min_contig_length: 200
+
+pathogen_detection:
+  min_fragment_length: 80
+  min_identity: 80.0
+  min_query_coverage: 0.7
+  min_subject_coverage: 0.7
+  evalue_threshold: 1.0e-5
+  diamond_threads: 4
+  diamond_sensitivity: more-sensitive  # fast | mid-sensitive | sensitive | more-sensitive | very-sensitive
+  confidence_high: 70
+  confidence_medium: 45
+
+ml:
+  enabled: true
+  confidence_threshold: 0.7
+  batch_size: 100
+  feature_cache: true
+  random_seed: 42
+  model_artifacts_dir: null  # defaults to package ml/model_artifacts
+  uncertainty_threshold: 0.3
+
+comparative:
+  normalization: tss        # tss | clr | none
+  min_prevalence: 0.10
+  random_seed: 42
+  permutations: 999
+  alpha_level: 0.05
+  fdr_method: fdr_bh
+
+memory:
+  max_sequences_in_memory: 10000
+  chunk_size: 1000
+  streaming_enabled: true
+
+qc:
+  min_read_quality: 20
+  min_read_length: 50
+  min_classification_rate: 0.5
+  min_species_level_rate: 0.3
+  max_unclassified_rate: 0.5
+  min_contig_coverage: 2.0
+
+reporting:
+  formats:
+    - txt
+    - json
+    - html
+  detail_level: full        # full | summary
+  include_plots: true
+  include_tables: true
+  confidence_warnings: true
+  max_table_rows: 100
+  decimal_precision: 2
+
+logging:
+  level: INFO               # DEBUG | INFO | WARNING | ERROR
+  log_to_file: true
+  log_to_console: true
+  format: "%(asctime)s [%(levelname)s] %(message)s"

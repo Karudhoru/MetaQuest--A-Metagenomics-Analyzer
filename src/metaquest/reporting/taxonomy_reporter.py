@@ -26,6 +26,7 @@ from typing import Dict, List, Optional, Tuple
 
 from .base_reporter import BaseReporter
 from .validation_engine import ValidationEngine
+from ..io.output_formatter import get_formatter
 from ..config import (
     COMMENSAL_SPECIES,
     CLINICAL_NOTES,
@@ -75,7 +76,8 @@ class TaxonomyReporter(BaseReporter):
             potential_kraken_path = bracken_file.parent / "kraken_report.txt"
             if potential_kraken_path.exists():
                 kraken_report_file = potential_kraken_path
-                print(f"[INFO] Found Kraken report: {kraken_report_file.name}")
+                _fmt = get_formatter()
+                _fmt.info(f"Found Kraken report: {potential_kraken_path.name}")
 
         # Store resolved kraken report path for use by section generators (e.g. section 5.4)
         self._last_kraken_report = kraken_report_file
@@ -89,9 +91,11 @@ class TaxonomyReporter(BaseReporter):
                     kraken_report_file, bracken_file
                 )
                 if confidence_data:
-                    print(f"[SUCCESS] Calculated Bracken confidence for {len(confidence_data)} taxa")
+                    _fmt = get_formatter()
+                    _fmt.info(f"Calculated Bracken confidence for {len(confidence_data)} taxa")
             except Exception as e:
-                print(f"[ERROR] Failed to calculate Bracken confidence: {e}")
+                _fmt = get_formatter()
+                _fmt.warning(f"Failed to calculate Bracken confidence: {e}")
         
         report_parts = []
         
@@ -441,7 +445,7 @@ class TaxonomyReporter(BaseReporter):
         
         lines.append("2.3 Low-Abundance Pathogens (<0.1%)\n")
         lines.append(f"{len(low_abundance)} additional pathogenic species detected at <0.1% abundance")
-        lines.append("(Full table exported to: outputs/taxonomy_complete_table.tsv)")
+        lines.append(f"(Full table exported to: {self.output_dir / 'taxonomy_complete_table.tsv'})")
         
         return '\n'.join(lines)
     
@@ -799,7 +803,7 @@ class TaxonomyReporter(BaseReporter):
         rare_count = len(bracken_df) - 20
         if rare_count > 0:
             lines.append(f"\nRare species (<0.1% abundance): {self.format_large_number(rare_count)} detected")
-            lines.append("Full table: outputs/taxonomy_complete_table.tsv")
+            lines.append(f"Full table: {self.output_dir / 'taxonomy_complete_table.tsv'}")
         
         lines.append("")
         
@@ -1096,7 +1100,7 @@ class TaxonomyReporter(BaseReporter):
         for commensal in self.commensal_species:
             if commensal.lower() in species_lower:
                 if abundance > 0.10:  # >10% abundance is concerning
-                    print(f"[WARNING] {species_name} is normally commensal but at {abundance*100:.1f}% abundance")
+                    self.formatter.warning(f"{species_name} is normally commensal but at {abundance*100:.1f}% abundance")
                     return True
                 return False
         
@@ -1134,7 +1138,7 @@ class TaxonomyReporter(BaseReporter):
 
             return None
         except Exception as e:
-            print(f"[WARNING] Failed to parse Kraken report: {e}")
+            self.formatter.debug(f"Failed to parse Kraken report: {e}")
             return None
 
     def _parse_kraken_raw_unclassified(self, kraken_report: Path) -> Optional[int]:
@@ -1195,7 +1199,7 @@ class TaxonomyReporter(BaseReporter):
                         break  # both found, no need to scan further
 
         except Exception as e:
-            print(f"[WARNING] Failed to parse Kraken grand total: {e}")
+            self.formatter.debug(f"Failed to parse Kraken grand total: {e}")
             return None
 
         if unclassified is None or classified is None:
@@ -1243,7 +1247,7 @@ class TaxonomyReporter(BaseReporter):
                         rank_reads[rank] = rank_reads.get(rank, 0) + clade_reads
 
         except Exception as e:
-            print(f"[WARNING] Failed to parse Kraken level breakdown: {e}")
+            self.formatter.debug(f"Failed to parse Kraken level breakdown: {e}")
             return None
 
         if total_classified == 0:
@@ -1389,4 +1393,4 @@ class TaxonomyReporter(BaseReporter):
         bracken_df['clinical_notes'] = bracken_df['name'].apply(self._get_clinical_notes)
         
         bracken_df.to_csv(output_file, index=False)
-        print(f"[SUCCESS] Taxonomy table exported to {output_file.name}")
+        self.formatter.success(f"Taxonomy table exported to {output_file.name}")

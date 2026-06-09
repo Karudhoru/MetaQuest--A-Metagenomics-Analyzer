@@ -496,7 +496,7 @@ class PathogenVisualizer(BaseVisualizer):
             
             # Check for integrated summary format
             if 'pathogen_counts' in report_data and 'data' not in report_data:
-                print("  ℹ️ Skipping abundance heatmap - integrated summary lacks detailed abundance data")
+                self.formatter.debug("Skipping abundance heatmap - integrated summary format")
                 return None
             
             # Extract data
@@ -507,7 +507,7 @@ class PathogenVisualizer(BaseVisualizer):
                          report_data.get('pathogens') or {})
             
             if not detections:
-                print("  ⚠️ No detections for abundance heatmap")
+                self.formatter.debug("No detections for abundance heatmap")
                 return None
             
             # Filter pathogens with abundance data
@@ -523,13 +523,13 @@ class PathogenVisualizer(BaseVisualizer):
                     })
             
             if not pathogen_data:
-                print("  ⚠️ No abundance data available")
+                self.formatter.debug("No abundance data available for heatmap")
                 return None
             
             df = pd.DataFrame(pathogen_data)
             df = df.sort_values('abundance', ascending=False).head(15)
             
-            print(f"  ℹ️ Creating abundance heatmap for {len(df)} pathogens")
+            self.formatter.debug(f"Creating abundance heatmap for {len(df)} pathogens")
             
             # Create horizontal bar chart with color gradient
             fig = go.Figure()
@@ -576,40 +576,36 @@ class PathogenVisualizer(BaseVisualizer):
             )
             
             filepath = self.save_plot(fig, "pathogen_abundance_heatmap.html")
-            print(f"  ✓ Abundance heatmap saved: {filepath}")
+            self.formatter.success(f"Abundance heatmap saved: {Path(filepath).name}")
             return filepath
             
         except Exception as e:
-            print(f"  ✗ Error creating abundance heatmap: {e}")
+            self.formatter.warning(f"Error creating abundance heatmap: {e}")
             import traceback
             traceback.print_exc()
             return None
     
     def create_all_visualizations(self, report_path):
         """Create all pathogen visualizations"""
-        print("\n=== Creating Pathogen Visualizations ===")
+        self.formatter.section_header("Creating Pathogen Visualizations")
         
         viz_files = []
         
-        # Risk assessment chart
         risk_file = self.create_risk_assessment_chart(report_path)
         if risk_file:
             viz_files.append(risk_file)
         
-        # WHO priority distribution
         who_file = self.create_who_priority_distribution(report_path)
         if who_file:
             viz_files.append(who_file)
         
-        # Detection confidence
         conf_file = self.create_detection_confidence_chart(report_path)
         if conf_file:
             viz_files.append(conf_file)
         
-        # Abundance heatmap
         abund_file = self.create_abundance_heatmap(report_path)
         if abund_file:
             viz_files.append(abund_file)
         
-        print(f"\n✓ Generated {len(viz_files)} pathogen visualizations")
+        self.formatter.success(f"Generated {len(viz_files)} pathogen visualizations")
         return viz_files
