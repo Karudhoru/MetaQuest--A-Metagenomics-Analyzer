@@ -47,7 +47,7 @@ def load_bracken_report(bracken_file: Path) -> pd.DataFrame:
 
 def load_annotation_file(file_path: Path) -> pd.DataFrame:
     """Load annotation file safely."""
-    if not file_path.exists():
+    if not file_path or not file_path.exists():
         return pd.DataFrame()
         
     try:
@@ -72,7 +72,7 @@ def load_annotation_file(file_path: Path) -> pd.DataFrame:
     
 def load_ml_predictions(ml_file: Path) -> List[Dict]:
     """Load ML predictions from JSON."""
-    if not ml_file.exists():
+    if not ml_file or not ml_file.exists():
         return []
         
     try:

@@ -39,6 +39,9 @@ class BaseReporter:
         """
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+
+        from metaquest.io.output_formatter import get_formatter
+        self.formatter = get_formatter()
     
     # ========================================================================
     # FILE I/O UTILITIES
