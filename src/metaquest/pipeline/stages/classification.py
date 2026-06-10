@@ -20,6 +20,7 @@ def run_classification_stage(ctx: PipelineContext) -> PipelineContext:
     from metaquest.core.taxonomic_analysis import run_kraken, run_bracken
     from metaquest.io.data_loaders import load_bracken_report
     from metaquest.io.utils import split_interleaved
+    from metaquest.io.output_formatter import get_formatter
 
     config = ctx.config.classification
     output_dir = ctx.output_dir
@@ -27,7 +28,8 @@ def run_classification_stage(ctx: PipelineContext) -> PipelineContext:
 
     # Handle interleaved reads
     if ctx.read_mode == "interleaved":
-        reads = split_interleaved(str(reads[0]), output_dir)
+        fmt = get_formatter()
+        reads = split_interleaved(str(reads[0]), output_dir, fmt)
         if isinstance(reads, (str, Path)):
             reads = [Path(reads)]
 

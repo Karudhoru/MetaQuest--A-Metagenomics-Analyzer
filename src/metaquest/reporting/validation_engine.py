@@ -384,7 +384,7 @@ class ValidationEngine:
                         'evalue', 'bit_score', 'description']
 
         # Process functional annotations
-        if annotation_file.exists():
+        if annotation_file and annotation_file.exists():
             try:
                 df = pd.read_csv(annotation_file, sep='\t', header=None)
 
@@ -413,7 +413,7 @@ class ValidationEngine:
                 get_formatter().debug(f"Failed to parse functional annotations: {e}")
 
         # Process pathogen database (OVERRIDES functional with higher priority)
-        if pathogen_file.exists():
+        if pathogen_file and pathogen_file.exists():
             try:
                 df = pd.read_csv(pathogen_file, sep='\t', header=None)
 

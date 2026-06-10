@@ -903,8 +903,7 @@ class FunctionalReporter(BaseReporter):
     def export_annotations_table(self, annotation_file: Path, output_file: Path):
         """Export functional annotations table to CSV format."""
         try:
-            if not annotation_file.exists():
-                get_formatter().warning(f"Annotation file not found: {annotation_file}")
+            if not annotation_file or not annotation_file.exists():
                 return
             
             df = pd.read_csv(annotation_file, sep='\t', header=None)
