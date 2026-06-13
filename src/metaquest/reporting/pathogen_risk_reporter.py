@@ -35,11 +35,11 @@ class PathogenRiskReporter(BaseReporter):
         super().__init__(output_dir)
         self.section_name = "Pathogen Risk Assessment"
         
-        # Risk level styling
+        # Risk level indicators
         self.risk_emojis = {
-            'High': '🔴',
-            'Moderate': '🟡',
-            'Low': '🟢'
+            'High': '[HIGH]',
+            'Moderate': '[MOD]',
+            'Low': '[LOW]'
         }
     
     # ========================================================================
@@ -272,7 +272,7 @@ class PathogenRiskReporter(BaseReporter):
             if critical_toxins:
                 lines.append("")
                 lines.append("CRITICAL FINDING:")
-                lines.append(f"🔴 {len(critical_toxins)} high-impact toxin gene(s) detected")
+                lines.append(f"[HIGH] {len(critical_toxins)} high-impact toxin gene(s) detected")
                 for toxin in critical_toxins[:3]:
                     desc = toxin.get('description', '')[:60]
                     lines.append(f"  • {desc}")
@@ -432,7 +432,7 @@ class PathogenRiskReporter(BaseReporter):
             
             if transposon_count > 5:
                 lines.append(f"  Mobile elements: {transposon_count} transposases")
-                lines.append("  🔴 WARNING: High mobility - genes may transfer")
+                lines.append("  [!] WARNING: High mobility - genes may transfer")
             
             lines.append("")
         
@@ -736,10 +736,10 @@ class PathogenRiskReporter(BaseReporter):
             ]
             
             for hit in unique_hits:
-                query = hit.get('gene_id', '')[:18]
-                subject = hit.get('subject_id', 'Unknown')[:18]
+                query = (hit.get('gene_id') or '')[:18]
+                subject = (hit.get('subject_id') or 'Unknown')[:18]
                 identity = f"{hit.get('identity', 0):.1f}%"
-                organism = hit.get('organism', 'Unknown')[:28]
+                organism = (hit.get('organism') or 'Unknown')[:28]
                 lines.append(f"{query:<20} {subject:<20} {identity:>10} {organism:<30}")
             
             if len(all_hits) > 15:

@@ -487,12 +487,12 @@ def initialize_config(verbose: bool = False) -> bool:
         print("=" * 70)
         print(f"Release Date:   {__release_date__}")
         print(f"Pipeline Hash:  {get_pipeline_hash()}")
-        print(f"Config Status:  {'✓ VALID' if is_valid else '✗ INVALID'}")
+        print(f"Config Status:  {'VALID' if is_valid else 'INVALID'}")
         print("=" * 70)
         print()
     
     if not is_valid:
-        print("⚠️  Configuration Validation Errors:")
+        print("[!]  Configuration Validation Errors:")
         for error in errors:
             print(f"  ✗ {error}")
         print()

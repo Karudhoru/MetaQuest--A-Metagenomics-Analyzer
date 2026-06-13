@@ -46,12 +46,12 @@ class TaxonomyReporter(BaseReporter):
         super().__init__(output_dir)
         self.section_name = "Taxonomy Report"
         
-        # Risk level configurations
+        # Risk level indicators (text-based, no emoji)
         self.risk_colors = {
-            'High': '🔴',
-            'Moderate': '🟡',
-            'Low': '🟢',
-            'Unknown': '⚪'
+            'High': '[HIGH]',
+            'Moderate': '[MOD]',
+            'Low': '[LOW]',
+            'Unknown': '[---]'
         }
         
         # Load from config
@@ -68,8 +68,9 @@ class TaxonomyReporter(BaseReporter):
                        kraken_report_file: Optional[Path] = None) -> str:
         """Generate complete professional taxonomy report."""
 
-        # Load data
+        # Load data and sort by abundance (descending)
         bracken_df = pd.read_csv(bracken_file, sep='\t')
+        bracken_df = bracken_df.sort_values('fraction_total_reads', ascending=False).reset_index(drop=True)
 
         # Try to find kraken_report.txt if not provided
         if kraken_report_file is None:
@@ -394,7 +395,7 @@ class TaxonomyReporter(BaseReporter):
                     conf = confidence_data[tax_id]
                     if conf['confidence_level'] == 'LOW':
                         rows.append([
-                            f"  ⚠️ Only {conf['confidence_pct']:.1f}% direct hits",
+                            f"  [!] Only {conf['confidence_pct']:.1f}% direct hits",
                             f"{self.format_large_number(conf['bracken_added'])} inferred",
                             "", ""
                         ])
@@ -429,7 +430,7 @@ class TaxonomyReporter(BaseReporter):
             for pathogen in moderate_risk[:10]:
                 species = pathogen['species'][:40] + '..' if len(pathogen['species']) > 42 else pathogen['species']
                 abundance = self.format_number(pathogen['abundance'] * 100, 2, percentage=True)
-                risk_icon = self.risk_colors.get(pathogen.get('risk_level', 'Low'), '⚪')
+                risk_icon = self.risk_colors.get(pathogen.get('risk_level', 'Low'), '[---]')
                 risk_level = f"{risk_icon} {pathogen.get('risk_level', 'Low').upper()}"
                 bsl = self._get_bsl(pathogen['species'])
                 rows.append([species, abundance, risk_level, f"BSL-{bsl}"])
@@ -503,7 +504,7 @@ class TaxonomyReporter(BaseReporter):
             
             lines.append(self.create_bullet_list(interpretation_items))
         else:
-            lines.append("⚠️  Confidence data not available")
+            lines.append("[!]  Confidence data not available")
             lines.append("")
             lines.append("Possible causes:")
             causes = [
@@ -529,7 +530,7 @@ class TaxonomyReporter(BaseReporter):
             classification_rate = 95.0
             status_note = "est."
         else:
-            status_note = "✓"
+            status_note = "[OK]"
 
         # Use real Kraken grand total where possible; Bracken sum as fallback
         kraken_totals = self._parse_kraken_grand_total(kraken_report_file)
@@ -558,7 +559,7 @@ class TaxonomyReporter(BaseReporter):
             g_reads  = self.format_large_number(level_breakdown['genus_reads'])
             f_reads  = self.format_large_number(level_breakdown['family_reads'])
             rows += [
-                ["Species-level classification:", sp_reads, f"{level_breakdown['species_pct']:.1f}% (pre-Bracken) ✓"],
+                ["Species-level classification:", sp_reads, f"{level_breakdown['species_pct']:.1f}% (pre-Bracken) [OK]"],
                 ["Genus-level classification:",   g_reads,  f"{level_breakdown['genus_pct']:.1f}% (pre-Bracken)"],
                 ["Family-level classification:",  f_reads,  f"{level_breakdown['family_pct']:.1f}% (pre-Bracken)"],
             ]
@@ -585,7 +586,7 @@ class TaxonomyReporter(BaseReporter):
         quality_notes = [assessment]
         if sp_pct is not None:
             quality_notes.append(
-                f"Species-level rate {sp_pct:.1f}% {'✓ (>70% high-resolution)' if sp_pct >= 70 else '(below 70% threshold)'}"
+                f"Species-level rate {sp_pct:.1f}% {'[OK] (>70% high-resolution)' if sp_pct >= 70 else '(below 70% threshold)'}"
             )
         lines.append(f"Quality Assessment: {quality}")
         lines.append(self.create_bullet_list(quality_notes, bullet="→"))
@@ -662,7 +663,7 @@ class TaxonomyReporter(BaseReporter):
                     lines.append(f"(For every 1 direct Kraken hit, Bracken inferred ~{inferred_per_direct:.1f} more reads)\n")
                 else:
                     lines.append("Inference Ratio: Undefined (no direct Kraken hits)")
-                    lines.append("⚠️  100% of abundance is computationally inferred\n")
+                    lines.append("[!]  100% of abundance is computationally inferred\n")
                 
                 # Detailed interpretation based on confidence level
                 lines.append("Interpretation:")
@@ -673,7 +674,7 @@ class TaxonomyReporter(BaseReporter):
                         f"Strong evidence for {dominant['species']} identification",
                         "Suitable for reporting without additional validation"
                     ]
-                    lines.append(self.create_bullet_list(interpretation, bullet="✓", indent=2))
+                    lines.append(self.create_bullet_list(interpretation, bullet="[OK]", indent=2))
                     
                 elif confidence_pct >= 20:
                     interpretation = [
@@ -689,7 +690,7 @@ class TaxonomyReporter(BaseReporter):
                         "LOW confidence - Heavy computational inference",
                         f"Only {direct_pct:.1f}% of reads directly assigned by Kraken",
                         f"{inferred_pct:.1f}% computationally redistributed by Bracken"
-                    ], bullet="⚠️", indent=2))
+                    ], bullet="[!]", indent=2))
                     
                     lines.append("")
                     lines.append("  Implications:")
@@ -718,7 +719,7 @@ class TaxonomyReporter(BaseReporter):
                 # Tax ID not in confidence data
                 lines.append(f"Dominant Pathogen: {dominant['species']}")
                 lines.append(f"Abundance: {self.format_number(dominant['abundance'] * 100, 2, percentage=True)}\n")
-                lines.append("⚠️  Confidence data not available for this pathogen")
+                lines.append("[!]  Confidence data not available for this pathogen")
                 lines.append("   Unable to calculate inference ratio")
         
         elif risk['pathogens_detected'] and not confidence_data:
@@ -726,7 +727,7 @@ class TaxonomyReporter(BaseReporter):
             dominant = risk['pathogens_detected'][0]
             lines.append(f"Dominant Pathogen: {dominant['species']}")
             lines.append(f"Abundance: {self.format_number(dominant['abundance'] * 100, 2, percentage=True)}\n")
-            lines.append("⚠️  Confidence analysis unavailable")
+            lines.append("[!]  Confidence analysis unavailable")
             lines.append("   Kraken report file not provided or failed to parse")
         
         else:
@@ -761,7 +762,7 @@ class TaxonomyReporter(BaseReporter):
                 "Human reads should be removed prior to analysis (e.g., KneadData/Bowtie2 decontamination)",
                 "Archaeal reads indicate non-bacterial community members — not included in pathogen risk score",
                 "Viral/phage reads indicate bacteriophage presence — may indicate bacterial lysis events",
-            ], bullet="ℹ️"))
+            ], bullet="[i]"))
         else:
             lines.append("No human, archaeal, or viral reads detected in Bracken output.")
 
@@ -883,7 +884,7 @@ class TaxonomyReporter(BaseReporter):
             low_conf_pct = low_conf_count / len(confidence_data) * 100
             
             lines.append(
-                f"⚠️  CRITICAL: {low_conf_pct:.1f}% of species have LOW Bracken confidence (<20%), "
+                f"[!]  CRITICAL: {low_conf_pct:.1f}% of species have LOW Bracken confidence (<20%), "
                 f"indicating heavy computational redistribution.\n"
             )
             
@@ -909,7 +910,7 @@ class TaxonomyReporter(BaseReporter):
                     evidence_items.append("Low-abundance species (<1%): Limited evidence beyond computational inference")
                     evidence_items.append("Validation strongly recommended")
                     
-                    lines.append(self.create_bullet_list(evidence_items, bullet="✓"))
+                    lines.append(self.create_bullet_list(evidence_items, bullet="[OK]"))
             
             lines.append("")
             
@@ -1005,7 +1006,7 @@ class TaxonomyReporter(BaseReporter):
         ]
         if _lb and _lb.get('species_pct', 0) >= 70:
             strengths.insert(1, f"High species-level resolution ({_lb['species_pct']:.1f}% pre-Bracken direct Kraken)")  # accurate label
-        lines.append(self.create_bullet_list(strengths, bullet="✓"))
+        lines.append(self.create_bullet_list(strengths, bullet="[OK]"))
         lines.append("")
         
         lines.append("Limitations:")
@@ -1019,7 +1020,7 @@ class TaxonomyReporter(BaseReporter):
         if shannon < 2.0:
             limitations.append("Dysbiotic community structure limits baseline comparison")
         
-        lines.append(self.create_bullet_list(limitations, bullet="⚠️"))
+        lines.append(self.create_bullet_list(limitations, bullet="[!]"))
         lines.append("")
         lines.append("Data quality: GOOD (classification) / MODERATE (confidence)")
         

@@ -115,7 +115,7 @@ def calculate_confidence_score(
         else:
             # Likely just signal peptide - soft penalty
             score -= 10  # Reduced from 20
-            evidence.append("⚠️ Possible signal peptide fragment")
+            evidence.append("[!] Possible signal peptide fragment")
     elif query_len < 300:  # Medium gene
         length_bonus = 1.0
         evidence.append(f"Medium gene fragment ({query_len}aa, {completeness*100:.0f}% complete)")
@@ -161,7 +161,7 @@ def calculate_confidence_score(
     # Penalize short alignments even with high identity
     if hit['length'] < 50:
         identity_score *= 0.5
-        evidence.append("⚠️ Short alignment (<50aa)")
+        evidence.append("[!] Short alignment (<50aa)")
 
     score += identity_score
     
@@ -225,12 +225,12 @@ def calculate_confidence_score(
             evidence.append("Prokka confirms gene identity")
         elif "hypothetical" not in prokka_annotation.lower():
             score -= 15
-            evidence.append(f"⚠️ Prokka disagrees: {prokka_annotation[:50]}")
+            evidence.append(f"[!] Prokka disagrees: {prokka_annotation[:50]}")
     
     # FACTOR 7: Signal Peptide Check (PENALTY)
     if query_len < 80 and is_likely_signal_peptide(hit['sequence']):
         score -= 20
-        evidence.append("⚠️ Likely signal peptide only")
+        evidence.append("[!] Likely signal peptide only")
     
     # Determine Confidence Tier
     score = max(0, min(score, 100))

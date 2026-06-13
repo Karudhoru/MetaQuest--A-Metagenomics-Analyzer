@@ -249,13 +249,13 @@ class FunctionalVisualizer(BaseVisualizer):
             
             # Quality assessment
             if very_short / len(lengths) > 0.3:
-                quality_note = "⚠️ High proportion of very short proteins"
+                quality_note = "[!] High proportion of very short proteins"
                 quality_color = "red"
             elif mean_length < 200:
-                quality_note = "⚠️ Below average protein lengths"
+                quality_note = "[!] Below average protein lengths"
                 quality_color = "orange"
             else:
-                quality_note = "✓ Normal protein length distribution"
+                quality_note = "[OK] Normal protein length distribution"
                 quality_color = "green"
             
             # Update layout

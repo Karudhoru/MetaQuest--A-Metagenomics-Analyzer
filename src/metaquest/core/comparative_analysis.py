@@ -1083,23 +1083,23 @@ class ComparativeAnalysis:
         
         # Power assessment
         if min_n < 5:
-            power_level = "VERY LOW ⚠️"
+            power_level = "VERY LOW [!]"
             recommendation = "Need ≥10 samples/group for reliable results"
             warning_msg = "Results may be unreliable - interpret with extreme caution"
         elif min_n < 10:
-            power_level = "LOW ⚠️"
+            power_level = "LOW [!]"
             recommendation = "Recommend ≥15 samples/group for robust findings"
             warning_msg = "Limited power - can only detect large effects"
         elif min_n < 20:
-            power_level = "MODERATE ✓"
+            power_level = "MODERATE [OK]"
             recommendation = "Adequate for exploratory analysis"
             warning_msg = None
         elif min_n < 30:
-            power_level = "GOOD ✓"
+            power_level = "GOOD [OK]"
             recommendation = "Sufficient for most analyses"
             warning_msg = None
         else:
-            power_level = "EXCELLENT ✓"
+            power_level = "EXCELLENT [OK]"
             recommendation = "Well-powered study"
             warning_msg = None
         
@@ -1303,7 +1303,7 @@ def validate_metadata(metadata_file: str) -> bool:
             )
             return False
         
-        formatter.success(f"✓ Metadata valid: {len(df)} samples, {n_groups} groups")
+        formatter.success(f"[OK] Metadata valid: {len(df)} samples, {n_groups} groups")
         return True
         
     except Exception as e:

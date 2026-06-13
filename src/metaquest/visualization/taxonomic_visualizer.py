@@ -48,7 +48,7 @@ class TaxonomicVisualizer(BaseVisualizer):
         
         # Handle BLAST results (list of dictionaries)
         elif isinstance(data, list) and len(data) > 0:
-            self.formatter.info("  ✓ Processing BLAST results...")
+            self.formatter.info("  Processing BLAST results...")
             organisms = []
             
             for result in data:
@@ -66,7 +66,7 @@ class TaxonomicVisualizer(BaseVisualizer):
             organism_counts = Counter(organisms)
             df = pd.DataFrame(organism_counts.items(), columns=['name', 'new_est_reads'])
             df['fraction_total_reads'] = df['new_est_reads'] / df['new_est_reads'].sum()
-            self.formatter.info(f"  ✓ Processed {len(df)} unique organisms from BLAST")
+            self.formatter.info(f"  Processed {len(df)} unique organisms from BLAST")
             return df, 'blast'
         
         # Handle pre-loaded DataFrames

@@ -475,14 +475,19 @@ class RiskScorer:
         }
     
     def _match_organism(self, species_name: str) -> int:
-        """Match species to pathogen genera configuration."""
+        """Match species to pathogen genera configuration, downgrading commensals."""
         if not isinstance(species_name, str):
             return 0
-            
+
         species_lower = species_name.lower()
         genus = species_lower.split()[0] if ' ' in species_lower else species_lower
-        
-        return self.pathogenic_genera.get(genus, 0)
+
+        base_score = self.pathogenic_genera.get(genus, 0)
+
+        if base_score > 0 and species_name in self.commensal_species:
+            return min(base_score, 30)
+
+        return base_score
     
     def _identify_transposases(self, functional_df: pd.DataFrame) -> List[Dict]:
         """

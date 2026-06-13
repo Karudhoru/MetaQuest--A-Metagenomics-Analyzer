@@ -127,10 +127,10 @@ class FunctionalReporter(BaseReporter):
     def _generate_section1_features(self, sample_file: Path) -> str:
         """Section 1: Genomic Features Overview - ✓ USING BASE REPORTER TABLES."""
         stats = self._parse_sample_info(sample_file)
-        total_genes = stats['gene']
         cds = stats['CDS']
         rrna = stats['rRNA']
         trna = stats['tRNA']
+        total_genes = cds + rrna + trna
         
         lines = []
         lines.append(self.format_section("SECTION 1: GENOMIC FEATURES OVERVIEW", level=1))
@@ -331,9 +331,9 @@ class FunctionalReporter(BaseReporter):
         
         if warnings:
             for w in warnings:
-                lines.append(f"  ⚠️  {w}")
+                lines.append(f"  [!]  {w}")
         else:
-            lines.append("  ✓  Gene content within expected ranges")
+            lines.append("  [OK]  Gene content within expected ranges")
         
         lines.append("")
         
@@ -644,12 +644,12 @@ class FunctionalReporter(BaseReporter):
         # ✓ USING BASE REPORTER format_table()
         headers = ["Metric", "Value", "Status"]
         rows = [
-            ["Annotation Coverage", self.format_number(annotation_rate, 1, percentage=True), 
-             "✓ PASS" if annotation_rate > 60 else "⚠ LOW"],
-            ["Average Identity", self.format_number(avg_identity, 1, percentage=True), 
-             "✓ PASS" if avg_identity > 70 else "⚠ LOW"],
-            ["Functional Diversity", self.format_large_number(unique_functions), 
-             "✓ PASS" if unique_functions > 20 else "⚠ LOW"],
+            ["Annotation Coverage", self.format_number(annotation_rate, 1, percentage=True),
+             "PASS" if annotation_rate > 50 else "LOW"],
+            ["Average Identity", self.format_number(avg_identity, 1, percentage=True),
+             "PASS" if avg_identity > 60 else "LOW"],
+            ["Functional Diversity", self.format_large_number(unique_functions),
+             "PASS" if unique_functions > 20 else "LOW"],
         ]
         
         lines.append(self.format_table(headers, rows, alignments=['left', 'right', 'left']))

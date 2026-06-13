@@ -13,7 +13,7 @@ class DashboardGenerator(BaseVisualizer):
         
         # Force FASTQ type
         if analysis_type != 'fastq':
-            self.formatter.warning(f"⚠️  Analysis type '{analysis_type}' not supported. Using 'fastq'.")
+            self.formatter.warning(f"[!]  Analysis type '{analysis_type}' not supported. Using 'fastq'.")
             analysis_type = 'fastq'
         
         self.analysis_type = analysis_type
@@ -614,7 +614,7 @@ class DashboardGenerator(BaseVisualizer):
         
         html_foot = f"""
                 <div class="footer">
-                    <div class="footer-logo">🧬 MetaQuest Bioinformatics Platform</div>
+                    <div class="footer-logo">&bull; MetaQuest Bioinformatics Platform</div>
                     <p>Advanced metagenomics analysis pipeline combining traditional microbiology with cutting-edge AI technologies</p>
                     <p>Version {self.theme['version']} • FASTQ-only Pipeline • Powered by Kraken2, Prokka & Custom ML Models</p>
                     <p style="margin-top: 0.5rem; font-size: 0.85rem;">
@@ -643,7 +643,7 @@ class DashboardGenerator(BaseVisualizer):
         header = f"""
         <div class="header">
             <div class="header-content">
-                <h1>🧬 MetaQuest Analysis Report</h1>
+                <h1>&bull; MetaQuest Analysis Report</h1>
                 <div class="analysis-type">{self.theme['name']}</div>
                 <div class="header-meta">
                     <span>📅 {self.timestamp}</span>
@@ -682,7 +682,7 @@ class DashboardGenerator(BaseVisualizer):
         return f"""
         <div class="section">
             <div class="section-header">
-                <h2>📋 Executive Summary Reports</h2>
+                <h2>&bull; Executive Summary Reports</h2>
                 <p class="section-subtitle">Quick-access numbered summary reports for rapid analysis review</p>
             </div>
             <div class="grid">
@@ -703,7 +703,7 @@ class DashboardGenerator(BaseVisualizer):
                 <p class="section-subtitle">Species identification using Kraken2/Bracken k-mer profiling</p>
             </div>
             <div class="grid">
-                {self._create_card("📋", "Taxonomic Classification Report", "Comprehensive species abundance and classification results.", "taxonomic_report", "TXT")}
+                {self._create_card("&bull;", "Taxonomic Classification Report", "Comprehensive species abundance and classification results.", "taxonomic_report", "TXT")}
                 {self._create_card("📈", "Abundance Chart", "Interactive visualization of taxonomic abundance distribution.", "taxonomic_abundance_chart", "HTML")}
                 {self._create_card("🌐", "Krona Taxonomy Chart", "Hierarchical interactive taxonomy browser.", "taxonomy_krona", "HTML")}
                 {self._create_card("📊", "Bracken Report (Text)", "Human-readable Bracken species abundance report.", "bracken_report_txt", "TXT")}
@@ -718,7 +718,7 @@ class DashboardGenerator(BaseVisualizer):
         return f"""
         <div class="section">
             <div class="section-header">
-                <h2>🧪 Functional Annotation</h2>
+                <h2>&bull; Functional Annotation</h2>
                 <p class="section-subtitle">Gene prediction and protein functional characterization</p>
             </div>
             <div class="grid">
@@ -726,7 +726,7 @@ class DashboardGenerator(BaseVisualizer):
                 {self._create_card("📊", "Functional Annotations (Data)", "Detailed annotation data for all predicted features.", "functional_annotations_tsv", "TSV")}
                 {self._create_card("📏", "Protein Length Analysis", "Statistical analysis of predicted protein sizes.", "protein_length_analysis", "HTML")}
                 {self._create_card("📈", "Functional Categories", "Distribution of protein functional classifications.", "functional_categories", "HTML")}
-                {self._create_card("✅", "Annotation Quality Dashboard", "Quality metrics and validation of annotation results.", "annotation_quality_dashboard", "HTML", "ENHANCED")}
+                {self._create_card("&bull;", "Annotation Quality Dashboard", "Quality metrics and validation of annotation results.", "annotation_quality_dashboard", "HTML", "ENHANCED")}
             </div>
         </div>
         """
@@ -736,12 +736,12 @@ class DashboardGenerator(BaseVisualizer):
         return f"""
         <div class="section">
             <div class="section-header">
-                <h2>🦠 Pathogen Detection & Risk Assessment</h2>
+                <h2>&bull; Pathogen Detection & Risk Assessment</h2>
                 <p class="section-subtitle">Multi-method pathogen screening with clinical risk stratification</p>
             </div>
             <div class="grid">
-                {self._create_card("📋", "Pathogen Detection Report", "Comprehensive pathogen analysis with WHO priority classification.", "pathogen_detection_report", "TXT")}
-                {self._create_card("🧬", "Pathogen Results", "Detailed pathogen detection results from multiple methods.", "pathogen_results", "TXT")}
+                {self._create_card("&bull;", "Pathogen Detection Report", "Comprehensive pathogen analysis with WHO priority classification.", "pathogen_detection_report", "TXT")}
+                {self._create_card("&bull;", "Pathogen Results", "Detailed pathogen detection results from multiple methods.", "pathogen_results", "TXT")}
                 {self._create_card("🔐", "Kraken Classified Sequences", "Raw classified sequence data from Kraken2.", "kraken_classified", "TXT")}
             </div>
             
