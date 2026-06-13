@@ -125,7 +125,7 @@ class MainReporter(BaseReporter):
             with open(validation_file, 'w') as f:
                 f.write(validation_report)
 
-            formatter.success(f"✓ Validation report saved to {validation_file.name}")
+            formatter.success(f"Validation report saved to {validation_file.name}")
 
         except Exception as e:
             formatter.warning(f"⚠ Validation report failed: {e}")
@@ -239,48 +239,44 @@ class MainReporter(BaseReporter):
         taxonomic = risk_data['taxonomic']
 
         risk_emoji = {
-            'High': '🔴',
-            'Moderate': '🟡',
-            'Low': '🟢'
-        }.get(integrated['risk_level'], '⚪')
+            'High': '[HIGH]',
+            'Moderate': '[MOD]',
+            'Low': '[LOW]'
+        }.get(integrated['risk_level'], '[---]')
+
+        W = 68
+
+        def box_line(content):
+            return f"║ {content:<{W-2}}║"
+
+        assembly_str = f"Assembly: {sample_stats['gene']} genes | {sample_stats['bases']:,} bp | {sample_stats['contigs']} contigs"
+        status_str = f"Status: {risk_emoji} {integrated['risk_level'].upper()} RISK"
 
         lines = [
-            "╔" + "═" * 68 + "╗",
-            "║" + " " * 20 + "METAQUEST ANALYSIS REPORT" + " " * 23 + "║",
-            "╠" + "═" * 68 + "╣",
-            f"║ Sample: {sample_stats['organism']:<55} ║",
-            f"║ Status: {risk_emoji} {integrated['risk_level'].upper()} RISK Quality: {'⭐' * 4:<20} ║",
-            "╠" + "═" * 68 + "╣",
-            f"║ 🧬 Assembly: {sample_stats['gene']} genes | {sample_stats['bases']:,} bp | {sample_stats['contigs']} contigs" + " " * (15 - len(str(sample_stats['contigs']))) + "║",
+            "╔" + "═" * W + "╗",
+            f"║{'METAQUEST ANALYSIS REPORT':^{W}}║",
+            "╠" + "═" * W + "╣",
+            box_line(f"Sample: {sample_stats['organism']}"),
+            box_line(status_str),
+            "╠" + "═" * W + "╣",
+            box_line(assembly_str),
         ]
 
-        # Add dominant species if present
         if has_dominant and dominant is not None:
-            dominant_name = str(dominant['name'])[:40] if len(str(dominant['name'])) > 40 else str(dominant['name'])
+            dominant_name = str(dominant['name'])[:40]
             dominant_fraction = float(dominant['fraction_total_reads']) * 100
-            padding_length = max(0, 4 - len(f"{dominant_fraction:.1f}"))
-            lines.append(
-                f"║ 🦠 Dominant: {dominant_name:<40} ({dominant_fraction:.1f}%)" + " " * padding_length + "║"
-            )
+            lines.append(box_line(f"Dominant: {dominant_name} ({dominant_fraction:.1f}%)"))
 
-        # Add pathogen count
         pathogen_count = len(taxonomic['pathogens_detected'])
         if pathogen_count > 0:
-            padding_length = max(0, 36 - len(str(pathogen_count)))
-            lines.append(
-                f"║ ⚠️  Pathogens: {pathogen_count} species detected" + " " * padding_length + "║"
-            )
+            lines.append(box_line(f"[!] Pathogens: {pathogen_count} species detected"))
 
-        # Add ML risk
         ml_flagged = risk_data['ml']['high_confidence_pathogenic']
         ml_total = risk_data['ml'].get('total_sequences', 1)
         ml_percentage = (ml_flagged / ml_total * 100) if ml_total > 0 else 0
-        padding_length = max(0, 20 - len(str(ml_flagged)))
-        lines.append(
-            f"║ 🧪 ML Risk: {ml_flagged}/{ml_total} sequences flagged ({ml_percentage:.0f}%)" + " " * padding_length + "║"
-        )
+        lines.append(box_line(f"ML Risk: {ml_flagged}/{ml_total} sequences flagged ({ml_percentage:.0f}%)"))
 
-        lines.append("╚" + "═" * 68 + "╝")
+        lines.append("╚" + "═" * W + "╝")
 
         return '\n'.join(lines)
 
@@ -294,7 +290,7 @@ class MainReporter(BaseReporter):
         lines = [
             "",
             "=" * 70,
-            "📋 FINAL SUMMARY AND RECOMMENDATIONS",
+            "FINAL SUMMARY AND RECOMMENDATIONS",
             "=" * 70,
             "",
             f"OVERALL PATHOGENICITY RISK: {integrated['risk_level'].upper()} ({integrated['final_score']:.0f}/100)",
@@ -344,7 +340,7 @@ class MainReporter(BaseReporter):
 
         if integrated['risk_level'] == 'High':
             lines.extend([
-                "  1. ⚠️  URGENT: Clinical correlation required",
+                "  1. [!] URGENT: Clinical correlation required",
                 "  2. Consider targeted antimicrobial therapy if symptomatic",
                 "  3. Implement infection control measures if in clinical setting",
                 "  4. Further characterization of flagged genes recommended",

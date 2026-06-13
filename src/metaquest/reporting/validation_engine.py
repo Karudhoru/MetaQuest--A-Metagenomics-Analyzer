@@ -143,35 +143,9 @@ class ValidationEngine:
             tax_id = str(row['taxonomy_id'])
             species_name = row['name']
             bracken_estimate = row['new_est_reads']
-
-            # Try matching by taxonomy ID first
-            kraken_direct = 0
-            match_method = None
-
-            if tax_id in kraken_data:
-                kraken_direct = kraken_data[tax_id]['direct_reads']
-                match_method = 'tax_id'
-                matched_by_id += 1
-            else:
-                # Fallback: Try matching by species name
-                name_key = species_name.lower().strip()
-                if name_key in kraken_by_name:
-                    kraken_direct = kraken_by_name[name_key]['direct_reads']
-                    match_method = 'name'
-                    matched_by_name += 1
-                else:
-                    not_matched += 1
-                    # Try partial name matching (first two words)
-                    name_parts = species_name.lower().split()[:2]
-                    if len(name_parts) >= 2:
-                        partial_name = ' '.join(name_parts)
-                        for kraken_name, kraken_info in kraken_by_name.items():
-                            if kraken_name.startswith(partial_name):
-                                kraken_direct = kraken_info['direct_reads']
-                                match_method = 'partial_name'
-                                matched_by_name += 1
-                                not_matched -= 1
-                                break
+            kraken_direct = int(row.get('kraken_assigned_reads', 0))
+            match_method = 'bracken_column'
+            matched_by_id += 1
 
             # Calculate confidence
             if bracken_estimate > 0:
@@ -182,13 +156,13 @@ class ValidationEngine:
             # Determine confidence level
             if confidence_pct >= self.confidence_thresholds['high'] * 100:
                 confidence_level = 'HIGH'
-                confidence_icon = '🟢'
+                confidence_icon = '[HIGH]'
             elif confidence_pct >= self.confidence_thresholds['moderate'] * 100:
                 confidence_level = 'MODERATE'
-                confidence_icon = '🟡'
+                confidence_icon = '[MOD]'
             else:
                 confidence_level = 'LOW'
-                confidence_icon = '🔴'
+                confidence_icon = '[LOW]'
 
             confidence_data[tax_id] = {
                 'name': species_name,
@@ -751,7 +725,7 @@ class ValidationEngine:
             except Exception as e:
                 get_formatter().debug(f"Error validating pathogen {idx}: {e}")
                 lines.extend([
-                    f"  ⚠️ Validation failed for pathogen {idx}",
+                    f"  [!] Validation failed for pathogen {idx}",
                     f"  Error: {str(e)}",
                     ""
                 ])
@@ -935,7 +909,7 @@ class ValidationEngine:
             if confidence_level == 'LOW':
                 lines.extend([
                     "",
-                    f"  ⚠️ WARNING: Only {confidence_pct:.1f}% direct Kraken hits.",
+                    f"  [!] WARNING: Only {confidence_pct:.1f}% direct Kraken hits.",
                     f"  Bracken inferred {bracken_added:,} reads from other taxa.",
                     "  Validation with orthogonal methods recommended."
                 ])
@@ -1117,7 +1091,7 @@ class ValidationEngine:
         if conf and conf.get('confidence_level') == 'LOW':
             lines.extend([
                 "",
-                "  ⚠️ Bracken Confidence Warning:",
+                "  [!] Bracken Confidence Warning:",
                 f"    Only {conf['confidence_pct']:.1f}% directly assigned by Kraken.",
                 "    Heavy computational inference may introduce uncertainty."
             ])
@@ -1126,7 +1100,7 @@ class ValidationEngine:
         if func_genes['count'] > 0 and pathogen_genes['count'] > 0:
             lines.extend([
                 "",
-                "  ✓ Cross-Validation:",
+                "  [OK] Cross-Validation:",
                 "    Functional annotations and pathogen database hits provide",
                 "    strong corroboration of taxonomic identification."
             ])
@@ -1163,7 +1137,7 @@ class ValidationEngine:
                 "    2. Species-specific qPCR"
             ])
             if any('stx' in g['description'].lower() for g in pathogen_genes.get('genes', [])):
-                lines.append("    3. ⚠️ Shiga toxin testing (STEC screening)")
+                lines.append("    3. [!] Shiga toxin testing (STEC screening)")
         elif 'salmonella' in species.lower():
             lines.extend([
                 "    1. Culture on XLD or Hektoen agar",
@@ -1175,7 +1149,7 @@ class ValidationEngine:
                 "    2. Coagulase test for S. aureus confirmation"
             ])
             if any('mec' in g['description'].lower() for g in pathogen_genes.get('genes', [])):
-                lines.append("    3. ⚠️ MRSA screening (mecA PCR)")
+                lines.append("    3. [!] MRSA screening (mecA PCR)")
         else:
             lines.extend([
                 "    1. Species-specific culture methods",
@@ -1277,7 +1251,7 @@ class ValidationEngine:
         if low_conf / total > 0.7:
             lines.extend([
                 "",
-                f"  ⚠️ WARNING: {low_conf/total*100:.1f}% have LOW confidence",
+                f"  [!] WARNING: {low_conf/total*100:.1f}% have LOW confidence",
                 "  Findings rely heavily on computational inference"
             ])
 
