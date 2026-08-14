@@ -1,157 +1,127 @@
 # MetaQuest
 
 MetaQuest is a research-use command-line pipeline for short-read metagenomic
-FASTQ analysis.
+FASTQ analysis. Version `2.0.0-alpha.1` is a stabilization release: the
+maintained runtime is intentionally smaller than earlier prototypes and does
+not make clinical or pathogen-risk claims.
 
-The project is undergoing a production-readiness refactor. Version
-`2.0.0-alpha.1`
-deliberately exposes a smaller stable surface while the final QC, functional,
-pathogen-associated, database, and comparative workflows are evaluated.
+## Current capabilities
 
-## Current stable surface
-
-- FASTQ input and quality validation
+- FASTQ format and basic quality validation
 - Kraken2 taxonomic classification
-- Bracken abundance estimation
+- Bracken abundance re-estimation
+- optional taxonomy-only execution
 - MEGAHIT metagenomic assembly
-- descriptive taxonomic and assembly outputs
-- provisional Prokka + DIAMOND functional annotation
-- basic taxonomic group comparison
-- text, JSON, TSV, and taxonomic visualization outputs
+- Pyrodigal metagenomic gene prediction
+- provisional DIAMOND functional similarity search
+- basic metadata-driven group comparison
+- descriptive text, JSON, TSV, HTML, and plot outputs
+- versioned, checksummed taxonomy database installation
 
-MetaQuest is for scientific research. It does not provide clinical diagnosis,
-patient risk assessment, or treatment recommendations.
+MetaQuest does not currently perform read trimming, host-read removal, validated
+AMR or virulence analysis, clinical diagnosis, or treatment recommendations.
 
-## Experimental features
+## Pipeline
 
-The repository contains research prototypes for custom pathogen markers,
-protein machine learning, HMM profiles, ESM embeddings, pathogenicity-island
-detection, and Bayesian risk integration. These features are not part of the
-default pipeline and are disabled until independently validated.
+~~~text
+FASTQ
+  ├── validation
+  ├── Kraken2 → Bracken
+  ├── MEGAHIT
+  ├── Pyrodigal
+  ├── provisional DIAMOND annotation
+  └── descriptive reporting
+~~~
 
-Their presence in the source tree must not be interpreted as evidence of
-accuracy, clinical utility, or publication readiness.
+The maintained pipeline currently runs directly in Python. Migration to
+Snakemake, fastp QC, and optional Bowtie2 host filtering is planned but is not
+claimed as implemented.
+
+## Quick start
+
+Create the environment and install MetaQuest:
+
+~~~bash
+conda env create -f environment/environment.yml
+conda activate metaquest
+python -m pip install -e .
+~~~
+
+Inspect and install the taxonomy database:
+
+~~~bash
+metaquest setup-db --db-dir /data/metaquest-db --list
+metaquest setup-db --db-dir /data/metaquest-db --database taxonomy
+metaquest check --db-dir /data/metaquest-db
+~~~
+
+Run taxonomic profiling:
+
+~~~bash
+metaquest analyze \
+  --db-dir /data/metaquest-db \
+  --paired sample_R1.fastq.gz sample_R2.fastq.gz \
+  --skip-annotation \
+  --output results/sample
+~~~
+
+The complete non-taxonomy path remains provisional until the functional
+database and abundance contract are finalized.
 
 ## Commands
 
-The existing command structure is retained during the refactor:
-
-```text
+~~~text
 metaquest check
 metaquest validate
 metaquest analyze
 metaquest compare
 metaquest setup-db
 metaquest init-config
-```
+~~~
 
-### Validate FASTQ input
+Global output controls must appear before the command:
 
-```bash
-metaquest validate --single reads.fastq.gz
-metaquest validate --paired sample_R1.fastq.gz sample_R2.fastq.gz
-```
+~~~bash
+metaquest --verbose analyze --single reads.fastq.gz --output results/
+metaquest --no-color setup-db --list
+metaquest --quiet check
+~~~
 
-Validation currently assesses the input; it does not trim or clean reads.
-The production QC tool will be selected in the next workflow-design phase.
+## Database storage
 
-### Taxonomic-only analysis
+Reference databases are not stored in Git. A repository-local `databases`
+path may be linked to a larger disk:
 
-```bash
-metaquest analyze \
-  --paired sample_R1.fastq.gz sample_R2.fastq.gz \
-  --skip-annotation \
-  --output results/
-```
+~~~bash
+mkdir -p /mnt/e/metaquest/databases
+ln -s /mnt/e/metaquest/databases databases
+metaquest setup-db --database taxonomy
+~~~
 
-This executes Kraken2, Bracken, descriptive reporting, and taxonomic
-visualization. Assembly and annotation are skipped.
+The database path resolution order is:
 
-### Current full analysis
+1. `--db-dir`
+2. `METAQUEST_DB_DIR`
+3. `databases.base_dir` in YAML
+4. `./databases`
 
-```bash
-metaquest analyze \
-  --paired sample_R1.fastq.gz sample_R2.fastq.gz \
-  --output results/
-```
+## Documentation
 
-The current full path adds MEGAHIT and provisional Prokka/DIAMOND annotation.
-Prokka and the functional database strategy are temporary pending the tool and
-database review. No custom pathogen or risk model runs in this workflow.
-
-### Basic comparison
-
-```bash
-metaquest compare \
-  --inputs sample1/ sample2/ sample3/ sample4/ \
-  --metadata metadata.tsv \
-  --output comparison/
-```
-
-The current comparison accepts a `sample_id` and `group` design. Longitudinal,
-paired, repeated-measures, functional, AMR, and virulence comparisons are
-planned but are not currently claimed as implemented.
-
-## Output
-
-Stable analysis outputs include:
-
-```text
-results/
-├── kraken_report.txt
-├── bracken_report.tsv
-├── 01_taxonomic_report.txt
-├── analysis_summary.json
-├── analysis_metadata.json
-├── megahit_assembly/              # full path only
-├── prokka_annotation/             # provisional full path only
-├── functional_annotations.tsv     # provisional full path only
-└── 02_functional_report.txt       # provisional full path only
-```
-
-`analysis_summary.json` explicitly records that experimental features were not
-executed.
-
-## Configuration
-
-Generate an editable configuration file with:
-
-```bash
-metaquest init-config --output metaquest.yaml
-```
-
-Use it with:
-
-```bash
-metaquest --config metaquest.yaml analyze --single reads.fastq.gz
-```
-
-Database paths can also be rooted with `METAQUEST_DB_DIR`.
+- [Installation](docs/installation.md)
+- [Database management](docs/databases.md)
+- [Usage](docs/usage.md)
+- [Gene prediction and functional annotation](docs/annotation.md)
+- [Changelog](CHANGELOG.md)
 
 ## Development status
 
-The immediate priorities are:
+MetaQuest is alpha software intended for reproducible method development. Before
+a stable release, the workflow requires end-to-end Snakemake execution,
+functional and pathogen-associated method validation, resource benchmarks,
+comparison-method validation, continuous integration, and publication datasets.
 
-1. stabilize and test the CLI and current stage contracts;
-2. select the production QC, functional, and pathogen-associated tools;
-3. design metadata-aware condition and time-series comparison;
-4. establish reproducible benchmark datasets and database manifests;
-5. validate every scientific claim before publication.
+## License
 
-The detailed stabilization plan is available in
-[`docs/METAQUEST_ROADMAP.md`](docs/METAQUEST_ROADMAP.md).
-
-## Installation
-
-MetaQuest currently targets Linux and conda-based bioinformatics environments.
-The existing environment file is retained during tool selection, but it is not
-yet the final minimal production environment.
-
-See [`docs/installation.md`](docs/installation.md) for the legacy installation
-notes. Those notes are being revised as part of the refactor.
-
-## License and citation
-
-The repository declares the MIT license in its package metadata. Formal
-citation information will be added after the workflow and benchmark are
-published.
+MetaQuest is distributed under the MIT license. Some runtime dependencies use
+other licenses; users and redistributors must comply with each dependency's
+terms. Pyrodigal is distributed under GPL-3.0-or-later.

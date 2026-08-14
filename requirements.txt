@@ -1,5 +1,6 @@
 # MetaQuest v2.0.0-alpha.1 — stable Python dependencies
-# For the full bioinformatics environment (Kraken2, DIAMOND, Prokka, etc.)
+# For the external bioinformatics environment (Kraken2, Bracken, MEGAHIT,
+# DIAMOND, etc.)
 # use: conda env create -f environment/environment.yml
 
 # ── Core Data Science ────────────────────────────────────────────────────────
@@ -13,6 +14,7 @@ statsmodels>=0.14
 
 # ── Bioinformatics ───────────────────────────────────────────────────────────
 biopython>=1.81
+pyrodigal>=3.7.1,<4
 
 # ── Visualization ────────────────────────────────────────────────────────────
 matplotlib>=3.7

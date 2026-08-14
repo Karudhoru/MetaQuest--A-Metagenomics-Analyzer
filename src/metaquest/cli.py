@@ -9,7 +9,6 @@ Author: MetaQuest Development Team
 """
 
 import argparse
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -17,7 +16,7 @@ from textwrap import dedent
 from datetime import datetime
 
 from .exceptions import MetaQuestError
-from .io.output_formatter import OutputFormatter, set_formatter
+from .io.output_formatter import Colors, OutputFormatter, set_formatter
 from .config import __version__
 
 # ============================================================================
@@ -77,11 +76,11 @@ def setup_annotation_args(parser):
     
     Configures the thread allocation for provisional functional annotation.
     
-    Note: Prokka's default minimum contig length (200bp) is used.
+    Pyrodigal runs in metagenomic mode on contigs of at least 200 bp.
     """
     annot_group = parser.add_argument_group(
         'Annotation Control Options',
-        'Fine-tune the functional annotation process with Prokka'
+        'Control Pyrodigal gene prediction and functional annotation'
     )
     
     annot_group.add_argument(
@@ -220,7 +219,7 @@ def create_parser():
     
     KEY CAPABILITIES:
         • Taxonomic Profiling       - Kraken2/Bracken classification
-        • Functional Analysis        - Provisional Prokka + DIAMOND workflow
+        • Functional Analysis        - Pyrodigal + provisional DIAMOND workflow
         • Comparative Studies        - Basic group comparison across samples
         • Descriptive Reports        - Text, JSON, tables, and visualizations
     
@@ -270,6 +269,22 @@ def create_parser():
         action='store_true',
         help='Enable debug mode with full diagnostic output (includes all commands and stderr)'
     )
+    output_mode = parser.add_mutually_exclusive_group()
+    output_mode.add_argument(
+        '--quiet',
+        action='store_true',
+        help='Show errors only'
+    )
+    parser.add_argument(
+        '--no-color',
+        action='store_true',
+        help='Disable ANSI colors and terminal animation'
+    )
+    output_mode.add_argument(
+        '--verbose',
+        action='store_true',
+        help='Show additional progress and diagnostic context'
+    )
 
     parser.add_argument(
         '--config',
@@ -298,7 +313,7 @@ def create_parser():
             
             Performs comprehensive validation of:
                 • Stable command-line tools (Kraken2, Bracken, MEGAHIT,
-                  Prokka, and DIAMOND)
+                  Pyrodigal, and DIAMOND)
                 • Stable Python package dependencies
                 • Reference database files and indices
             
@@ -306,6 +321,13 @@ def create_parser():
             Identifies missing dependencies with installation suggestions.
         """),
         formatter_class=CustomHelpFormatter
+    )
+    parser_check.add_argument(
+        '--db-dir',
+        type=Path,
+        default=None,
+        metavar='DIR',
+        help='Database root override'
     )
 
     # ========================================================================
@@ -364,7 +386,7 @@ def create_parser():
             Pipeline Steps:
                 1. Taxonomic Classification (Kraken2 + Bracken)
                 2. Metagenomic Assembly (MEGAHIT)
-                3. Gene Prediction (Prokka)
+                3. Gene Prediction (Pyrodigal metagenomic mode)
                 4. Provisional Functional Annotation (DIAMOND database search)
                 5. Descriptive Report Generation
             
@@ -379,6 +401,13 @@ def create_parser():
         default='results',
         metavar='DIR',
         help="Output directory for results (default: results)"
+    )
+    parser_analyze.add_argument(
+        '--db-dir',
+        type=Path,
+        default=None,
+        metavar='DIR',
+        help='Database root override'
     )
     parser_analyze.add_argument(
         '--skip-validation',
@@ -482,18 +511,11 @@ def create_parser():
             Database Setup Utility
             ======================
             
-            Automated download and configuration of reference databases:
-                • Kraken2/Bracken database (MiniKraken ~8GB)
-                • Custom pathogen marker database (DIAMOND)
-                • SwissProt + COG combined database (DIAMOND)
-            
-            Options:
-                --all          Setup all databases (recommended for first-time setup)
-                --kraken       Setup only Kraken2 database
-                --pathogen     Setup only pathogen marker database
-                --swissprot    Setup only SwissProt+COG database
-            
-            Note: Requires wget, tar, gunzip, and diamond to be installed.
+            Installs versioned reference data outside the source repository.
+            Use --list to inspect availability and size before downloading.
+
+            Example:
+                metaquest setup-db --db-dir /data/metaquest --database taxonomy
         """),
         formatter_class=CustomHelpFormatter
     )
@@ -526,24 +548,27 @@ def create_parser():
 
     db_options = parser_setup_db.add_argument_group('Database Selection')
     db_options.add_argument(
-        '--all',
-        action='store_true',
-        help='Setup all databases (Kraken2, pathogen markers, SwissProt+COG)'
+        '--db-dir',
+        type=Path,
+        default=None,
+        metavar='DIR',
+        help='Database root (default: METAQUEST_DB_DIR, config, or ./databases)'
     )
     db_options.add_argument(
-        '--kraken',
-        action='store_true',
-        help='Setup Kraken2/Bracken database only'
+        '--database',
+        choices=('taxonomy', 'functional', 'amr', 'virulence'),
+        metavar='NAME',
+        help='Install one database'
     )
     db_options.add_argument(
-        '--pathogen',
+        '--list',
         action='store_true',
-        help='Setup custom pathogen marker database only'
+        help='List database releases, sizes, and installation status'
     )
     db_options.add_argument(
-        '--swissprot',
+        '--force',
         action='store_true',
-        help='Setup SwissProt+COG combined database only'
+        help='Replace an existing invalid or older installation'
     )
 
     return parser
@@ -568,7 +593,12 @@ def main():
     args = parser.parse_args()
     
     # Determine verbosity level from command-line flags
-    verbosity = 'debug' if args.debug else 'standard'
+    verbosity = (
+        'debug' if args.debug else
+        'verbose' if args.verbose else
+        'silent' if args.quiet else
+        'standard'
+    )
     
     # Setup log file path if output directory specified (not for init-config)
     log_file = None
@@ -577,6 +607,9 @@ def main():
     
     # Initialize global output formatter
     formatter = OutputFormatter(verbosity=verbosity, log_file=log_file)
+    if args.no_color:
+        formatter.colors_enabled = False
+        Colors.disable()
     set_formatter(formatter)
     
     # Show banner (unless version or help requested)
@@ -595,7 +628,14 @@ def main():
             formatter.section_header("SYSTEM DEPENDENCY CHECK")
             formatter.info("Verifying installation of required tools and databases...")
             
-            run_system_check(formatter)
+            from .settings import load_config
+            run_system_check(
+                formatter,
+                config=load_config(
+                    Path(args.config) if args.config else None,
+                    db_dir=args.db_dir,
+                ),
+            )
             
             formatter.success("System check completed successfully")
             formatter.info("All required dependencies are properly configured")
@@ -656,7 +696,10 @@ def main():
             formatter.info("Performing system dependency check...")
             with formatter.spinner("Verifying required tools and databases"):
                 from .settings import load_config
-                check_config = load_config(Path(args.config)) if args.config else None
+                check_config = load_config(
+                    Path(args.config) if args.config else None,
+                    db_dir=args.db_dir,
+                )
                 run_system_check(
                     formatter,
                     config=check_config,
@@ -693,7 +736,8 @@ def main():
             if not args.skip_annotation:
                 formatter.section_header("ANNOTATION SETTINGS")
                 formatter.result({
-                    'Min contig length': '200 bp (Prokka default)',
+                    'Gene prediction': 'Pyrodigal metagenomic mode',
+                    'Min contig length': '200 bp',
                     'Annotation threads': str(args.annotation_threads)
                 })
                 
@@ -735,71 +779,52 @@ def main():
         # COMMAND: SETUP-DB
         # ====================================================================
         elif args.command == 'setup-db':
+            from .database_manager import DATABASES, database_rows, install_database
+            from .settings import load_config
+
             formatter.section_header("DATABASE SETUP")
-            
-            # Check if at least one database option is selected
-            if not (args.all or args.kraken or args.pathogen or args.swissprot):
+
+            configured = load_config(Path(args.config)) if args.config else load_config()
+            db_root = args.db_dir or configured.databases.base_dir
+            formatter.result({
+                'Database root': str(Path(db_root).expanduser().resolve()),
+            })
+
+            if args.list:
+                for row in database_rows(db_root):
+                    formatter.info(
+                        f"{row['Database']}: {row['Status']} | "
+                        f"{row['Release']} | {row['Size']}"
+                    )
+                sys.exit(0)
+
+            if not args.database:
                 formatter.error(
                     "No database selected",
                     solutions=[
-                        "Use --all to setup all databases",
-                        "Use --kraken, --pathogen, or --swissprot for specific databases",
-                        "Run 'metaquest setup-db --help' for more information"
+                        "Use --list to inspect available databases",
+                        "Use --database taxonomy to install Kraken2 Standard-8",
                     ]
                 )
                 sys.exit(1)
-            
-            # Locate the setup script
-            script_dir = Path(__file__).parent.parent.parent
-            setup_script = script_dir / 'scripts' / 'setup_databases.sh'
-            
-            if not setup_script.exists():
-                formatter.error(
-                    f"Setup script not found: {setup_script}",
-                    solutions=[
-                        "Ensure MetaQuest is properly installed",
-                        "Check if scripts/setup_databases.sh exists in the installation directory"
-                    ]
+
+            selected = DATABASES[args.database]
+            if selected.download_gb is not None:
+                formatter.warning(
+                    f"The {args.database} download is approximately "
+                    f"{selected.download_gb:g} GB"
                 )
-                sys.exit(1)
-            
-            # Build command arguments
-            script_args = []
-            if args.all:
-                script_args.append('--all')
-            else:
-                if args.kraken:
-                    script_args.append('--kraken')
-                if args.pathogen:
-                    script_args.append('--pathogen')
-                if args.swissprot:
-                    script_args.append('--swissprot')
-                        
-            formatter.info(f"Executing database setup script: {setup_script}")
-            formatter.info(f"Arguments: {' '.join(script_args)}")
-            formatter.warning("This may take some time and require significant disk space")
-            
-            try:
-                result = subprocess.run(
-                    ['bash', str(setup_script)] + script_args,
-                    check=True,
-                    capture_output=False
-                )
-                
-                elapsed = time.time() - start_time
-                formatter.success(f"Database setup completed in {formatter._format_time(elapsed)}")
-                
-            except subprocess.CalledProcessError as e:
-                formatter.error(
-                    "Database setup failed",
-                    solutions=[
-                        "Check that wget, tar, gunzip, and diamond are installed",
-                        "Ensure sufficient disk space is available",
-                        "Check network connectivity for downloads",
-                        "Review error messages above for specific issues"
-                    ]
-                )
-                sys.exit(1)
+            target = install_database(
+                args.database,
+                db_root,
+                force=args.force,
+                notify=formatter.info,
+            )
+            elapsed = time.time() - start_time
+            formatter.success(
+                f"Database setup completed in {formatter._format_time(elapsed)}"
+            )
+            formatter.info(f"Installed at: {target}")
 
         # ====================================================================
         # COMMAND: INIT-CONFIG

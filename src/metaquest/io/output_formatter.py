@@ -435,13 +435,25 @@ class OutputFormatter:
     def error(self, message: str, solutions: Optional[List[str]] = None, doc_link: Optional[str] = None):
         """Print error message with solutions"""
         if self.verbosity >= self.SILENT:  # Always show errors
-            self._print(f"\n     {Colors.RED}✗ {message}{Colors.END}")
+            self._print(
+                f"\n     {Colors.RED}✗ {message}{Colors.END}",
+                min_verbosity=self.SILENT,
+            )
             if solutions:
-                self._print(f"\n     {Colors.BOLD}💡 Solutions:{Colors.END}")
+                self._print(
+                    f"\n     {Colors.BOLD}💡 Solutions:{Colors.END}",
+                    min_verbosity=self.SILENT,
+                )
                 for solution in solutions:
-                    self._print(f"        • {solution}")
+                    self._print(
+                        f"        • {solution}",
+                        min_verbosity=self.SILENT,
+                    )
             if doc_link:
-                self._print(f"\n     {Colors.CYAN}📚 Documentation:{Colors.END} {doc_link}")
+                self._print(
+                    f"\n     {Colors.CYAN}📚 Documentation:{Colors.END} {doc_link}",
+                    min_verbosity=self.SILENT,
+                )
             print()
 
     # ========================================================================

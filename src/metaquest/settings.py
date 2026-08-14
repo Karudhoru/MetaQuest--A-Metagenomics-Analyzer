@@ -31,7 +31,7 @@ class DatabasesConfig:
     kraken_db: Path
     pathogen_markers: Path
     swissprot_cog: Path
-    kraken_db_version: str = "Standard-16 (Built: 2024-01-10)"
+    kraken_db_version: str = "Standard-8 (2026-06-26)"
 
 
 @dataclass(frozen=True)
@@ -56,51 +56,11 @@ class ClassificationConfig:
 
 @dataclass(frozen=True)
 class AnnotationConfig:
-    tool: str = "prokka"
+    tool: str = "pyrodigal"
     threads: int = 8
     evalue: float = 1e-6
     mode: str = "metagenome"
-    kill_tbl2asn: bool = False
-    tbl2asn_timeout: int = 30
-    rfam: bool = False
     min_contig_length: int = 200
-
-
-@dataclass(frozen=True)
-class PathogenDetectionConfig:
-    min_fragment_length: int = 80
-    min_identity: float = 80.0
-    min_query_coverage: float = 0.7
-    min_subject_coverage: float = 0.7
-    evalue_threshold: float = 1e-5
-    diamond_threads: int = 4
-    diamond_sensitivity: str = "more-sensitive"
-    confidence_high: int = 70
-    confidence_medium: int = 45
-    # Novel detection system
-    use_hmm: bool = False
-    use_esm: bool = False
-    use_island_detection: bool = False
-    use_bayesian_risk: bool = False
-    hmm_evalue: float = 1e-5
-    hmm_threads: int = 4
-    esm_model: str = "esm2_t12_35M_UR50D"
-    esm_batch_size: int = 32
-    esm_min_delta_score: float = 0.0
-    island_window_size: int = 20000
-    island_step_size: int = 5000
-    island_min_vf_genes: int = 3
-
-
-@dataclass(frozen=True)
-class MLConfig:
-    enabled: bool = False
-    confidence_threshold: float = 0.7
-    batch_size: int = 100
-    feature_cache: bool = True
-    random_seed: int = 42
-    model_artifacts_dir: Path | None = None
-    uncertainty_threshold: float = 0.3
 
 
 @dataclass(frozen=True)
@@ -155,8 +115,6 @@ class MetaQuestConfig:
     assembly: AssemblyConfig = field(default_factory=AssemblyConfig)
     classification: ClassificationConfig = field(default_factory=ClassificationConfig)
     annotation: AnnotationConfig = field(default_factory=AnnotationConfig)
-    pathogen_detection: PathogenDetectionConfig = field(default_factory=PathogenDetectionConfig)
-    ml: MLConfig = field(default_factory=MLConfig)
     comparative: ComparativeConfig = field(default_factory=ComparativeConfig)
     memory: MemoryConfig = field(default_factory=MemoryConfig)
     qc: QCConfig = field(default_factory=QCConfig)
@@ -173,8 +131,10 @@ _DEFAULT_CONFIG_PATH = Path(__file__).parent / "metaquest_default.yaml"
 _cached_config: MetaQuestConfig | None = None
 
 
-def _resolve_db_dir(raw: dict) -> Path:
+def _resolve_db_dir(raw: dict, override: Path | None = None) -> Path:
     """Resolve database directory from env > yaml > default."""
+    if override is not None:
+        return Path(override)
     env_val = os.environ.get("METAQUEST_DB_DIR")
     if env_val:
         return Path(env_val)
@@ -186,10 +146,10 @@ def _resolve_db_dir(raw: dict) -> Path:
 
 def _build_databases_config(raw: dict, base_dir: Path) -> DatabasesConfig:
     db = raw.get("databases", {})
-    kraken = Path(db.get("kraken_db") or str(base_dir))
+    kraken = Path(db.get("kraken_db") or str(base_dir / "taxonomy"))
     pathogen = base_dir / db.get("pathogen_markers", "metaquest_pathogen_markers.dmnd")
     swissprot = base_dir / db.get("swissprot_cog", "SwissProt_COG_db.dmnd")
-    version = db.get("kraken_db_version", "Standard-16 (Built: 2024-01-10)")
+    version = db.get("kraken_db_version", "Standard-8 (2026-06-26)")
     return DatabasesConfig(
         base_dir=base_dir,
         kraken_db=kraken,
@@ -212,7 +172,11 @@ def _build_section(cls, raw: dict, key: str):
     return cls(**filtered)
 
 
-def load_config(config_path: Path | None = None) -> MetaQuestConfig:
+def load_config(
+    config_path: Path | None = None,
+    *,
+    db_dir: Path | None = None,
+) -> MetaQuestConfig:
     """
     Load configuration from YAML file.
 
@@ -244,24 +208,14 @@ def load_config(config_path: Path | None = None) -> MetaQuestConfig:
             else:
                 raw[key] = val
 
-    db_dir = _resolve_db_dir(raw)
-    databases = _build_databases_config(raw, db_dir)
-
-    # Resolve ML model artifacts dir
-    ml_section = raw.get("ml", {}) or {}
-    if not ml_section.get("model_artifacts_dir"):
-        ml_section["model_artifacts_dir"] = str(
-            Path(__file__).parent / "ml" / "model_artifacts"
-        )
-    raw["ml"] = ml_section
+    resolved_db_dir = _resolve_db_dir(raw, db_dir)
+    databases = _build_databases_config(raw, resolved_db_dir)
 
     config = MetaQuestConfig(
         databases=databases,
         assembly=_build_section(AssemblyConfig, raw, "assembly"),
         classification=_build_section(ClassificationConfig, raw, "classification"),
         annotation=_build_section(AnnotationConfig, raw, "annotation"),
-        pathogen_detection=_build_section(PathogenDetectionConfig, raw, "pathogen_detection"),
-        ml=_build_section(MLConfig, raw, "ml"),
         comparative=_build_section(ComparativeConfig, raw, "comparative"),
         memory=_build_section(MemoryConfig, raw, "memory"),
         qc=_build_section(QCConfig, raw, "qc"),

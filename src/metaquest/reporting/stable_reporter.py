@@ -99,7 +99,6 @@ def generate_stable_reports(ctx) -> None:
         "analysis_type": "short_read_metagenomics",
         "research_use_only": True,
         "completed_stages": list(ctx.completed_stages),
-        "experimental_features_executed": [],
     }
 
     if ctx.classification:

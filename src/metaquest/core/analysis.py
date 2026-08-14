@@ -29,8 +29,12 @@ def run_analysis(input_file, output_dir, cli_args=None):
 
     # Load config (from cli_args.config if available, else defaults)
     config_path = getattr(cli_args, "config", None)
-    if config_path:
-        config = load_config(Path(config_path))
+    db_dir = getattr(cli_args, "db_dir", None)
+    if config_path or db_dir:
+        config = load_config(
+            Path(config_path) if config_path else None,
+            db_dir=Path(db_dir) if db_dir else None,
+        )
     else:
         config = get_config()
 

@@ -15,14 +15,10 @@ def _stage_names(pipeline):
     return [name for name, _ in pipeline._stages]
 
 
-def test_experimental_features_are_disabled_by_default():
+def test_experimental_features_are_removed_from_config():
     config = load_config()
-
-    assert config.ml.enabled is False
-    assert config.pathogen_detection.use_hmm is False
-    assert config.pathogen_detection.use_esm is False
-    assert config.pathogen_detection.use_island_detection is False
-    assert config.pathogen_detection.use_bayesian_risk is False
+    assert not hasattr(config, "ml")
+    assert not hasattr(config, "pathogen_detection")
 
 
 def test_default_pipeline_excludes_experimental_stages():
@@ -89,7 +85,6 @@ def test_stable_report_contains_no_risk_output(tmp_path):
     summary = (tmp_path / "analysis_summary.json").read_text(encoding="utf-8")
     report = (tmp_path / "01_taxonomic_report.txt").read_text(encoding="utf-8")
 
-    assert '"experimental_features_executed": []' in summary
     assert "risk_score" not in summary
     assert "clinical recommendation" not in report.lower()
     assert "do not establish pathogenicity or clinical risk" in report

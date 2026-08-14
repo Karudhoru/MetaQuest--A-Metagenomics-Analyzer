@@ -7,6 +7,7 @@ from __future__ import annotations
 import gc
 import json
 import logging
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -37,14 +38,25 @@ class PipelineRunner:
 
     def run(self, ctx: PipelineContext) -> PipelineContext:
         """Execute all registered stages in order."""
+        from metaquest.io.output_formatter import get_formatter
+
         total = len(self._stages)
+        formatter = get_formatter()
         logger.info("Pipeline starting with %d stage(s)", total)
+        formatter.section_header("PIPELINE PROGRESS")
 
         for i, (name, stage_fn) in enumerate(self._stages, 1):
             logger.info("[%d/%d] %s", i, total, name)
+            formatter.info(f"[{i}/{total}] {name}")
+            started = time.monotonic()
             try:
-                ctx = stage_fn(ctx)
+                with formatter.spinner(name):
+                    ctx = stage_fn(ctx)
                 ctx.completed_stages.append(name)
+                elapsed = time.monotonic() - started
+                formatter.success(
+                    f"{name} completed in {formatter._format_time(elapsed)}"
+                )
             except PipelineStageError:
                 raise
             except MetaQuestError:
@@ -70,7 +82,6 @@ class PipelineRunner:
             "config_summary": {
                 "assembler": ctx.config.assembly.assembler,
                 "threads": ctx.config.assembly.threads,
-                "experimental_features_executed": [],
             },
             "input_files": [str(f) for f in ctx.input_files],
         }
@@ -96,7 +107,7 @@ def build_default_pipeline(config: MetaQuestConfig, skip_annotation: bool = Fals
     Stages:
       1. Taxonomic classification (Kraken2 + Bracken)
       2. Metagenomic assembly (MEGAHIT) [full workflow only]
-      3. Functional annotation (Prokka + DIAMOND) [full workflow only]
+      3. Gene prediction and functional annotation (Pyrodigal + DIAMOND)
       4. Stable reporting
 
     Custom pathogen detection, ML, HMM, ESM, island detection, and risk

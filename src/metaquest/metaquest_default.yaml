@@ -7,10 +7,10 @@
 databases:
   # Resolved as: METAQUEST_DB_DIR env var > this value > ./databases
   base_dir: null
-  kraken_db: null           # defaults to base_dir
+  kraken_db: null           # defaults to base_dir/taxonomy
   pathogen_markers: metaquest_pathogen_markers.dmnd
   swissprot_cog: SwissProt_COG_db.dmnd
-  kraken_db_version: "Standard-16 (Built: 2024-01-10)"
+  kraken_db_version: "Standard-8 (2026-06-26)"
 
 assembly:
   assembler: megahit        # megahit | spades
@@ -29,49 +29,11 @@ classification:
   bracken_threshold: 10
 
 annotation:
-  tool: prokka
+  tool: pyrodigal
   threads: 8
   evalue: 1.0e-6
-  mode: metagenome          # metagenome | careful | fast
-  kill_tbl2asn: false       # deprecated compatibility field; never kills processes
-  tbl2asn_timeout: 30
-  rfam: false
+  mode: metagenome
   min_contig_length: 200
-
-pathogen_detection:
-  min_fragment_length: 80
-  min_identity: 80.0
-  min_query_coverage: 0.7
-  min_subject_coverage: 0.7
-  evalue_threshold: 1.0e-5
-  diamond_threads: 4
-  diamond_sensitivity: more-sensitive  # fast | mid-sensitive | sensitive | more-sensitive | very-sensitive
-  confidence_high: 70
-  confidence_medium: 45
-  # Experimental research features. These are never part of the stable
-  # pipeline and must be enabled deliberately in research code.
-  use_hmm: false
-  use_esm: false
-  use_island_detection: false
-  use_bayesian_risk: false
-  hmm_evalue: 1.0e-5
-  hmm_threads: 4
-  esm_model: esm2_t12_35M_UR50D
-  esm_batch_size: 32
-  esm_min_delta_score: 0.0
-  island_window_size: 20000   # Sliding window size (bp)
-  island_step_size: 5000      # Step between windows (bp)
-  island_min_vf_genes: 3      # Min VF genes per window to flag
-
-ml:
-  # The bundled model has not completed independent external validation.
-  enabled: false
-  confidence_threshold: 0.7
-  batch_size: 100
-  feature_cache: true
-  random_seed: 42
-  model_artifacts_dir: null  # defaults to package ml/model_artifacts
-  uncertainty_threshold: 0.3
 
 comparative:
   normalization: tss        # tss | clr | none
