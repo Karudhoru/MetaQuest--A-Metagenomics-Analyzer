@@ -8,7 +8,7 @@ from metaquest.core import taxonomic_analysis
 from metaquest.exceptions import ClassificationError
 from metaquest.pipeline.runner import build_default_pipeline
 from metaquest.reporting.stable_reporter import generate_stable_reports
-from metaquest.settings import load_config
+from metaquest.settings import load_config, validate_config
 
 
 def _stage_names(pipeline):
@@ -21,13 +21,34 @@ def test_experimental_features_are_removed_from_config():
     assert not hasattr(config, "pathogen_detection")
 
 
+def test_stable_config_validates_without_removed_sections():
+    config = load_config()
+
+    assert not hasattr(config, "comparative")
+    assert validate_config(config) == (True, [])
+
+
+def test_legacy_modules_are_removed():
+    root = Path(__file__).parents[1] / "src" / "metaquest"
+    removed = (
+        root / "core" / "pathogen_analysis.py",
+        root / "core" / "comparative_analysis.py",
+        root / "reporting" / "risk_scoring.py",
+        root / "reporting" / "validation_engine.py",
+        root / "visualization" / "pathogenic_visualizer.py",
+        root / "config" / "pathogen_config.json",
+    )
+
+    assert all(not path.exists() for path in removed)
+
+
 def test_default_pipeline_excludes_experimental_stages():
     config = load_config()
 
     assert _stage_names(build_default_pipeline(config)) == [
         "Taxonomic Classification",
         "Metagenomic Assembly",
-        "Functional Annotation",
+        "Gene Prediction",
         "Reporting",
     ]
 
