@@ -37,7 +37,7 @@ def run_reporting_stage(ctx: PipelineContext) -> PipelineContext:
         try:
             create_functional_visualizations(
                 ctx.output_dir,
-                ctx.annotation.prokka_dir,
+                ctx.annotation.gene_prediction_dir,
                 ctx.annotation.functional_annotations,
             )
         except Exception as exc:
