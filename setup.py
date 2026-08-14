@@ -2,9 +2,8 @@
 MetaQuest - A Comprehensive Metagenomics Analysis Pipeline
 ============================================================
 
-MetaQuest is an integrated bioinformatics pipeline for metagenomic data analysis,
-providing taxonomic classification, pathogen detection, machine learning integration,
-and statistical analysis capabilities.
+MetaQuest is a research-use pipeline for taxonomic classification, metagenomic
+assembly, gene prediction, and functional annotation.
 
 Author: MetaQuest Development Team
 License: MIT
@@ -42,9 +41,6 @@ else:
         "biopython>=1.81,<2.0",
         "pandas>=1.5.0,<3.0",
         "numpy>=1.23.0,<2.0",
-        "matplotlib>=3.6.0,<4.0",
-        "plotly>=5.14.0,<6.0",
-        "tqdm>=4.64.0",
     ]
 
 # Package metadata
@@ -144,14 +140,6 @@ EXTRAS_REQUIRE = {
         "sphinx-autodoc-typehints>=1.19.0",
         "myst-parser>=1.0.0",
     ],
-    "ml": [
-        "scikit-learn>=1.2.0,<2.0",
-        "xgboost>=1.7.0,<3.0",
-        "lightgbm>=3.3.0,<5.0",
-        "catboost>=1.1.0,<2.0",
-        "shap>=0.41.0,<1.0",
-        "optuna>=3.0.0,<4.0",
-    ],
     "test": [
         "pytest>=7.0.0",
         "pytest-cov>=4.0.0",
@@ -188,15 +176,6 @@ setup(
     # Package discovery
     package_dir={"": "src"},
     packages=find_packages(where="src", exclude=["tests", "tests.*"]),
-    
-    # Package data
-    include_package_data=True,
-    package_data={
-        "metaquest": [
-            "config/pathogen_config.json",
-            "*.json",
-        ],
-    },
     
     # Dependencies
     python_requires=PYTHON_REQUIRES,
