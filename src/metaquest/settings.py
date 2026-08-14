@@ -29,8 +29,7 @@ from metaquest.exceptions import ConfigError
 class DatabasesConfig:
     base_dir: Path
     kraken_db: Path
-    pathogen_markers: Path
-    swissprot_cog: Path
+    functional_dir: Path
     kraken_db_version: str = "Standard-8 (2026-06-26)"
 
 
@@ -61,16 +60,6 @@ class AnnotationConfig:
     evalue: float = 1e-6
     mode: str = "metagenome"
     min_contig_length: int = 200
-
-
-@dataclass(frozen=True)
-class ComparativeConfig:
-    normalization: str = "tss"
-    min_prevalence: float = 0.10
-    random_seed: int = 42
-    permutations: int = 999
-    alpha_level: float = 0.05
-    fdr_method: str = "fdr_bh"
 
 
 @dataclass(frozen=True)
@@ -115,7 +104,6 @@ class MetaQuestConfig:
     assembly: AssemblyConfig = field(default_factory=AssemblyConfig)
     classification: ClassificationConfig = field(default_factory=ClassificationConfig)
     annotation: AnnotationConfig = field(default_factory=AnnotationConfig)
-    comparative: ComparativeConfig = field(default_factory=ComparativeConfig)
     memory: MemoryConfig = field(default_factory=MemoryConfig)
     qc: QCConfig = field(default_factory=QCConfig)
     reporting: ReportingConfig = field(default_factory=ReportingConfig)
@@ -147,14 +135,12 @@ def _resolve_db_dir(raw: dict, override: Path | None = None) -> Path:
 def _build_databases_config(raw: dict, base_dir: Path) -> DatabasesConfig:
     db = raw.get("databases", {})
     kraken = Path(db.get("kraken_db") or str(base_dir / "taxonomy"))
-    pathogen = base_dir / db.get("pathogen_markers", "metaquest_pathogen_markers.dmnd")
-    swissprot = base_dir / db.get("swissprot_cog", "SwissProt_COG_db.dmnd")
+    functional = Path(db.get("functional_dir") or str(base_dir / "functional"))
     version = db.get("kraken_db_version", "Standard-8 (2026-06-26)")
     return DatabasesConfig(
         base_dir=base_dir,
         kraken_db=kraken,
-        pathogen_markers=pathogen,
-        swissprot_cog=swissprot,
+        functional_dir=functional,
         kraken_db_version=version,
     )
 
@@ -216,7 +202,6 @@ def load_config(
         assembly=_build_section(AssemblyConfig, raw, "assembly"),
         classification=_build_section(ClassificationConfig, raw, "classification"),
         annotation=_build_section(AnnotationConfig, raw, "annotation"),
-        comparative=_build_section(ComparativeConfig, raw, "comparative"),
         memory=_build_section(MemoryConfig, raw, "memory"),
         qc=_build_section(QCConfig, raw, "qc"),
         reporting=_build_section(ReportingConfig, raw, "reporting"),
@@ -254,14 +239,8 @@ def validate_config(config: MetaQuestConfig | None = None) -> tuple[bool, list[s
         errors.append("memory.max_sequences_in_memory must be >= 1000")
     if cfg.assembly.memory_limit_gb < 4:
         errors.append("assembly.memory_limit_gb should be >= 4")
-    if not (0.0 <= cfg.ml.confidence_threshold <= 1.0):
-        errors.append("ml.confidence_threshold must be between 0 and 1")
     if cfg.assembly.threads < 1:
         errors.append("assembly.threads must be >= 1")
-    if cfg.pathogen_detection.min_identity < 0 or cfg.pathogen_detection.min_identity > 100:
-        errors.append("pathogen_detection.min_identity must be 0-100")
-    if cfg.comparative.normalization not in ("tss", "clr", "none"):
-        errors.append("comparative.normalization must be tss, clr, or none")
     for fmt in cfg.reporting.formats:
         if fmt not in ("txt", "json", "html", "csv"):
             errors.append(f"reporting.formats: unknown format '{fmt}'")
