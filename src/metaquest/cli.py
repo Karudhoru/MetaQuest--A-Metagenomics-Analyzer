@@ -219,9 +219,9 @@ def create_parser():
     
     KEY CAPABILITIES:
         • Taxonomic Profiling       - Kraken2/Bracken classification
-        • Functional Analysis        - Pyrodigal + provisional DIAMOND workflow
-        • Comparative Studies        - Basic group comparison across samples
-        • Descriptive Reports        - Text, JSON, tables, and visualizations
+        • Gene Prediction            - Pyrodigal metagenomic mode
+        • Comparative Studies        - reserved for a validated future workflow
+        • Descriptive Reports        - Text and JSON research outputs
     
     QUICK START EXAMPLES:
         # Verify system configuration
@@ -387,8 +387,7 @@ def create_parser():
                 1. Taxonomic Classification (Kraken2 + Bracken)
                 2. Metagenomic Assembly (MEGAHIT)
                 3. Gene Prediction (Pyrodigal metagenomic mode)
-                4. Provisional Functional Annotation (DIAMOND database search)
-                5. Descriptive Report Generation
+                4. Descriptive Report Generation
             
             Use --skip-annotation for rapid taxonomic classification only.
         """),
@@ -447,59 +446,16 @@ def create_parser():
     # ========================================================================
     parser_compare = subparsers.add_parser(
         'compare',
-        help='Perform comparative analysis across samples',
-        description=dedent("""
-            Comparative Metagenomic Analysis
-            =================================
-            
-            Statistical comparison of multiple MetaQuest results:
-            
-            Diversity Analysis:
-                • Alpha diversity metrics (Shannon, Simpson, Chao1)
-                • Rarefaction curves
-                • Species richness estimation
-            
-            Beta Diversity:
-                • Bray-Curtis dissimilarity
-                • Principal Coordinate Analysis (PCoA)
-                • PERMANOVA testing
-            
-            Differential Abundance:
-                • Statistical testing between groups
-                • Effect size calculation
-                • Multiple testing correction
-            
-            Requirements:
-                • Multiple MetaQuest output directories
-                • Metadata file (TSV) with sample-to-group mappings
-            
-            Metadata Format:
-                sample_id    group    [optional_columns]
-                sample1      control  ...
-                sample2      control  ...
-                sample3      treatment ...
-        """),
-        formatter_class=CustomHelpFormatter
+        help='Reserved for a future validated comparative workflow',
+        description=(
+            'The experimental comparison implementation was removed. '
+            'This command name is retained for compatibility.'
+        ),
+        formatter_class=CustomHelpFormatter,
     )
-    parser_compare.add_argument(
-        '-i', '--inputs',
-        nargs='+',
-        required=True,
-        metavar='DIR',
-        help="MetaQuest output directories to compare (space-separated list)"
-    )
-    parser_compare.add_argument(
-        '-m', '--metadata',
-        required=True,
-        metavar='FILE',
-        help="Metadata file (TSV format) linking sample IDs to experimental groups"
-    )
-    parser_compare.add_argument(
-        '-o', '--output',
-        default='comparison_results',
-        metavar='DIR',
-        help="Output directory for comparison results (default: comparison_results)"
-    )
+    parser_compare.add_argument('-i', '--inputs', nargs='+', required=True)
+    parser_compare.add_argument('-m', '--metadata', required=True)
+    parser_compare.add_argument('-o', '--output', default='comparison_results')
 
     # ========================================================================
     # SETUP-DB COMMAND
@@ -758,22 +714,15 @@ def main():
         # COMMAND: COMPARE
         # ====================================================================
         elif args.command == 'compare':
-            from .core.comparative_analysis import run_comparison
-
             formatter.section_header("COMPARATIVE ANALYSIS")
-            
-            formatter.result({
-                'Samples to compare': str(len(args.inputs)),
-                'Metadata file': args.metadata,
-                'Output directory': args.output
-            })
-            
-            formatter.info("Initiating comparative statistical analysis...")
-            run_comparison(args.inputs, args.metadata, args.output)
-            
-            elapsed = time.time() - start_time
-            formatter.success(f"Comparison completed in {formatter._format_time(elapsed)}")
-            formatter.info(f"Results: {args.output}")
+            formatter.error(
+                "Comparative analysis is not available in the stable runtime",
+                solutions=[
+                    "Run taxonomy and functional analysis for each sample first",
+                    "Comparative analysis will return after its methods are validated",
+                ],
+            )
+            sys.exit(1)
 
         # ====================================================================
         # COMMAND: SETUP-DB

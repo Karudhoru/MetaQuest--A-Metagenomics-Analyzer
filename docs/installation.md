@@ -46,7 +46,7 @@ The minimal environment contains:
 | Bracken | abundance re-estimation |
 | MEGAHIT | metagenomic assembly |
 | Pyrodigal | metagenomic gene prediction |
-| DIAMOND | provisional protein similarity search |
+| eggNOG-mapper and DIAMOND | installed for the next functional milestone |
 | BBMap | interleaved FASTQ splitting compatibility |
 
 Pyrodigal is a Python dependency and does not require a separate Prodigal or
@@ -59,17 +59,14 @@ Choose a database root outside Git:
 ~~~bash
 metaquest setup-db --db-dir /data/metaquest-db --list
 metaquest setup-db --db-dir /data/metaquest-db --database taxonomy
+metaquest setup-db --db-dir /data/metaquest-db --database functional
 ~~~
 
-Then verify the taxonomy-only requirements:
+Then verify the installed tools and databases:
 
 ~~~bash
 metaquest check --db-dir /data/metaquest-db
 ~~~
-
-At present, `check` without a taxonomy-only option also checks the provisional
-functional database. If only taxonomy is being used, run analysis with
-`--skip-annotation`.
 
 For repository-local convenience with physical storage on another disk:
 
@@ -141,8 +138,7 @@ metaquest setup-db \
   --force
 ~~~
 
-### Full analysis fails at functional database preflight
+### Functional annotation is not present in analysis output
 
-This is expected in the current alpha unless a compatible provisional DIAMOND
-database has been configured. Use `--skip-annotation` for the maintained
-taxonomy-only path while the functional database contract is finalized.
+The legacy SwissProt/DIAMOND path has been removed. The installed eggNOG 5.0.2
+database will be connected to the pipeline in the next functional milestone.

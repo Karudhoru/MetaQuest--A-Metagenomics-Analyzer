@@ -8,8 +8,7 @@ databases:
   # Resolved as: METAQUEST_DB_DIR env var > this value > ./databases
   base_dir: null
   kraken_db: null           # defaults to base_dir/taxonomy
-  pathogen_markers: metaquest_pathogen_markers.dmnd
-  swissprot_cog: SwissProt_COG_db.dmnd
+  functional_dir: null      # defaults to base_dir/functional
   kraken_db_version: "Standard-8 (2026-06-26)"
 
 assembly:
@@ -34,14 +33,6 @@ annotation:
   evalue: 1.0e-6
   mode: metagenome
   min_contig_length: 200
-
-comparative:
-  normalization: tss        # tss | clr | none
-  min_prevalence: 0.10
-  random_seed: 42
-  permutations: 999
-  alpha_level: 0.05
-  fdr_method: fdr_bh
 
 memory:
   max_sequences_in_memory: 10000

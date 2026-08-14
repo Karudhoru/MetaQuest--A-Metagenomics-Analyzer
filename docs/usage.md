@@ -30,7 +30,7 @@ metaquest check --db-dir /data/metaquest-db
 ~~~
 
 `check` validates required executables, Python packages, and database files.
-The full check currently includes the provisional functional database.
+The full check validates the installed eggNOG core database.
 
 ## Validate FASTQ
 
@@ -66,10 +66,9 @@ metaquest analyze \
   --output results/sample
 ~~~
 
-This runs validation, Kraken2, Bracken, descriptive reporting, and taxonomic
-visualization.
+This runs validation, Kraken2, Bracken, and descriptive reporting.
 
-### Full provisional path
+### Assembly and gene prediction
 
 ~~~bash
 metaquest analyze \
@@ -78,9 +77,8 @@ metaquest analyze \
   --output results/sample
 ~~~
 
-This additionally runs MEGAHIT, Pyrodigal, and provisional DIAMOND annotation.
-It requires a compatible functional database that the current database manager
-does not yet install.
+This additionally runs MEGAHIT and Pyrodigal. Functional annotation with the
+installed eggNOG database is the next core implementation milestone.
 
 Useful options:
 
@@ -90,29 +88,13 @@ Useful options:
 | `--db-dir DIR` | database root override |
 | `--skip-validation` | bypass input validation |
 | `--skip-annotation` | taxonomy-only execution |
-| `--annotation-threads N` | DIAMOND thread allocation |
+| `--annotation-threads N` | reserved for the eggNOG integration |
 
 ## Compare
 
-~~~bash
-metaquest compare \
-  --inputs results/sample1 results/sample2 results/sample3 \
-  --metadata metadata.tsv \
-  --output comparison/
-~~~
-
-Minimum metadata:
-
-~~~text
-sample_id	group
-sample1	control
-sample2	control
-sample3	treatment
-~~~
-
-The current comparison implementation is basic. Longitudinal models,
-repeated-measures designs, ANCOM-BC2, and MaAsLin2 are planned but not yet part
-of the maintained scientific contract.
+The `compare` command name is retained for compatibility, but the experimental
+legacy implementation has been removed. It exits with an explanatory error
+until a validated comparative workflow is built.
 
 ## Setup databases
 
@@ -154,10 +136,7 @@ results/sample/
 │   ├── genes.fna
 │   ├── genes.gff3
 │   └── summary.json
-├── functional_annotations.tsv
-├── functional_annotations_filtered.tsv
 ├── 01_taxonomic_report.txt
-├── 02_functional_report.txt
 ├── analysis_summary.json
 ├── analysis_metadata.json
 └── metaquest.log
