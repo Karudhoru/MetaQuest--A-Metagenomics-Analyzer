@@ -8,7 +8,7 @@ and statistical analysis capabilities.
 
 Author: MetaQuest Development Team
 License: MIT
-Python: >=3.8,<3.13
+Python: >=3.10,<3.13
 """
 
 from setuptools import setup, find_packages
@@ -55,7 +55,7 @@ AUTHOR = "Dev Patel"
 AUTHOR_EMAIL = "devpatelcambay@gmail.com"
 URL = "https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer"
 LICENSE = "MIT"
-PYTHON_REQUIRES = ">=3.8,<3.13"
+PYTHON_REQUIRES = ">=3.10,<3.13"
 
 MAINTAINER = "MetaQuest Development Team"
 MAINTAINER_EMAIL = "devpatelcambay@gmail.com"
@@ -79,8 +79,6 @@ CLASSIFIERS = [
     
     # Programming Languages
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -233,7 +231,7 @@ if __name__ == "__main__":
 
     def check_external_tools():
         """Check if external bioinformatics tools are installed."""
-        required_tools = ["kraken2", "bracken", "prokka", "diamond"]
+        required_tools = ["kraken2", "bracken", "megahit", "diamond"]
         missing_tools = []
 
         for tool in required_tools:
