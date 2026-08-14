@@ -4,13 +4,9 @@ Functional Analysis Module — Prokka gene prediction + DIAMOND annotation.
 
 import subprocess
 import os
-import time
-import threading
-import queue
 from pathlib import Path
 from typing import Optional
 
-import psutil
 from Bio import SeqIO
 
 from ..exceptions import AnnotationError
@@ -68,7 +64,7 @@ def run_prokka(
     fasta_path: Path,
     output_dir: Path,
     *,
-    kill_tbl2asn: bool = True,
+    kill_tbl2asn: bool = False,
     tbl2asn_timeout: int = 30,
     threads: int = 8,
     mode: str = "metagenome",
@@ -79,8 +75,8 @@ def run_prokka(
     Args:
         fasta_path: Input contigs FASTA.
         output_dir: Output directory.
-        kill_tbl2asn: Monitor and kill long-running tbl2asn processes.
-        tbl2asn_timeout: Seconds before killing tbl2asn.
+        kill_tbl2asn: Deprecated compatibility argument; ignored.
+        tbl2asn_timeout: Deprecated compatibility argument; ignored.
         threads: CPU threads.
         mode: Prokka mode (metagenome, careful, fast).
 
@@ -98,7 +94,6 @@ def run_prokka(
         "--outdir", str(prokka_dir),
         "--prefix", "sample",
         "--cpus", str(threads),
-        "--force",
         "--centre", "X",
         "--compliant",
         str(fasta_path),
@@ -114,70 +109,20 @@ def run_prokka(
 
     formatter.debug(f"Prokka command: {' '.join(cmd)}")
 
-    prokka_process = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+    return_code, _, stderr = formatter.run_subprocess(
+        cmd,
+        operation_name="Prokka gene prediction",
+        capture_output=True,
+        show_command=False,
     )
-
-    # Drain pipes in background threads to prevent deadlock
-    stdout_queue: queue.Queue = queue.Queue()
-    stderr_queue: queue.Queue = queue.Queue()
-
-    def read_pipe(pipe, q):
-        try:
-            for line in iter(pipe.readline, ""):
-                if line:
-                    q.put(line)
-            pipe.close()
-        except Exception:
-            pass
-
-    stdout_thread = threading.Thread(target=read_pipe, args=(prokka_process.stdout, stdout_queue), daemon=True)
-    stderr_thread = threading.Thread(target=read_pipe, args=(prokka_process.stderr, stderr_queue), daemon=True)
-    stdout_thread.start()
-    stderr_thread.start()
-
-    # Monitor and kill tbl2asn if needed
-    killed_count = 0
-    if kill_tbl2asn:
-        tbl2asn_first_seen = None
-        while prokka_process.poll() is None:
-            try:
-                for proc in psutil.process_iter(["pid", "name"]):
-                    try:
-                        if "tbl2asn" in proc.info.get("name", "").lower():
-                            if tbl2asn_first_seen is None:
-                                tbl2asn_first_seen = time.time()
-                            if time.time() - tbl2asn_first_seen > tbl2asn_timeout:
-                                proc.kill()
-                                proc.wait(timeout=2)
-                                killed_count += 1
-                                tbl2asn_first_seen = None
-                    except (psutil.NoSuchProcess, psutil.AccessDenied):
-                        continue
-            except Exception:
-                pass
-            time.sleep(0.5)
-    else:
-        prokka_process.wait()
-
-    stdout_thread.join(timeout=5)
-    stderr_thread.join(timeout=5)
-
-    if killed_count > 0:
-        formatter.warning(f"Killed {killed_count} tbl2asn process(es)")
-
-    # Cleanup any remaining tbl2asn
-    if kill_tbl2asn:
-        try:
-            subprocess.run(["pkill", "-9", "tbl2asn"], stderr=subprocess.DEVNULL, timeout=2)
-        except Exception:
-            pass
+    if return_code != 0:
+        raise AnnotationError(f"Prokka failed (exit {return_code}): {stderr}")
 
     # Validate essential output
     essential = [prokka_dir / "sample.faa", prokka_dir / "sample.ffn", prokka_dir / "sample.gff"]
     missing = [f.name for f in essential if not f.exists()]
     if missing:
-        formatter.warning(f"Missing Prokka files: {', '.join(missing)}")
+        raise AnnotationError(f"Prokka output is incomplete: {', '.join(missing)}")
 
     return prokka_dir
 
@@ -224,7 +169,7 @@ def run_functional_annotation(
     protein_count = sum(1 for _ in SeqIO.parse(protein_fasta, "fasta"))
     formatter.debug(f"Annotating {protein_count:,} proteins")
 
-    outfmt_cols = "qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore stitle"
+    outfmt_cols = "qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen slen stitle"
     cmd = [
         "diamond", "blastp",
         "--db", str(db_path),
@@ -255,15 +200,42 @@ def run_functional_annotation(
         formatter.warning("DIAMOND produced no output")
         return None
 
-    # Validate
+    # Post-filter: remove low-quality hits
+    filtered_output = Path(output_dir) / "functional_annotations_filtered.tsv"
     unique_proteins = set()
-    with open(diamond_output) as f:
-        for line in f:
-            if line.strip():
-                unique_proteins.add(line.split("\t")[0])
+    removed = 0
+
+    with open(diamond_output) as fin, open(filtered_output, "w") as fout:
+        for line in fin:
+            if not line.strip():
+                continue
+            parts = line.split("\t")
+            if len(parts) < 15:
+                fout.write(line)
+                unique_proteins.add(parts[0])
+                continue
+
+            pident = float(parts[2])
+            length = int(parts[3])
+            qlen = int(parts[12])
+
+            # Filter: min 40% identity AND min 50% query coverage
+            query_coverage = length / qlen if qlen > 0 else 0
+            if pident < 40.0 or query_coverage < 0.5:
+                removed += 1
+                continue
+
+            fout.write(line)
+            unique_proteins.add(parts[0])
+
+    if removed > 0:
+        formatter.debug(f"Post-filter removed {removed} low-quality annotations (<40% identity or <50% query coverage)")
+
+    # Replace original with filtered
+    filtered_output.replace(diamond_output)
 
     if not unique_proteins:
-        formatter.warning("DIAMOND output contains no valid annotations")
+        formatter.warning("DIAMOND output contains no valid annotations after filtering")
         return None
 
     annotation_pct = (len(unique_proteins) / protein_count * 100) if protein_count > 0 else 0

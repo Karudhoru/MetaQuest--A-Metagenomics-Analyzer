@@ -513,3 +513,6 @@ For additional help:
 - **Documentation**: Check the usage guide for detailed examples
 
 - **Community**: Join discussions for installation tips and troubleshooting
+> **Legacy document:** Dependency and database instructions in this guide cover
+> the earlier experimental pipeline. They are not the final minimal MetaQuest
+> 0.1 installation contract. Use the root README for current scope.

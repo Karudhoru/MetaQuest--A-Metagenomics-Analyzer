@@ -33,7 +33,7 @@ annotation:
   threads: 8
   evalue: 1.0e-6
   mode: metagenome          # metagenome | careful | fast
-  kill_tbl2asn: true
+  kill_tbl2asn: false       # deprecated compatibility field; never kills processes
   tbl2asn_timeout: 30
   rfam: false
   min_contig_length: 200
@@ -48,9 +48,24 @@ pathogen_detection:
   diamond_sensitivity: more-sensitive  # fast | mid-sensitive | sensitive | more-sensitive | very-sensitive
   confidence_high: 70
   confidence_medium: 45
+  # Experimental research features. These are never part of the stable
+  # pipeline and must be enabled deliberately in research code.
+  use_hmm: false
+  use_esm: false
+  use_island_detection: false
+  use_bayesian_risk: false
+  hmm_evalue: 1.0e-5
+  hmm_threads: 4
+  esm_model: esm2_t12_35M_UR50D
+  esm_batch_size: 32
+  esm_min_delta_score: 0.0
+  island_window_size: 20000   # Sliding window size (bp)
+  island_step_size: 5000      # Step between windows (bp)
+  island_min_vf_genes: 3      # Min VF genes per window to flag
 
 ml:
-  enabled: true
+  # The bundled model has not completed independent external validation.
+  enabled: false
   confidence_threshold: 0.7
   batch_size: 100
   feature_cache: true

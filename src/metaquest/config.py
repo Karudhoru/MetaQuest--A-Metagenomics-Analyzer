@@ -6,8 +6,8 @@ Centralized configuration management for the MetaQuest metagenomic analysis pipe
 All database paths, analysis parameters, thresholds, and pathogen definitions are 
 defined here for consistency across modules.
 
-Version: 5.0.0
-Release Date: 2026-03-03
+Version: 2.0.0-alpha.1
+Release Date: 2026-08-14
 """
 
 import os
@@ -22,8 +22,8 @@ from datetime import datetime
 # VERSION AND METADATA
 # ============================================================================
 
-__version__ = "5.0.0"
-__release_date__ = "2026-03-03"
+__version__ = "2.0.0-alpha.1"
+__release_date__ = "2026-08-14"
 __pipeline_modules__ = [
     "core.analysis",
     "core.taxonomic_analysis", 
@@ -106,7 +106,7 @@ MODEL_ARTIFACTS_DIR = Path(__file__).parent / "ml" / "model_artifacts"
 # ============================================================================
 
 ML_CONFIG = {
-    'enable_ml_prediction': True,
+    'enable_ml_prediction': False,
     'confidence_threshold': 0.7,
     'batch_size': 100,
     'feature_cache': True,

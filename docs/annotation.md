@@ -172,3 +172,6 @@ MetaQuest tracks COG category **X** (Mobilome) separately, reporting:
 rm databases/SwissProt_COG_db.dmnd
 ./scripts/setup_databases.sh --swissprot
 ```
+> **Provisional workflow:** The Prokka/DIAMOND annotation path is retained only
+> while the production gene-calling, functional-analysis, and database choices
+> are evaluated. It must not be treated as the finalized MetaQuest workflow.

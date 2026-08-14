@@ -35,8 +35,8 @@ def run_annotation_stage(ctx: PipelineContext) -> PipelineContext:
         prokka_dir = run_prokka(
             contigs_fasta,
             ctx.output_dir,
-            kill_tbl2asn=config.kill_tbl2asn,
-            tbl2asn_timeout=config.tbl2asn_timeout,
+            threads=config.threads,
+            mode=config.mode,
         )
     except Exception as e:
         raise AnnotationError(f"Prokka gene prediction failed: {e}", cause=e) from e
@@ -58,6 +58,7 @@ def run_annotation_stage(ctx: PipelineContext) -> PipelineContext:
         annotation_file = run_functional_annotation(
             prokka_dir, ctx.output_dir,
             threads=config.threads,
+            evalue=config.evalue,
         )
     except Exception as e:
         raise AnnotationError(f"DIAMOND annotation failed: {e}", cause=e) from e

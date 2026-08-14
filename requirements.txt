@@ -1,4 +1,4 @@
-# MetaQuest v5.0.0 — Python dependencies
+# MetaQuest v2.0.0-alpha.1 — stable Python dependencies
 # For the full bioinformatics environment (Kraken2, DIAMOND, Prokka, etc.)
 # use: conda env create -f environment/environment.yml
 
@@ -7,11 +7,9 @@ numpy>=1.24
 pandas>=2.0
 scipy>=1.10
 
-# ── Machine Learning ────────────────────────────────────────────────────────
+# ── Comparative statistics ─────────────────────────────────────────────────
 scikit-learn>=1.3
-xgboost>=1.7
-lightgbm>=4.0
-shap>=0.42
+statsmodels>=0.14
 
 # ── Bioinformatics ───────────────────────────────────────────────────────────
 biopython>=1.81

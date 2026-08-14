@@ -6,7 +6,7 @@ This module provides backward-compatible entry points.
 """
 
 from pathlib import Path
-from typing import Optional, List
+from dataclasses import replace
 
 from ..settings import get_config, load_config
 from ..pipeline.runner import build_default_pipeline
@@ -33,6 +33,15 @@ def run_analysis(input_file, output_dir, cli_args=None):
         config = load_config(Path(config_path))
     else:
         config = get_config()
+
+    # Preserve the existing CLI while ensuring command-line values actually
+    # reach the immutable configuration used by pipeline stages.
+    annotation_threads = getattr(cli_args, "annotation_threads", None)
+    if annotation_threads is not None:
+        config = replace(
+            config,
+            annotation=replace(config.annotation, threads=annotation_threads),
+        )
 
     # Determine read mode
     read_mode = "paired"
@@ -73,9 +82,4 @@ def run_analysis(input_file, output_dir, cli_args=None):
     fmt.section_header("ANALYSIS COMPLETE")
     fmt.info(f"Output directory: {output_dir_path}")
     fmt.info(f"Stages completed: {len(ctx.completed_stages)}")
-    if ctx.pathogen and ctx.pathogen.risk_data:
-        integrated = ctx.pathogen.risk_data.get("integrated", {})
-        level = integrated.get("risk_level", "Unknown")
-        score = integrated.get("final_score", 0)
-        fmt.info(f"Risk: {level} ({score:.0f}/100)")
-    fmt.info(f"Dashboard: {output_dir_path / 'analysis_dashboard.html'}")
+    fmt.info(f"Summary: {output_dir_path / 'analysis_summary.json'}")

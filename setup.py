@@ -50,7 +50,7 @@ else:
 # Package metadata
 PACKAGE_NAME = "metaquest"
 VERSION = __version__
-DESCRIPTION = "Comprehensive metagenomics analysis pipeline with taxonomic classification, pathogen detection, and ML integration"
+DESCRIPTION = "Research-use short-read metagenomics analysis pipeline"
 AUTHOR = "Dev Patel"
 AUTHOR_EMAIL = "devpatelcambay@gmail.com"
 URL = "https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer"
@@ -63,11 +63,10 @@ MAINTAINER_EMAIL = "devpatelcambay@gmail.com"
 # Classifiers for PyPI
 CLASSIFIERS = [
     # Development Status
-    "Development Status :: 4 - Beta",
+    "Development Status :: 3 - Alpha",
     
     # Intended Audience
     "Intended Audience :: Science/Research",
-    "Intended Audience :: Healthcare Industry",
     "Intended Audience :: Developers",
     
     # License
@@ -89,7 +88,6 @@ CLASSIFIERS = [
     
     # Topics
     "Topic :: Scientific/Engineering :: Bio-Informatics",
-    "Topic :: Scientific/Engineering :: Medical Science Apps.",
     "Topic :: Software Development :: Libraries :: Python Modules",
     
     # Natural Language
@@ -107,7 +105,6 @@ CLASSIFIERS = [
 KEYWORDS = [
     "metagenomics",
     "bioinformatics",
-    "pathogen-detection",
     "taxonomic-classification",
     "microbiome-analysis",
     "genomics",
@@ -115,9 +112,7 @@ KEYWORDS = [
     "fastq",
     "kraken2",
     "bracken",
-    "prokka",
-    "clinical-diagnostics",
-    "machine-learning-biology",
+    "comparative-metagenomics",
 ]
 
 # Project URLs for additional resources
@@ -200,7 +195,6 @@ setup(
     include_package_data=True,
     package_data={
         "metaquest": [
-            "ml/model_artifacts/*",
             "config/pathogen_config.json",
             "*.json",
         ],

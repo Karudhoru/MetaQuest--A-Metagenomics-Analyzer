@@ -95,7 +95,7 @@ def run_bracken(
         db_path: Kraken database path.
 
     Returns:
-        Path to Bracken output file (falls back to Kraken report on failure).
+        Path to the Bracken output file.
     """
     formatter = get_formatter()
 
@@ -135,7 +135,11 @@ def run_bracken(
     )
 
     if returncode != 0:
-        formatter.warning("Bracken failed, falling back to Kraken2 report")
-        return report_path
+        raise ClassificationError(
+            f"Bracken failed (exit {returncode}): {stderr}"
+        )
+
+    if not bracken_out.exists() or bracken_out.stat().st_size == 0:
+        raise ClassificationError(f"Bracken report missing or empty: {bracken_out}")
 
     return bracken_out

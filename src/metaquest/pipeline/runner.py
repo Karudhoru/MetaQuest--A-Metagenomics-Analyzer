@@ -70,7 +70,7 @@ class PipelineRunner:
             "config_summary": {
                 "assembler": ctx.config.assembly.assembler,
                 "threads": ctx.config.assembly.threads,
-                "ml_enabled": ctx.config.ml.enabled,
+                "experimental_features_executed": [],
             },
             "input_files": [str(f) for f in ctx.input_files],
         }
@@ -95,24 +95,25 @@ def build_default_pipeline(config: MetaQuestConfig, skip_annotation: bool = Fals
 
     Stages:
       1. Taxonomic classification (Kraken2 + Bracken)
-      2. Metagenomic assembly (MEGAHIT)
-      3. Functional annotation (Prokka + DIAMOND) [skippable]
-      4. Pathogen detection (DIAMOND DB + ML)
-      5. Reporting & visualization
+      2. Metagenomic assembly (MEGAHIT) [full workflow only]
+      3. Functional annotation (Prokka + DIAMOND) [full workflow only]
+      4. Stable reporting
+
+    Custom pathogen detection, ML, HMM, ESM, island detection, and risk
+    scoring are intentionally excluded until independently validated.
     """
     from metaquest.pipeline.stages.classification import run_classification_stage
-    from metaquest.pipeline.stages.assembly import run_assembly_stage
-    from metaquest.pipeline.stages.annotation import run_annotation_stage
-    from metaquest.pipeline.stages.pathogen import run_pathogen_stage
     from metaquest.pipeline.stages.reporting import run_reporting_stage
 
     runner = PipelineRunner(config)
     runner.add_stage("Taxonomic Classification", run_classification_stage)
-    runner.add_stage("Metagenomic Assembly", run_assembly_stage)
 
     if not skip_annotation:
+        from metaquest.pipeline.stages.assembly import run_assembly_stage
+        from metaquest.pipeline.stages.annotation import run_annotation_stage
+
+        runner.add_stage("Metagenomic Assembly", run_assembly_stage)
         runner.add_stage("Functional Annotation", run_annotation_stage)
-        runner.add_stage("Pathogen Detection", run_pathogen_stage)
 
     runner.add_stage("Reporting", run_reporting_stage)
     return runner

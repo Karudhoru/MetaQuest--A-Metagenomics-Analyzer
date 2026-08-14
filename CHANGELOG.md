@@ -1,11 +1,54 @@
 # Changelog
 
-All notable changes to MetaQuest are documented here.  
+All notable changes to MetaQuest are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+## Version-history notice
+
+The formal public Git history currently runs from `v1.0.0` through `v1.3.0`.
+The former 3.x, 4.x, and 5.x numbers below were untagged prototype milestones,
+not public semantic-version releases. They are retained for development
+provenance and are explicitly labelled as prototypes.
+
+MetaQuest 2.0 resumes semantic-version continuity from the public 1.x series.
+Pre-release identifiers are used until the refactored workflow and scientific
+claims are validated.
 
 ---
 
-## [5.0.0] — 2026-03-03
+## [2.0.0-alpha.1] — 2026-08-14
+
+### Changed
+
+- Reset the stable runtime to a research-use-only, validation-first surface.
+- Preserved the existing `check`, `validate`, `analyze`, `compare`, `setup-db`,
+  and `init-config` command structure.
+- Excluded custom pathogen scoring, ML prediction, HMM, ESM, pathogenicity
+  islands, Bayesian integration, and clinical-risk reporting from the default
+  pipeline pending independent validation.
+- Made taxonomy-only analysis skip assembly and annotation.
+- Replaced active risk-oriented reports with descriptive text and JSON output.
+- Made Bracken failure explicit instead of substituting a Kraken report with a
+  different schema.
+- Removed global `pkill` and automatic `tbl2asn` process termination.
+- Made dependency checks conditional on the selected workflow.
+- Reclassified the current Prokka/DIAMOND functional path as provisional.
+
+### Added
+
+- Stable-runtime boundary tests.
+- Explicit experimental-feature quarantine documentation.
+- Clear research-use-only and non-clinical interpretation statements.
+
+### Removed
+
+- Unsupported perfect sensitivity/specificity and production-readiness claims
+  from the primary project documentation.
+- ML model artifacts from default package data.
+
+---
+
+## [Prototype 5.0.0 — untagged] — 2026-03-03
 
 ### Added
 - **`reporting/validation_engine.py`** — Multi-evidence pathogen validation engine. Vectorized gene-to-species linkage (pandas merge, 5–10× faster). Bracken confidence scoring: assigns HIGH/MODERATE/LOW confidence to species based on ratio of direct Kraken hits vs. inferred reads. Reduces risk scores by 30% for low-confidence dominant taxa.
@@ -60,7 +103,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [4.1.0] — 2025-11-01
+## [Prototype 4.1.0 — untagged] — 2025-11-01
 
 ### Added
 - **Comparative Analysis v2.0**: Full compositional data normalization (TSS, CLR, rarefaction)
@@ -79,7 +122,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [4.0.0] — 2025-10-01
+## [Prototype 4.0.0 — untagged] — 2025-10-01
 
 ### Added
 - Enhanced COG + SwissProt dual-database annotation
@@ -89,7 +132,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [3.6.0] — 2025-10-01
+## [Prototype 3.6.0 — untagged] — 2025-10-01
 
 ### Added
 - SPAdes metagenomic assembly support
@@ -97,7 +140,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [3.5.0] — 2025-08-01
+## [Prototype 3.5.0 — untagged] — 2025-08-01
 
 ### Added
 - Enhanced statistical testing for comparative analysis
@@ -106,7 +149,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [3.3.0] — 2025-08-01
+## [Prototype 3.3.0 — untagged] — 2025-08-01
 
 ### Added
 - Comparative analysis pipeline (initial)

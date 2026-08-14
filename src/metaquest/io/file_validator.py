@@ -141,7 +141,8 @@ class FileValidator:
             'quality_encoding': None,
             'adapter_content_percent': 0,
             'overrepresented_sequences': [],
-            'top_5_sequences': []
+            'top_5_sequences': [],
+            'sampling_limited': False,
         }
         
         # Open file handle
@@ -203,8 +204,9 @@ class FileValidator:
         
         # Report sampling status
         if hit_sample_limit:
+            stats['sampling_limited'] = True
             fmt.info(f"Performance optimization: Analyzed first {self.MAX_READS_TO_ANALYZE:,} reads (sampling mode)")
-            fmt.info(f"Full file has {stats['total_sequences']:,} reads - statistics are representative")
+            fmt.info("Reported quality statistics describe the sampled reads, not the full file")
         
         # Calculate derived statistics
         if lengths:
@@ -230,7 +232,7 @@ class FileValidator:
         for seq, count in sequence_counts.most_common(5):
             percentage = (count / sampled_sequences) * 100
             stats['top_5_sequences'].append((seq, count, percentage))
-            if percentage >= self.overrep_threshold:
+            if percentage >= self.overrep_threshold * 100:
                 stats['overrepresented_sequences'].append((seq, count, percentage))
         
         return stats
@@ -294,7 +296,7 @@ class FileValidator:
         fmt._print(f"        Adapter Content: {stats['adapter_content_percent']:.2f}% (sampled {min(self.sample_size, stats['total_sequences'])} reads)")
         
         if stats['overrepresented_sequences']:
-            fmt._print(f"        \u26a0\ufe0f  Overrepresented Sequences: {len(stats['overrepresented_sequences'])} detected (\u2265{self.overrep_threshold}%)")
+            fmt._print(f"        \u26a0\ufe0f  Overrepresented Sequences: {len(stats['overrepresented_sequences'])} detected (\u2265{self.overrep_threshold:.1%})")
         else:
             fmt._print(f"        \u2713 No overrepresented sequences detected")
     
