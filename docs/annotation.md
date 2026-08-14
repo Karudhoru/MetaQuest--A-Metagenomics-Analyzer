@@ -1,177 +1,88 @@
-# MetaQuest Annotation Guide
+# Gene prediction and functional annotation
 
-This guide covers the functional annotation system used by MetaQuest, including database setup, annotation workflow, and interpreting results.
+This document describes the maintained annotation boundary in
+MetaQuest `2.0.0-alpha.1`.
 
----
+## Current stage
 
-## Table of Contents
+~~~text
+MEGAHIT contigs
+  ↓
+Pyrodigal metagenomic gene prediction
+  ├── genes.faa
+  ├── genes.fna
+  ├── genes.gff3
+  └── summary.json
+  ↓
+provisional DIAMOND protein similarity search
+  └── functional_annotations_filtered.tsv
+~~~
 
-- [Overview](#overview)
-- [Databases](#databases)
-- [Annotation Workflow](#annotation-workflow)
-- [Output Files](#output-files)
-- [Interpreting Results](#interpreting-results)
-- [Troubleshooting](#troubleshooting)
+## Pyrodigal
 
----
+MetaQuest initializes `pyrodigal.GeneFinder(meta=True)` and processes one
+contig at a time. This bounds memory use and applies Pyrodigal's metagenomic
+models independently to assembled contigs.
 
-## Overview
+Contigs shorter than `annotation.min_contig_length` are skipped. The default is
+200 bp.
 
-MetaQuest uses a dual-database annotation strategy to maximise functional coverage:
+### Outputs
 
-| Database | Tool | Focus |
-|----------|------|-------|
-| **SwissProt** | DIAMOND | Manually reviewed protein annotations, pathogen markers |
-| **COG** | DIAMOND | Clusters of Orthologous Genes — functional categories |
+| File | Contents |
+|---|---|
+| `gene_prediction/genes.faa` | predicted protein sequences without terminal stop characters |
+| `gene_prediction/genes.fna` | predicted coding nucleotide sequences |
+| `gene_prediction/genes.gff3` | CDS coordinates and translation-table metadata |
+| `gene_prediction/summary.json` | tool version, mode, contig counts, and gene count |
 
-Gene prediction is performed by **Prokka** before annotation. DIAMOND then searches each predicted protein against both databases.
+Sequence identifiers derive from input contig identifiers. Input contig IDs
+therefore need to be unique.
 
-> **Note on annotation counts:** DIAMOND reports multiple database matches per query protein. One protein can match several SwissProt/COG entries. MetaQuest reports distinguish between *unique annotated proteins* (CDS-level) and *total annotation alignments* to avoid inflated counts.
+## Provisional DIAMOND search
 
----
+The current DIAMOND step performs a top-hit protein similarity search and
+filters weak alignments. These matches are descriptive sequence-similarity
+results; they are not direct evidence of phenotype, pathogenicity, expression,
+or activity.
 
-## Databases
+The legacy SwissProt/COG database is no longer installed by `setup-db`.
+Consequently, complete functional execution is intentionally provisional until
+the production eggNOG-based database and output contract are implemented.
 
-### SwissProt
+Use taxonomy-only mode when that provisional database is unavailable:
 
-- Source: [UniProt Knowledge Base](https://www.uniprot.org/uniprot/?query=reviewed:yes)
-- Manually reviewed, high-quality protein annotations
-- Covers virulence factors, AMR markers, housekeeping proteins
-- Used for: functional annotation, pathogen marker detection
+~~~bash
+metaquest analyze \
+  --db-dir /data/metaquest-db \
+  --paired sample_R1.fastq.gz sample_R2.fastq.gz \
+  --skip-annotation \
+  --output results/
+~~~
 
-### COG (Clusters of Orthologous Genes)
+## Planned production functional contract
 
-- Source: [NCBI COG 2020](https://ftp.ncbi.nih.gov/pub/COG/COG2020/)
-- Organized into 26 functional categories (e.g., J = Translation, K = Transcription, L = DNA replication)
-- Used for: broad functional classification, metabolic pathway inference
+The intended implementation is:
 
-### Combined DIAMOND Database
+~~~text
+cleaned reads ───────────────────────────────┐
+                                            ↓
+contigs → Pyrodigal genes → eggNOG annotation
+                         ↑                  ↓
+                         └── read mapping ──┘
+                                            ↓
+                           gene and function abundance
+~~~
 
-Both databases are merged into a single DIAMOND-formatted database (`SwissProt_COG_db.dmnd`) for a single-pass annotation run. This is built by `scripts/setup_databases.sh --swissprot`.
+Publication-ready functional analysis requires both annotation and quantitative
+read support. Planned output levels include raw gene counts and aggregated COG,
+KO, EC, GO, and pathway tables. Database version, mapper parameters,
+normalization, and aggregation rules must be recorded in provenance.
 
----
+## Interpretation limits
 
-## Annotation Workflow
-
-```
-FASTQ/FASTA input
-      │
-      ▼
-  Assembly (SPAdes/MEGAHIT)
-      │
-      ▼
-  Gene Prediction (Prokka)
-      │  → prokka_annotation/
-      │     ├── *.faa   (protein sequences)
-      │     ├── *.gff   (genome annotation)
-      │     └── *.gbk   (GenBank format)
-      ▼
-  DIAMOND search vs SwissProt+COG
-      │  → functional_annotations.tsv
-      ▼
-  Functional analysis & reporting
-      │  → functional_report.txt
-      └  → visualizations/
-```
-
-### Key Parameters
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `--min-contig-length` | 500 bp | Minimum contig length for Prokka annotation |
-| `--no-filter-contigs` | off | Annotate all contigs regardless of length |
-| `--skip-annotation` | off | Skip Prokka+DIAMOND entirely (taxonomy only) |
-| `--threads` | 4 | Threads for Prokka and DIAMOND |
-
----
-
-## Output Files
-
-| File | Description |
-|------|-------------|
-| `functional_annotations.tsv` | DIAMOND output: query, subject, identity, coverage, e-value, bitscore |
-| `prokka_annotation/*.faa` | Predicted protein sequences |
-| `prokka_annotation/*.gff` | Gene prediction coordinates |
-| `functional_report.txt` | Summary with COG categories, annotation stats, methodology note |
-| `cog_category_distribution.png` | Bar chart of COG functional categories |
-
-### functional_annotations.tsv Columns
-
-| Column | Description |
-|--------|-------------|
-| `query_id` | Prokka protein ID |
-| `subject_id` | SwissProt/COG database hit |
-| `pident` | Percentage identity |
-| `length` | Alignment length |
-| `qcovhsp` | Query coverage (%) |
-| `evalue` | E-value |
-| `bitscore` | Bit score |
-
----
-
-## Interpreting Results
-
-### Annotation Coverage
-
-- **Annotated CDS**: Unique proteins with at least one database hit
-- **Total annotations**: Sum of all DIAMOND alignments (≥ Annotated CDS, due to multi-hit behavior)
-- A typical well-assembled bacterial genome achieves 85–95% annotation coverage against SwissProt+COG
-
-### COG Functional Categories
-
-| Letter | Category |
-|--------|----------|
-| J | Translation, ribosomal structure |
-| K | Transcription |
-| L | DNA replication, recombination, repair |
-| D | Cell cycle, division |
-| T | Signal transduction |
-| M | Cell wall, membrane, envelope |
-| N | Cell motility |
-| O | Post-translational modification |
-| X | Mobilome (transposons, IS elements) |
-| C | Energy metabolism |
-| G | Carbohydrate metabolism |
-| E | Amino acid metabolism |
-| F | Nucleotide metabolism |
-| H | Coenzyme metabolism |
-| I | Lipid metabolism |
-| P | Inorganic ion transport |
-| Q | Secondary metabolite biosynthesis |
-| U | Intracellular trafficking |
-| V | **Defense mechanisms (AMR)** |
-| R | General function prediction |
-| S | Function unknown |
-
-### Mobile Genetic Elements
-
-MetaQuest tracks COG category **X** (Mobilome) separately, reporting:
-- IS family classification
-- Transposase count and diversity
-- Integron and phage element signals
-
----
-
-## Troubleshooting
-
-**No annotations produced:**
-- Verify database exists: `ls databases/SwissProt_COG_db.dmnd`
-- Check Prokka ran successfully: `ls results/prokka_annotation/*.faa`
-- Run with `--debug` to see DIAMOND command and output
-
-**Very low coverage (<50%):**
-- Assembly quality may be poor — check N50 in the taxonomic report
-- Try lowering the DIAMOND e-value threshold in `config.py`
-
-**Annotation takes too long:**
-- Increase `--threads`
-- Use `--min-contig-length 1000` to reduce the number of short contigs annotated
-
-**Rebuilding the database:**
-```bash
-rm databases/SwissProt_COG_db.dmnd
-./scripts/setup_databases.sh --swissprot
-```
-> **Provisional workflow:** The Prokka/DIAMOND annotation path is retained only
-> while the production gene-calling, functional-analysis, and database choices
-> are evaluated. It must not be treated as the finalized MetaQuest workflow.
+- A sequence-similarity hit is not experimental confirmation of function.
+- Presence of a gene is not proof of expression or phenotype.
+- Assembly can merge, fragment, or omit low-abundance sequences.
+- Closely related proteins can have different substrate specificity.
+- Functional abundance depends on read mapping and normalization choices.
