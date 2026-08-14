@@ -51,6 +51,7 @@ def run_system_check(
         tools.update({
             'megahit': '--version',
             'diamond': 'version',
+            'emapper.py': '--version',
         })
     if require_interleaved:
         tools['reformat.sh'] = None
@@ -81,7 +82,11 @@ def run_system_check(
         config = get_config()
     required_dbs = {"Kraken2 DB": config.databases.kraken_db / "hash.k2d"}
     if not taxonomy_only:
-        required_dbs["Functional annotation DB"] = config.databases.swissprot_cog
+        required_dbs.update({
+            "eggNOG annotation DB": config.databases.functional_dir / "eggnog.db",
+            "eggNOG taxonomy DB": config.databases.functional_dir / "eggnog.taxa.db",
+            "eggNOG DIAMOND DB": config.databases.functional_dir / "eggnog_proteins.dmnd",
+        })
     for name, path in required_dbs.items():
         if not path.exists():
             errors.append(f"Required database not found: {name} (expected at {path}).")
