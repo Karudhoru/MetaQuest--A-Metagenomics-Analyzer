@@ -1533,3 +1533,7 @@ metaquest compare -i sample_*/ -m metadata.tsv -o comparison/
 *For technical support and updates, visit the MetaQuest GitHub repository.*
 
 **Last Updated**: October 2025 - Version 4.0.0
+> **Legacy document:** This guide describes the pre-0.1 experimental feature
+> set. Custom pathogen, ML, HMM, ESM, island, Bayesian-risk, clinical, and
+> advanced comparative claims are not part of the stable runtime. Use the root
+> README for the current command behavior while this guide is rewritten.

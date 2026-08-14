@@ -17,7 +17,6 @@ import pandas as pd
 import re
 import numpy as np
 from collections import Counter
-from ..config import KRAKEN_DB, SWISSPROT_DB, PATHOGEN_DB_CUSTOM, MODEL_ARTIFACTS_DIR
 import importlib
 from .output_formatter import get_formatter
 
@@ -36,7 +35,13 @@ def _check_command(name, version_cmd="--version"):
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False
 
-def run_system_check(formatter):
+def run_system_check(
+    formatter,
+    *,
+    config=None,
+    taxonomy_only: bool = False,
+    require_interleaved: bool = False,
+):
     """
     Runs a comprehensive check of all dependencies using the formatter for output.
     """
@@ -47,12 +52,15 @@ def run_system_check(formatter):
 
     # Command-Line Tools
     formatter.substep("Checking command-line tools...")
-    tools = {
-        'kraken2': '--version', 'bracken': '--version', 'diamond': 'version',
-        'prokka': '--version', 'seqkit': 'version', 'ktImportText': None,
-        'seqtk': None, 'spades.py': '--version', 'megahit': '--version',
-        'reformat.sh': None
-    }
+    tools = {'kraken2': '--version', 'bracken': '--version'}
+    if not taxonomy_only:
+        tools.update({
+            'megahit': '--version',
+            'prokka': '--version',
+            'diamond': 'version',
+        })
+    if require_interleaved:
+        tools['reformat.sh'] = None
     for tool, cmd in tools.items():
         if not _check_command(tool, cmd):
             errors.append(f"Tool not found: '{tool}'. Please install it, e.g., via 'conda install -c bioconda {tool}'.")
@@ -60,10 +68,11 @@ def run_system_check(formatter):
     # Python Packages
     formatter.substep("Checking Python packages...")
     packages = {
-        'Bio': 'biopython', 'pandas': 'pandas', 'numpy': 'numpy', 'plotly': 'plotly',
-        'sklearn': 'scikit-learn', 'joblib': 'joblib', 'requests': 'requests',
-        'tqdm': 'tqdm', 'scipy': 'scipy', 'matplotlib': 'matplotlib', 'xgboost': 'xgboost',
-        'lightgbm': 'lightgbm', 'catboost': 'catboost'
+        'Bio': 'biopython',
+        'pandas': 'pandas',
+        'numpy': 'numpy',
+        'plotly': 'plotly',
+        'matplotlib': 'matplotlib',
     }
     for pkg, install_name in packages.items():
         try:
@@ -71,22 +80,14 @@ def run_system_check(formatter):
         except ImportError:
             errors.append(f"Python package not found: '{install_name}'. Please install it, e.g., 'pip install {install_name}'.")
 
-    # Machine Learning Artifacts
-    formatter.substep("Checking ML model artifacts...")
-    if not MODEL_ARTIFACTS_DIR.exists():
-        errors.append(f"Model artifacts directory not found: {MODEL_ARTIFACTS_DIR}")
-    else:
-        expected_models = ['best_model.pkl', 'scaler.pkl', 'feature_selector.pkl', 'selected_feature_names.json']
-        for model_file in expected_models:
-            if not (MODEL_ARTIFACTS_DIR / model_file).exists():
-                warnings.append(f"ML artifact missing: '{model_file}'. ML predictions may fail.")
-
     # Databases
     formatter.substep("Checking database files...")
-    required_dbs = {
-        "Kraken2 DB": KRAKEN_DB / "hash.k2d", "SwissProt DB": SWISSPROT_DB,
-        "Pathogen DB": PATHOGEN_DB_CUSTOM
-    }
+    if config is None:
+        from metaquest.settings import get_config
+        config = get_config()
+    required_dbs = {"Kraken2 DB": config.databases.kraken_db / "hash.k2d"}
+    if not taxonomy_only:
+        required_dbs["Functional annotation DB"] = config.databases.swissprot_cog
     for name, path in required_dbs.items():
         if not path.exists():
             errors.append(f"Required database not found: {name} (expected at {path}).")
@@ -101,7 +102,7 @@ def run_system_check(formatter):
             "System check failed due to missing critical dependencies.",
             solutions=errors + ["Please resolve the issues above before running an analysis."]
         )
-        raise SystemExit()
+        raise SystemExit(1)
 
 def get_tool_version(tool_name: str) -> str:
     """

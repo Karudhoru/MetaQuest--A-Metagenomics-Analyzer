@@ -60,7 +60,7 @@ class AnnotationConfig:
     threads: int = 8
     evalue: float = 1e-6
     mode: str = "metagenome"
-    kill_tbl2asn: bool = True
+    kill_tbl2asn: bool = False
     tbl2asn_timeout: int = 30
     rfam: bool = False
     min_contig_length: int = 200
@@ -77,11 +77,24 @@ class PathogenDetectionConfig:
     diamond_sensitivity: str = "more-sensitive"
     confidence_high: int = 70
     confidence_medium: int = 45
+    # Novel detection system
+    use_hmm: bool = False
+    use_esm: bool = False
+    use_island_detection: bool = False
+    use_bayesian_risk: bool = False
+    hmm_evalue: float = 1e-5
+    hmm_threads: int = 4
+    esm_model: str = "esm2_t12_35M_UR50D"
+    esm_batch_size: int = 32
+    esm_min_delta_score: float = 0.0
+    island_window_size: int = 20000
+    island_step_size: int = 5000
+    island_min_vf_genes: int = 3
 
 
 @dataclass(frozen=True)
 class MLConfig:
-    enabled: bool = True
+    enabled: bool = False
     confidence_threshold: float = 0.7
     batch_size: int = 100
     feature_cache: bool = True

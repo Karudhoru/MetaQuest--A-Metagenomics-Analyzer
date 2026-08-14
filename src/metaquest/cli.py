@@ -16,11 +16,7 @@ from pathlib import Path
 from textwrap import dedent
 from datetime import datetime
 
-from .core.analysis import run_analysis
-from .core.comparative_analysis import run_comparison
 from .exceptions import MetaQuestError
-from .io.file_validator import FileValidator
-from .io.utils import run_system_check
 from .io.output_formatter import OutputFormatter, set_formatter
 from .config import __version__
 
@@ -79,31 +75,13 @@ def setup_annotation_args(parser):
     """
     Add functional annotation control arguments to a parser.
     
-    Configures Prokka annotation parameters including:
-    - Process timeout settings
-    - Thread allocation
+    Configures the thread allocation for provisional functional annotation.
     
     Note: Prokka's default minimum contig length (200bp) is used.
     """
     annot_group = parser.add_argument_group(
         'Annotation Control Options',
         'Fine-tune the functional annotation process with Prokka'
-    )
-    
-    annot_group.add_argument(
-        '--no-kill-tbl2asn',
-        dest='kill_tbl2asn',
-        action='store_false',
-        default=True,
-        help="Disable automatic termination of long-running tbl2asn processes"
-    )
-    
-    annot_group.add_argument(
-        '--tbl2asn-timeout',
-        type=int,
-        default=30,
-        metavar='SEC',
-        help="Maximum allowed runtime for tbl2asn process in seconds (default: 30)"
     )
     
     annot_group.add_argument(
@@ -132,6 +110,8 @@ def handle_validation(file_paths, args, formatter):
     """
     formatter.section_header("FILE VALIDATION")
     
+    from .io.file_validator import FileValidator
+
     validator = FileValidator()
     
     # Configure FASTQ validation parameters
@@ -233,17 +213,16 @@ def create_parser():
     ═══════════════════════════════════════════════════════════════════════
     
     OVERVIEW:
-        MetaQuest is a comprehensive bioinformatics pipeline for metagenomic
-        FASTQ data analysis, integrating state-of-the-art tools for taxonomic
-        classification, functional annotation, and pathogen detection.
+        MetaQuest is a research-use pipeline for short-read metagenomic FASTQ
+        analysis. The stable surface currently provides input validation,
+        taxonomic profiling, provisional functional annotation, and basic
+        comparative analysis.
     
     KEY CAPABILITIES:
         • Taxonomic Profiling       - Kraken2/Bracken classification
-        • Pathogen Detection         - Multi-tier risk assessment system
-        • Machine Learning           - AI-powered pathogenicity prediction
-        • Functional Analysis        - Prokka gene prediction + SwissProt annotation
-        • Comparative Studies        - Statistical comparison across samples
-        • Interactive Reports        - Dynamic HTML dashboards with visualizations
+        • Functional Analysis        - Provisional Prokka + DIAMOND workflow
+        • Comparative Studies        - Basic group comparison across samples
+        • Descriptive Reports        - Text, JSON, tables, and visualizations
     
     QUICK START EXAMPLES:
         # Verify system configuration
@@ -262,8 +241,8 @@ def create_parser():
         Single-end FASTQ:
             metaquest analyze --single reads.fq -o output/
         
-        Paired-end with custom assembler:
-            metaquest analyze --paired R1.fq R2.fq --assembler megahit
+    Paired-end FASTQ:
+        metaquest analyze --paired R1.fq R2.fq -o output/
         
         Fast taxonomic profiling only:
             metaquest analyze --single reads.fq --skip-annotation
@@ -318,9 +297,9 @@ def create_parser():
             ==============================
             
             Performs comprehensive validation of:
-                • Command-line tools (Kraken2, Prokka, DIAMOND, SPAdes, MEGAHIT)
-                • Python package dependencies (Biopython, scikit-learn, etc.)
-                • Machine learning model artifacts
+                • Stable command-line tools (Kraken2, Bracken, MEGAHIT,
+                  Prokka, and DIAMOND)
+                • Stable Python package dependencies
                 • Reference database files and indices
             
             Run this before your first analysis to ensure proper configuration.
@@ -384,13 +363,10 @@ def create_parser():
             
             Pipeline Steps:
                 1. Taxonomic Classification (Kraken2 + Bracken)
-                2. Metagenomic Assembly (SPAdes or MEGAHIT)
+                2. Metagenomic Assembly (MEGAHIT)
                 3. Gene Prediction (Prokka)
-                4. Functional Annotation (DIAMOND → SwissProt + COG)
-                5. Pathway Analysis (KEGG mapping)
-                6. Pathogen Detection (Custom Marker Database + ML)
-                7. Risk Assessment (Multi-tier scoring)
-                8. Report Generation (HTML + text)
+                4. Provisional Functional Annotation (DIAMOND database search)
+                5. Descriptive Report Generation
             
             Use --skip-annotation for rapid taxonomic classification only.
         """),
@@ -463,11 +439,6 @@ def create_parser():
                 • Statistical testing between groups
                 • Effect size calculation
                 • Multiple testing correction
-            
-            Functional Comparison:
-                • Pathway enrichment analysis
-                • Differential pathway testing
-                • Functional profile clustering
             
             Requirements:
                 • Multiple MetaQuest output directories
@@ -619,6 +590,8 @@ def main():
         # COMMAND: CHECK
         # ====================================================================
         if args.command == 'check':
+            from .io.utils import run_system_check
+
             formatter.section_header("SYSTEM DEPENDENCY CHECK")
             formatter.info("Verifying installation of required tools and databases...")
             
@@ -674,12 +647,22 @@ def main():
         # COMMAND: ANALYZE
         # ====================================================================
         elif args.command == 'analyze':
+            from .core.analysis import run_analysis
+            from .io.utils import run_system_check
+
             formatter.section_header("ANALYSIS PIPELINE INITIALIZATION")
 
             # System check
             formatter.info("Performing system dependency check...")
             with formatter.spinner("Verifying required tools and databases"):
-                run_system_check(formatter)
+                from .settings import load_config
+                check_config = load_config(Path(args.config)) if args.config else None
+                run_system_check(
+                    formatter,
+                    config=check_config,
+                    taxonomy_only=args.skip_annotation,
+                    require_interleaved=bool(args.interleaved),
+                )
             formatter.success("System check passed - all dependencies available")
 
             # File validation (unless skipped)
@@ -711,8 +694,6 @@ def main():
                 formatter.section_header("ANNOTATION SETTINGS")
                 formatter.result({
                     'Min contig length': '200 bp (Prokka default)',
-                    'tbl2asn auto-kill': 'Enabled' if args.kill_tbl2asn else 'Disabled',
-                    'tbl2asn timeout': f"{args.tbl2asn_timeout}s" if args.kill_tbl2asn else 'N/A',
                     'Annotation threads': str(args.annotation_threads)
                 })
                 
@@ -727,12 +708,14 @@ def main():
             # Show elapsed time and results location
             elapsed = time.time() - start_time
             formatter.success(f"Analysis completed in {formatter._format_time(elapsed)}")
-            formatter.info(f"Results: {Path(args.output) / 'analysis_dashboard.html'}")
+            formatter.info(f"Results: {Path(args.output) / 'analysis_summary.json'}")
 
         # ====================================================================
         # COMMAND: COMPARE
         # ====================================================================
         elif args.command == 'compare':
+            from .core.comparative_analysis import run_comparison
+
             formatter.section_header("COMPARATIVE ANALYSIS")
             
             formatter.result({
