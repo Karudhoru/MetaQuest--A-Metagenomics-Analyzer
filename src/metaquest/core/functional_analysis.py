@@ -1,13 +1,11 @@
-"""Gene prediction and provisional DIAMOND functional annotation."""
+"""Metagenomic gene prediction with Pyrodigal."""
 
 import json
 from pathlib import Path
-from typing import Optional
 
 from Bio import SeqIO
 
 from ..exceptions import AnnotationError
-from ..io.output_formatter import get_formatter
 
 
 def run_gene_prediction(
@@ -82,120 +80,3 @@ def run_gene_prediction(
         encoding="utf-8",
     )
     return prediction_dir, genes_predicted
-
-
-def run_functional_annotation(
-    gene_prediction_dir: Path,
-    output_dir: Path,
-    *,
-    threads: int = 8,
-    evalue: float = 1e-5,
-    sensitivity: str = "sensitive",
-    db_path: Path | None = None,
-) -> Optional[Path]:
-    """
-    Run DIAMOND functional annotation against SwissProt/COG.
-
-    Args:
-        gene_prediction_dir: Pyrodigal output directory containing genes.faa.
-        output_dir: Output directory for annotation results.
-        threads: Number of threads.
-        evalue: E-value threshold.
-        sensitivity: DIAMOND sensitivity mode.
-        db_path: Path to DIAMOND database. Defaults to config.
-
-    Returns:
-        Path to annotation TSV file, or None on failure.
-    """
-    formatter = get_formatter()
-
-    if db_path is None:
-        from ..settings import get_config
-        db_path = get_config().databases.swissprot_cog
-
-    protein_fasta = Path(gene_prediction_dir) / "genes.faa"
-    diamond_output = Path(output_dir) / "functional_annotations.tsv"
-
-    if not protein_fasta.exists() or protein_fasta.stat().st_size == 0:
-        formatter.warning("Protein FASTA missing or empty")
-        return None
-
-    if not db_path.exists():
-        raise AnnotationError(f"SwissProt database not found: {db_path}")
-
-    protein_count = sum(1 for _ in SeqIO.parse(protein_fasta, "fasta"))
-    formatter.debug(f"Annotating {protein_count:,} proteins")
-
-    outfmt_cols = "qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen slen stitle"
-    cmd = [
-        "diamond", "blastp",
-        "--db", str(db_path),
-        "--query", str(protein_fasta),
-        "--out", str(diamond_output),
-        "--outfmt", "6", *outfmt_cols.split(),
-        "--top", "1",
-        "--evalue", str(evalue),
-        "--threads", str(threads),
-        f"--{sensitivity}",
-        "--block-size", "4.0",
-        "--index-chunks", "1",
-        "--log",
-    ]
-
-    return_code, stdout, stderr = formatter.run_subprocess(
-        cmd,
-        operation_name="DIAMOND Annotation (SwissProt)",
-        capture_output=True,
-        show_command=False,
-    )
-
-    if return_code != 0:
-        formatter.warning(f"DIAMOND failed (exit {return_code})")
-        return None
-
-    if not diamond_output.exists() or diamond_output.stat().st_size == 0:
-        formatter.warning("DIAMOND produced no output")
-        return None
-
-    # Post-filter: remove low-quality hits
-    filtered_output = Path(output_dir) / "functional_annotations_filtered.tsv"
-    unique_proteins = set()
-    removed = 0
-
-    with open(diamond_output) as fin, open(filtered_output, "w") as fout:
-        for line in fin:
-            if not line.strip():
-                continue
-            parts = line.split("\t")
-            if len(parts) < 15:
-                fout.write(line)
-                unique_proteins.add(parts[0])
-                continue
-
-            pident = float(parts[2])
-            length = int(parts[3])
-            qlen = int(parts[12])
-
-            # Filter: min 40% identity AND min 50% query coverage
-            query_coverage = length / qlen if qlen > 0 else 0
-            if pident < 40.0 or query_coverage < 0.5:
-                removed += 1
-                continue
-
-            fout.write(line)
-            unique_proteins.add(parts[0])
-
-    if removed > 0:
-        formatter.debug(f"Post-filter removed {removed} low-quality annotations (<40% identity or <50% query coverage)")
-
-    # Replace original with filtered
-    filtered_output.replace(diamond_output)
-
-    if not unique_proteins:
-        formatter.warning("DIAMOND output contains no valid annotations after filtering")
-        return None
-
-    annotation_pct = (len(unique_proteins) / protein_count * 100) if protein_count > 0 else 0
-    formatter.debug(f"Annotated {len(unique_proteins)}/{protein_count} proteins ({annotation_pct:.1f}%)")
-
-    return diamond_output
