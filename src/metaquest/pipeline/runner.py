@@ -107,7 +107,7 @@ def build_default_pipeline(config: MetaQuestConfig, skip_annotation: bool = Fals
     Stages:
       1. Taxonomic classification (Kraken2 + Bracken)
       2. Metagenomic assembly (MEGAHIT) [full workflow only]
-      3. Gene prediction and functional annotation (Pyrodigal + DIAMOND)
+      3. Gene prediction (Pyrodigal)
       4. Stable reporting
 
     Custom pathogen detection, ML, HMM, ESM, island detection, and risk
@@ -124,7 +124,7 @@ def build_default_pipeline(config: MetaQuestConfig, skip_annotation: bool = Fals
         from metaquest.pipeline.stages.annotation import run_annotation_stage
 
         runner.add_stage("Metagenomic Assembly", run_assembly_stage)
-        runner.add_stage("Functional Annotation", run_annotation_stage)
+        runner.add_stage("Gene Prediction", run_annotation_stage)
 
     runner.add_stage("Reporting", run_reporting_stage)
     return runner
