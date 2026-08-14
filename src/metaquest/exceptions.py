@@ -66,16 +66,5 @@ class AnnotationError(PipelineStageError):
         super().__init__("annotation", message, cause)
 
 
-class PathogenDetectionError(PipelineStageError):
-    """Error during pathogen detection."""
-
-    def __init__(self, message: str, cause: Exception | None = None):
-        super().__init__("pathogen_detection", message, cause)
-
-
-class MLModelError(MetaQuestError):
-    """Error in ML prediction pipeline."""
-
-
 class ReportingError(MetaQuestError):
     """Error during report generation."""
