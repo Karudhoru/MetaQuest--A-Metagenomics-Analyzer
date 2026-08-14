@@ -9,14 +9,8 @@ Progress parsing removed - using spinners instead.
 import subprocess
 import os
 from pathlib import Path
-import json 
 import gc
-from Bio import SeqIO
-from typing import List, Optional
-import pandas as pd
 import re
-import numpy as np
-from collections import Counter
 import importlib
 from .output_formatter import get_formatter
 
@@ -56,7 +50,6 @@ def run_system_check(
     if not taxonomy_only:
         tools.update({
             'megahit': '--version',
-            'prokka': '--version',
             'diamond': 'version',
         })
     if require_interleaved:
@@ -73,6 +66,7 @@ def run_system_check(
         'numpy': 'numpy',
         'plotly': 'plotly',
         'matplotlib': 'matplotlib',
+        'pyrodigal': 'pyrodigal',
     }
     for pkg, install_name in packages.items():
         try:
@@ -109,13 +103,12 @@ def get_tool_version(tool_name: str) -> str:
     Dynamically gets the version of a command-line tool.
     
     Args:
-        tool_name: The name of the tool (e.g., 'prokka', 'diamond').
+        tool_name: The name of the tool (e.g., 'kraken2', 'diamond').
         
     Returns:
         The version string or 'N/A' if not found.
     """
     version_commands = {
-        'prokka': ['prokka', '--version'],
         'kraken2': ['kraken2', '--version'],
         'diamond': ['diamond', '--version'],
         'spades': ['spades.py', '--version'],
@@ -167,53 +160,3 @@ def explicit_cleanup(*objects):
         if obj is not None:
             del obj
     gc.collect()
-
-def should_use_ml_prediction(prokka_dir, formatter):
-    """
-    Determine if ML prediction is appropriate.
-    
-    CORRECTED: Safe division + better error handling
-    """
-    try:
-        protein_files = list(Path(prokka_dir).glob("*.faa"))
-        if not protein_files:
-            formatter.debug("No protein files found for ML prediction")
-            return False
-        
-        lengths = [len(seq.seq) for seq in SeqIO.parse(protein_files[0], "fasta")]
-        
-        if not lengths:
-            formatter.debug("Protein file is empty")
-            return False
-        
-        min_length_threshold = 200
-        
-        eligible_proteins = [l for l in lengths if l >= min_length_threshold]
-        avg_length = np.mean(lengths) if lengths else 0
-        
-        # âœ… CORRECTED: Safe division
-        total_sequences = len(lengths)
-        eligible_count = len(eligible_proteins)
-        eligible_fraction = eligible_count / total_sequences if total_sequences > 0 else 0
-        
-        formatter.info("Protein length analysis for ML suitability:")
-        formatter.result({
-            "Total proteins": total_sequences,
-            "Average protein length": f"{avg_length:.1f} aa",
-            "Proteins >= 200 aa": eligible_count,
-            "ML Threshold": ">= 200 aa",
-            "Eligible for ML": f"{eligible_fraction*100:.1f}%"
-        }, indent=2)
-        
-        min_eligible_fraction = 0.10
-        
-        if eligible_fraction >= min_eligible_fraction:
-            formatter.info("Sufficient long proteins for ML prediction", indent=2)
-            return True
-        else:
-            formatter.info(f"Too few long proteins ({eligible_count}) for reliable ML prediction", indent=2)
-            return False
-            
-    except Exception as e:
-        formatter.warning(f"Could not analyze protein lengths for ML: {e}")
-        return False
