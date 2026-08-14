@@ -1,14 +1,9 @@
-"""
-Annotation Stage — Prokka gene prediction + DIAMOND functional annotation.
-"""
+"""Annotation stage — Pyrodigal gene prediction and DIAMOND search."""
 
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
-
-from Bio import SeqIO
 
 from metaquest.exceptions import AnnotationError
 from metaquest.pipeline.context import PipelineContext, AnnotationResult
@@ -17,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 def run_annotation_stage(ctx: PipelineContext) -> PipelineContext:
-    """Run Prokka for gene calling and DIAMOND for functional annotation."""
+    """Run gene calling followed by provisional functional annotation."""
     from metaquest.core.functional_analysis import (
-        run_prokka,
+        run_gene_prediction,
         run_functional_annotation,
     )
 
@@ -29,34 +24,34 @@ def run_annotation_stage(ctx: PipelineContext) -> PipelineContext:
     config = ctx.config.annotation
     contigs_fasta = ctx.assembly.contigs_fasta
 
-    # Run Prokka
-    logger.info("Running Prokka (threads=%d, mode=%s)", config.threads, config.mode)
+    logger.info("Running Pyrodigal in metagenomic mode")
     try:
-        prokka_dir = run_prokka(
+        prediction_dir, gene_count = run_gene_prediction(
             contigs_fasta,
             ctx.output_dir,
-            threads=config.threads,
-            mode=config.mode,
+            min_contig_length=config.min_contig_length,
         )
     except Exception as e:
-        raise AnnotationError(f"Prokka gene prediction failed: {e}", cause=e) from e
+        raise AnnotationError(f"Pyrodigal gene prediction failed: {e}", cause=e) from e
 
-    prokka_dir = Path(prokka_dir)
-    protein_file = prokka_dir / "sample.faa"
+    prediction_dir = Path(prediction_dir)
+    protein_file = prediction_dir / "genes.faa"
 
-    if not protein_file.exists() or os.path.getsize(protein_file) == 0:
+    if gene_count == 0:
         logger.warning("No proteins predicted (contigs may be too short)")
-        ctx.annotation = AnnotationResult(prokka_dir=prokka_dir)
+        ctx.annotation = AnnotationResult(
+            gene_prediction_dir=prediction_dir,
+            protein_file=protein_file,
+        )
         return ctx
 
-    gene_count = sum(1 for _ in SeqIO.parse(protein_file, "fasta"))
-    logger.info("Prokka predicted %d genes", gene_count)
+    logger.info("Pyrodigal predicted %d genes", gene_count)
 
     # Run DIAMOND functional annotation
     logger.info("Running DIAMOND annotation (threads=%d)", config.threads)
     try:
         annotation_file = run_functional_annotation(
-            prokka_dir, ctx.output_dir,
+            prediction_dir, ctx.output_dir,
             threads=config.threads,
             evalue=config.evalue,
         )
@@ -69,7 +64,7 @@ def run_annotation_stage(ctx: PipelineContext) -> PipelineContext:
             annotated_count = len(set(line.split("\t")[0] for line in f if line.strip()))
 
     ctx.annotation = AnnotationResult(
-        prokka_dir=prokka_dir,
+        gene_prediction_dir=prediction_dir,
         protein_file=protein_file,
         functional_annotations=Path(annotation_file) if annotation_file else None,
         gene_count=gene_count,

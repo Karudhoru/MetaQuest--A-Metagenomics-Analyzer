@@ -31,19 +31,11 @@ class ClassificationResult:
 
 @dataclass
 class AnnotationResult:
-    prokka_dir: Path
+    gene_prediction_dir: Path
     protein_file: Path | None = None
     functional_annotations: Path | None = None
     gene_count: int = 0
     annotated_count: int = 0
-
-
-@dataclass
-class PathogenResult:
-    pathogen_hits_file: Path | None = None
-    ml_predictions_file: Path | None = None
-    ml_summary: dict[str, Any] | None = None
-    risk_data: dict[str, Any] | None = None
 
 
 @dataclass
@@ -60,7 +52,6 @@ class PipelineContext:
     classification: ClassificationResult | None = None
     assembly: AssemblyResult | None = None
     annotation: AnnotationResult | None = None
-    pathogen: PathogenResult | None = None
 
     # Metadata for reproducibility
     metadata: dict[str, Any] = field(default_factory=dict)

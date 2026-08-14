@@ -1,9 +1,6 @@
-"""
-Functional Analysis Module — Prokka gene prediction + DIAMOND annotation.
-"""
+"""Gene prediction and provisional DIAMOND functional annotation."""
 
-import subprocess
-import os
+import json
 from pathlib import Path
 from typing import Optional
 
@@ -13,122 +10,82 @@ from ..exceptions import AnnotationError
 from ..io.output_formatter import get_formatter
 
 
-def parse_prokka_sample_txt(sample_file: Path) -> dict:
-    """Parse Prokka's sample.txt file for gene counts."""
-    stats = {
-        "organism": "",
-        "contigs": 0,
-        "bases": 0,
-        "CDS": 0,
-        "cds": 0,
-        "gene": 0,
-        "rRNA": 0,
-        "tRNA": 0,
-        "repeat_region": 0,
-    }
-
-    if not Path(sample_file).exists():
-        return stats
-
-    with open(sample_file) as f:
-        for line in f:
-            line = line.strip()
-            if ":" in line:
-                key, value = line.split(":", 1)
-                key = key.strip()
-                value = value.strip()
-                key_lower = key.lower()
-
-                if key_lower == "organism":
-                    stats["organism"] = value
-                elif key_lower in ("cds", "gene", "rrna", "trna", "contigs", "bases", "repeat_region"):
-                    try:
-                        if key_lower == "cds":
-                            stats["CDS"] = int(value)
-                            stats["cds"] = int(value)
-                        elif key_lower == "rrna":
-                            stats["rRNA"] = int(value)
-                        elif key_lower == "trna":
-                            stats["tRNA"] = int(value)
-                        elif key_lower == "gene":
-                            stats["gene"] = int(value)
-                        else:
-                            stats[key_lower] = int(value)
-                    except ValueError:
-                        pass
-
-    return stats
-
-
-def run_prokka(
+def run_gene_prediction(
     fasta_path: Path,
     output_dir: Path,
     *,
-    kill_tbl2asn: bool = False,
-    tbl2asn_timeout: int = 30,
-    threads: int = 8,
-    mode: str = "metagenome",
-) -> Path:
-    """
-    Run Prokka gene prediction.
+    min_contig_length: int = 200,
+) -> tuple[Path, int]:
+    """Predict genes from metagenomic contigs with bounded-memory Pyrodigal."""
+    try:
+        import pyrodigal
+    except ImportError as exc:
+        raise AnnotationError(
+            "Pyrodigal is required for gene prediction; install pyrodigal>=3.7.1"
+        ) from exc
 
-    Args:
-        fasta_path: Input contigs FASTA.
-        output_dir: Output directory.
-        kill_tbl2asn: Deprecated compatibility argument; ignored.
-        tbl2asn_timeout: Deprecated compatibility argument; ignored.
-        threads: CPU threads.
-        mode: Prokka mode (metagenome, careful, fast).
+    prediction_dir = Path(output_dir) / "gene_prediction"
+    prediction_dir.mkdir(parents=True, exist_ok=True)
+    proteins_path = prediction_dir / "genes.faa"
+    genes_path = prediction_dir / "genes.fna"
+    gff_path = prediction_dir / "genes.gff3"
 
-    Returns:
-        Path to Prokka output directory.
+    finder = pyrodigal.GeneFinder(meta=True)
+    contigs_seen = 0
+    contigs_processed = 0
+    genes_predicted = 0
 
-    Raises:
-        AnnotationError: If Prokka fails to produce essential output.
-    """
-    formatter = get_formatter()
-    prokka_dir = output_dir / "prokka_annotation"
+    try:
+        with proteins_path.open("w", encoding="utf-8") as proteins_out, \
+             genes_path.open("w", encoding="utf-8") as genes_out, \
+             gff_path.open("w", encoding="utf-8") as gff_out:
+            gff_out.write("##gff-version 3\n")
+            for record in SeqIO.parse(Path(fasta_path), "fasta"):
+                contigs_seen += 1
+                if len(record.seq) < min_contig_length:
+                    continue
+                predictions = finder.find_genes(bytes(record.seq))
+                contigs_processed += 1
+                genes_predicted += len(predictions)
+                predictions.write_translations(
+                    proteins_out,
+                    sequence_id=record.id,
+                    include_stop=False,
+                    full_id=True,
+                )
+                predictions.write_genes(
+                    genes_out,
+                    sequence_id=record.id,
+                    full_id=True,
+                )
+                predictions.write_gff(
+                    gff_out,
+                    sequence_id=record.id,
+                    header=False,
+                    include_translation_table=True,
+                    full_id=True,
+                )
+    except Exception as exc:
+        raise AnnotationError(f"Pyrodigal gene prediction failed: {exc}") from exc
 
-    cmd = [
-        "prokka",
-        "--outdir", str(prokka_dir),
-        "--prefix", "sample",
-        "--cpus", str(threads),
-        "--centre", "X",
-        "--compliant",
-        str(fasta_path),
-    ]
-
-    if mode == "metagenome":
-        cmd.insert(-1, "--metagenome")
-        cmd.insert(-1, "--fast")
-    elif mode == "careful":
-        pass  # Prokka default is careful
-    elif mode == "fast":
-        cmd.insert(-1, "--fast")
-
-    formatter.debug(f"Prokka command: {' '.join(cmd)}")
-
-    return_code, _, stderr = formatter.run_subprocess(
-        cmd,
-        operation_name="Prokka gene prediction",
-        capture_output=True,
-        show_command=False,
+    summary = {
+        "tool": "Pyrodigal",
+        "tool_version": getattr(pyrodigal, "__version__", "unknown"),
+        "mode": "metagenomic",
+        "minimum_contig_length": min_contig_length,
+        "contigs_seen": contigs_seen,
+        "contigs_processed": contigs_processed,
+        "genes_predicted": genes_predicted,
+    }
+    (prediction_dir / "summary.json").write_text(
+        json.dumps(summary, indent=2) + "\n",
+        encoding="utf-8",
     )
-    if return_code != 0:
-        raise AnnotationError(f"Prokka failed (exit {return_code}): {stderr}")
-
-    # Validate essential output
-    essential = [prokka_dir / "sample.faa", prokka_dir / "sample.ffn", prokka_dir / "sample.gff"]
-    missing = [f.name for f in essential if not f.exists()]
-    if missing:
-        raise AnnotationError(f"Prokka output is incomplete: {', '.join(missing)}")
-
-    return prokka_dir
+    return prediction_dir, genes_predicted
 
 
 def run_functional_annotation(
-    prokka_dir: Path,
+    gene_prediction_dir: Path,
     output_dir: Path,
     *,
     threads: int = 8,
@@ -140,7 +97,7 @@ def run_functional_annotation(
     Run DIAMOND functional annotation against SwissProt/COG.
 
     Args:
-        prokka_dir: Prokka output directory containing sample.faa.
+        gene_prediction_dir: Pyrodigal output directory containing genes.faa.
         output_dir: Output directory for annotation results.
         threads: Number of threads.
         evalue: E-value threshold.
@@ -156,7 +113,7 @@ def run_functional_annotation(
         from ..settings import get_config
         db_path = get_config().databases.swissprot_cog
 
-    protein_fasta = Path(prokka_dir) / "sample.faa"
+    protein_fasta = Path(gene_prediction_dir) / "genes.faa"
     diamond_output = Path(output_dir) / "functional_annotations.tsv"
 
     if not protein_fasta.exists() or protein_fasta.stat().st_size == 0:
