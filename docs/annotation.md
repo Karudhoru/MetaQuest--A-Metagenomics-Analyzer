@@ -13,9 +13,6 @@ Pyrodigal metagenomic gene prediction
   ├── genes.fna
   ├── genes.gff3
   └── summary.json
-  ↓
-provisional DIAMOND protein similarity search
-  └── functional_annotations_filtered.tsv
 ~~~
 
 ## Pyrodigal
@@ -38,27 +35,6 @@ Contigs shorter than `annotation.min_contig_length` are skipped. The default is
 
 Sequence identifiers derive from input contig identifiers. Input contig IDs
 therefore need to be unique.
-
-## Provisional DIAMOND search
-
-The current DIAMOND step performs a top-hit protein similarity search and
-filters weak alignments. These matches are descriptive sequence-similarity
-results; they are not direct evidence of phenotype, pathogenicity, expression,
-or activity.
-
-The legacy SwissProt/COG database is no longer installed by `setup-db`.
-Consequently, complete functional execution is intentionally provisional until
-the production eggNOG-based database and output contract are implemented.
-
-Use taxonomy-only mode when that provisional database is unavailable:
-
-~~~bash
-metaquest analyze \
-  --db-dir /data/metaquest-db \
-  --paired sample_R1.fastq.gz sample_R2.fastq.gz \
-  --skip-annotation \
-  --output results/
-~~~
 
 ## Planned production functional contract
 

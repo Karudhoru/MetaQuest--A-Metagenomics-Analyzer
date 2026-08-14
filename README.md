@@ -13,10 +13,8 @@ not make clinical or pathogen-risk claims.
 - optional taxonomy-only execution
 - MEGAHIT metagenomic assembly
 - Pyrodigal metagenomic gene prediction
-- provisional DIAMOND functional similarity search
-- basic metadata-driven group comparison
-- descriptive text, JSON, TSV, HTML, and plot outputs
-- versioned, checksummed taxonomy database installation
+- descriptive text and JSON reporting
+- versioned taxonomy and eggNOG database installation
 
 MetaQuest does not currently perform read trimming, host-read removal, validated
 AMR or virulence analysis, clinical diagnosis, or treatment recommendations.
@@ -29,7 +27,6 @@ FASTQ
   ├── Kraken2 → Bracken
   ├── MEGAHIT
   ├── Pyrodigal
-  ├── provisional DIAMOND annotation
   └── descriptive reporting
 ~~~
 
@@ -65,8 +62,8 @@ metaquest analyze \
   --output results/sample
 ~~~
 
-The complete non-taxonomy path remains provisional until the functional
-database and abundance contract are finalized.
+The installed eggNOG database is not yet connected to the analysis pipeline.
+Functional annotation is the next core implementation milestone.
 
 ## Commands
 
