@@ -1,0 +1,97 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "metaquest"
+dynamic = ["version", "dependencies"]
+description = "Research-use short-read metagenomics analysis pipeline"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = { text = "MIT" }
+authors = [
+  { name = "Dev Patel", email = "dev.patel@stud.uni-giessen.de" },
+]
+
+keywords = [
+  "metagenomics",
+  "bioinformatics",
+  "taxonomic-classification",
+  "microbiome-analysis",
+  "genomics",
+  "ngs",
+  "fastq",
+  "kraken2",
+  "bracken",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Natural Language :: English",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: Unix",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
+]
+
+[project.scripts]
+metaquest = "metaquest.cli:main"
+
+[project.optional-dependencies]
+test = [
+  "coverage>=7.0.0",
+  "pytest>=7.0.0",
+  "pytest-cov>=4.0.0",
+  "pytest-timeout>=2.1.0",
+]
+dev = [
+  "black>=22.0.0",
+  "flake8>=5.0.0",
+  "ipython>=8.0.0",
+  "mypy>=0.990",
+  "pre-commit>=2.20.0",
+  "pytest>=7.0.0",
+  "pytest-cov>=4.0.0",
+  "pytest-timeout>=2.1.0",
+]
+docs = [
+  "myst-parser>=1.0.0",
+  "sphinx>=5.0.0",
+  "sphinx-autodoc-typehints>=1.19.0",
+  "sphinx-rtd-theme>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer"
+Issues = "https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer/issues"
+Documentation = "https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer/blob/main/README.md"
+Source = "https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer"
+Changelog = "https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer/releases"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+include-package-data = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["tests", "tests.*"]
+
+[tool.setuptools.package-data]
+metaquest = ["metaquest_default.yaml"]
+
+[tool.setuptools.dynamic]
+version = { attr = "metaquest.config.__version__" }
+dependencies = { file = ["requirements.txt"] }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
