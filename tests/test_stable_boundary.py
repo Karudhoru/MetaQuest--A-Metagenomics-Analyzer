@@ -83,6 +83,30 @@ def test_bracken_failure_is_not_treated_as_a_bracken_report(tmp_path, monkeypatc
         )
 
 
+def test_low_memory_adds_kraken_memory_mapping(tmp_path, monkeypatch):
+    commands = []
+
+    class Formatter:
+        def debug(self, _message):
+            return None
+
+        def run_subprocess(self, command, **_kwargs):
+            commands.append(command)
+            (tmp_path / "kraken_report.txt").write_text("report\n", encoding="utf-8")
+            return 0, "", ""
+
+    monkeypatch.setattr(taxonomic_analysis, "get_formatter", lambda: Formatter())
+
+    taxonomic_analysis.run_kraken(
+        tmp_path / "reads.fastq.gz",
+        tmp_path,
+        db_path=tmp_path,
+        memory_mapping=True,
+    )
+
+    assert "--memory-mapping" in commands[0]
+
+
 def test_stable_report_contains_no_risk_output(tmp_path):
     bracken_file = tmp_path / "bracken_report.tsv"
     pd.DataFrame(

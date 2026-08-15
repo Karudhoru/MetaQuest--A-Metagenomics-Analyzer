@@ -47,6 +47,7 @@ class PipelineContext:
     output_dir: Path
     read_mode: str = "paired"  # paired | single | interleaved
     skip_annotation: bool = False
+    low_memory: bool = False
 
     # Filled by stages
     classification: ClassificationResult | None = None

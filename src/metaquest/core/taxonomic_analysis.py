@@ -18,6 +18,7 @@ def run_kraken(
     threads: int = 8,
     min_hit_groups: int = 2,
     db_path: Path | None = None,
+    memory_mapping: bool = False,
 ):
     """
     Run Kraken2 classification for FASTQ files.
@@ -28,6 +29,7 @@ def run_kraken(
         threads: Number of threads.
         min_hit_groups: Minimum hit groups for classification.
         db_path: Kraken2 database path. Defaults to config value.
+        memory_mapping: Use Kraken2 memory mapping instead of loading the database into RAM.
 
     Returns:
         Path to Kraken2 report file.
@@ -49,6 +51,9 @@ def run_kraken(
         "--report", str(report),
         "--output", str(classified),
     ]
+
+    if memory_mapping:
+        cmd.append("--memory-mapping")
 
     if isinstance(input_files, (list, tuple)) and len(input_files) == 2:
         cmd.extend(["--paired", str(input_files[0]), str(input_files[1])])
