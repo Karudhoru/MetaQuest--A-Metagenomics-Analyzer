@@ -69,29 +69,6 @@ def _taxonomy_summary(bracken_file: Path) -> tuple[dict[str, Any], str]:
     return summary, "\n".join(lines) + "\n"
 
 
-def _functional_summary(annotation_file: Path) -> tuple[dict[str, Any], str]:
-    table = pd.read_csv(annotation_file, sep="\t", header=None)
-    query_ids = table.iloc[:, 0].astype(str) if not table.empty else pd.Series(dtype=str)
-    summary = {
-        "annotation_alignments": int(len(table)),
-        "annotated_proteins": int(query_ids.nunique()),
-    }
-
-    lines = [
-        "METAQUEST FUNCTIONAL ANNOTATION SUMMARY",
-        "========================================",
-        "",
-        f"Annotation alignments: {summary['annotation_alignments']}",
-        f"Proteins with an accepted alignment: {summary['annotated_proteins']}",
-        "",
-        "Interpretation note",
-        "-------------------",
-        "Annotations are sequence-similarity results and should not be interpreted as",
-        "direct evidence of phenotype, pathogenicity, or clinical risk.",
-    ]
-    return summary, "\n".join(lines) + "\n"
-
-
 def generate_stable_reports(ctx) -> None:
     """Write descriptive text and JSON outputs without custom risk scoring."""
     output_dir = Path(ctx.output_dir)
@@ -120,15 +97,6 @@ def generate_stable_reports(ctx) -> None:
             "predicted_genes": ctx.annotation.gene_count,
             "annotated_genes": ctx.annotation.annotated_count,
         }
-        if ctx.annotation.functional_annotations:
-            functional, report = _functional_summary(
-                ctx.annotation.functional_annotations
-            )
-            summary["annotation"].update(functional)
-            (output_dir / "02_functional_report.txt").write_text(
-                report, encoding="utf-8"
-            )
-
     (output_dir / "analysis_summary.json").write_text(
         json.dumps(summary, indent=2, default=_native) + "\n",
         encoding="utf-8",
