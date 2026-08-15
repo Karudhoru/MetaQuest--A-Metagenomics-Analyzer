@@ -9,6 +9,7 @@ Author: MetaQuest Development Team
 """
 
 import argparse
+import json
 import sys
 import time
 from pathlib import Path
@@ -26,6 +27,27 @@ from .config import __version__
 __app_name__ = "MetaQuest"
 __tagline__ = "An Integrated Metagenomics Analysis Pipeline"
 __author__ = "MetaQuest Development Team"
+
+
+def _normalize_global_options(argv):
+    """Allow display/config options on either side of the subcommand."""
+    switches = {'--debug', '--quiet', '--no-color', '--verbose', '--low-memory'}
+    global_args = []
+    command_args = []
+    index = 0
+    while index < len(argv):
+        value = argv[index]
+        if value in switches:
+            global_args.append(value)
+        elif value == '--config' and index + 1 < len(argv):
+            global_args.extend(argv[index:index + 2])
+            index += 1
+        elif value.startswith('--config='):
+            global_args.append(value)
+        else:
+            command_args.append(value)
+        index += 1
+    return global_args + command_args
 
 
 # ============================================================================
@@ -206,55 +228,21 @@ def create_parser():
     """
     
     description = dedent(f"""
-    ═══════════════════════════════════════════════════════════════════════
-                           MetaQuest v{__version__}
-              {__tagline__}
-    ═══════════════════════════════════════════════════════════════════════
-    
-    OVERVIEW:
-        MetaQuest is a research-use pipeline for short-read metagenomic FASTQ
-        analysis. The stable surface currently provides input validation,
-        taxonomic profiling, provisional functional annotation, and basic
-        comparative analysis.
-    
-    KEY CAPABILITIES:
-        • Taxonomic Profiling       - Kraken2/Bracken classification
-        • Gene Prediction            - Pyrodigal metagenomic mode
-        • Comparative Studies        - reserved for a validated future workflow
-        • Descriptive Reports        - Text and JSON research outputs
-    
-    QUICK START EXAMPLES:
-        # Verify system configuration
-        metaquest check
-        
-        # Validate input files before analysis
-        metaquest validate --single reads.fastq.gz
-        
-        # Run complete analysis pipeline
-        metaquest analyze --single reads.fastq.gz -o results/
-        
-        # Compare multiple samples statistically
-        metaquest compare -m metadata.tsv -i sample1/ sample2/ sample3/ -o comparison_results/
-    
-    COMMON WORKFLOWS:
-        Single-end FASTQ:
-            metaquest analyze --single reads.fq -o output/
-        
-    Paired-end FASTQ:
-        metaquest analyze --paired R1.fq R2.fq -o output/
-        
-        Fast taxonomic profiling only:
-            metaquest analyze --single reads.fq --skip-annotation
-    
-    DOCUMENTATION:
-        GitHub: https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer
+        MetaQuest {__version__} · research-use short-read metagenomics
+
+        Validate reads, profile taxonomy, assemble contigs, predict genes,
+        and produce stable descriptive reports.
+
+        Quick start:
+          metaquest check
+          metaquest run --single reads.fastq.gz --output results/
     """)
     
     parser = argparse.ArgumentParser(
         description=description,
         prog="metaquest",
         formatter_class=CustomHelpFormatter,
-        epilog=f"Developed by {__author__}"
+        epilog="Run 'metaquest COMMAND --help' for command-specific options."
     )
     
     # Global options
@@ -291,13 +279,17 @@ def create_parser():
         metavar='FILE',
         help='Path to YAML configuration file (overrides defaults). Generate one with: metaquest init-config'
     )
+    parser.add_argument(
+        '--low-memory',
+        action='store_true',
+        help='Use Kraken2 memory mapping to reduce RAM use'
+    )
     
     # Create subcommand parsers
     subparsers = parser.add_subparsers(
         dest='command',
         required=True,
-        title='Available Commands',
-        description='Choose a command to execute',
+        title='Commands',
         metavar='COMMAND'
     )
 
@@ -375,8 +367,9 @@ def create_parser():
     # ANALYZE COMMAND
     # ========================================================================
     parser_analyze = subparsers.add_parser(
-        'analyze',
-        help='Run complete FASTQ analysis pipeline',
+        'run',
+        aliases=['analyze'],
+        help='Run the short-read analysis pipeline',
         description=dedent("""
             Complete Metagenomics Analysis Pipeline
             ========================================
@@ -394,6 +387,8 @@ def create_parser():
         formatter_class=CustomHelpFormatter
     )
     
+    parser_analyze.set_defaults(command='run')
+
     # Add all standard arguments
     parser_analyze.add_argument(
         '-o', '--output',
@@ -461,8 +456,9 @@ def create_parser():
     # SETUP-DB COMMAND
     # ========================================================================
     parser_setup_db = subparsers.add_parser(
-        'setup-db',
-        help='Download and configure required reference databases',
+        'databases',
+        aliases=['setup-db'],
+        help='Inspect or install reference databases',
         description=dedent("""
             Database Setup Utility
             ======================
@@ -475,6 +471,8 @@ def create_parser():
         """),
         formatter_class=CustomHelpFormatter
     )
+
+    parser_setup_db.set_defaults(command='databases')
 
     # ========================================================================
     # INIT-CONFIG COMMAND
@@ -546,7 +544,7 @@ def main():
     """
     
     parser = create_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(_normalize_global_options(sys.argv[1:]))
     
     # Determine verbosity level from command-line flags
     verbosity = (
@@ -600,7 +598,7 @@ def main():
         # ====================================================================
         # FILE PATH VALIDATION (for analyze and validate commands)
         # ====================================================================
-        if args.command in ['analyze', 'validate']:
+        if args.command in ['run', 'validate']:
             file_paths = []
             
             if args.single:
@@ -642,14 +640,13 @@ def main():
         # ====================================================================
         # COMMAND: ANALYZE
         # ====================================================================
-        elif args.command == 'analyze':
+        elif args.command == 'run':
             from .core.analysis import run_analysis
             from .io.utils import run_system_check
 
-            formatter.section_header("ANALYSIS PIPELINE INITIALIZATION")
+            formatter.section_header("Preflight")
 
             # System check
-            formatter.info("Performing system dependency check...")
             with formatter.spinner("Verifying required tools and databases"):
                 from .settings import load_config
                 check_config = load_config(
@@ -662,7 +659,7 @@ def main():
                     taxonomy_only=args.skip_annotation,
                     require_interleaved=bool(args.interleaved),
                 )
-            formatter.success("System check passed - all dependencies available")
+            formatter.success("Tools and databases are ready")
 
             # File validation (unless skipped)
             if not args.skip_validation:
@@ -682,33 +679,38 @@ def main():
                 formatter.warning("Skipping file validation (--skip-validation flag detected)")
                 formatter.info("Proceeding with unvalidated data")
             
-            formatter.section_header("ASSEMBLY CONFIGURATION")
+            formatter.section_header("Run configuration")
             formatter.result({
+                'Input': ', '.join(file_paths),
                 'Read type': 'Single-end' if args.single else 'Paired-end' if args.paired else 'Interleaved',
-                'Assembler': 'MEGAHIT'
+                'Database': str(check_config.databases.base_dir),
+                'Workflow': 'Taxonomy only' if args.skip_annotation else 'Taxonomy + assembly + gene prediction',
+                'Memory mode': 'Low memory' if args.low_memory else 'Default',
+                'Threads': str(args.annotation_threads),
+                'Output': args.output,
             })
 
-            # Display annotation settings if not skipping annotation
-            if not args.skip_annotation:
-                formatter.section_header("ANNOTATION SETTINGS")
-                formatter.result({
-                    'Gene prediction': 'Pyrodigal metagenomic mode',
-                    'Min contig length': '200 bp',
-                    'Annotation threads': str(args.annotation_threads)
-                })
-                
-            # Run analysis pipeline
-            formatter.section_header("FASTQ ANALYSIS")
-            formatter.info(f"Input: {', '.join(file_paths)}")
-            formatter.info(f"Output: {args.output}")
-            formatter.info("Initiating analysis pipeline...\n")
-            
             run_analysis(file_paths, args.output, args)
 
-            # Show elapsed time and results location
             elapsed = time.time() - start_time
-            formatter.success(f"Analysis completed in {formatter._format_time(elapsed)}")
-            formatter.info(f"Results: {Path(args.output) / 'analysis_summary.json'}")
+            summary_path = Path(args.output) / 'analysis_summary.json'
+            summary = json.loads(summary_path.read_text(encoding='utf-8'))
+            metrics = {}
+            taxonomy = summary.get('taxonomy', {})
+            assembly = summary.get('assembly', {})
+            annotation = summary.get('annotation', {})
+            if taxonomy:
+                metrics['Reported taxa'] = taxonomy.get('reported_taxa', 0)
+                metrics['Species-level reads'] = f"{taxonomy.get('estimated_classified_reads', 0):,}"
+            if assembly:
+                metrics['Assembly contigs'] = f"{assembly.get('total_contigs', 0):,}"
+                metrics['Assembly N50'] = f"{assembly.get('n50', 0):,} bp"
+            if annotation:
+                metrics['Predicted genes'] = f"{annotation.get('predicted_genes', 0):,}"
+            formatter.section_header("Results")
+            formatter.result(metrics)
+            formatter.success(f"Completed in {formatter._format_time(elapsed)}")
+            formatter.info(f"Results → {summary_path.resolve()}")
 
         # ====================================================================
         # COMMAND: COMPARE
@@ -727,7 +729,7 @@ def main():
         # ====================================================================
         # COMMAND: SETUP-DB
         # ====================================================================
-        elif args.command == 'setup-db':
+        elif args.command == 'databases':
             from .database_manager import DATABASES, database_rows, install_database
             from .settings import load_config
 
@@ -790,7 +792,7 @@ def main():
             shutil.copy2(_DEFAULT_CONFIG_PATH, output_path)
             formatter.success(f"Configuration file created: {output_path}")
             formatter.info("Edit this file to customize pipeline behavior.")
-            formatter.info("Usage: metaquest analyze --config metaquest.yaml --single reads.fq -o results/")
+            formatter.info("Usage: metaquest run --config metaquest.yaml --single reads.fq -o results/")
 
     except KeyboardInterrupt:
         formatter.warning("Operation interrupted by user (Ctrl+C)")
