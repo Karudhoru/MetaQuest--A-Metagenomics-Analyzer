@@ -47,16 +47,19 @@ python -m pip install -e .
 Inspect and install the taxonomy database:
 
 ~~~bash
-metaquest setup-db --db-dir /data/metaquest-db --list
-metaquest setup-db --db-dir /data/metaquest-db --database taxonomy
-metaquest check --db-dir /data/metaquest-db
+metaquest databases --list
+metaquest databases --database taxonomy
+metaquest check
 ~~~
+
+By default, MetaQuest installs reference data in `./databases`. Use
+`--db-dir` or `METAQUEST_DB_DIR` only when you intentionally want another
+location.
 
 Run taxonomic profiling:
 
 ~~~bash
-metaquest analyze \
-  --db-dir /data/metaquest-db \
+metaquest run \
   --paired sample_R1.fastq.gz sample_R2.fastq.gz \
   --skip-annotation \
   --output results/sample
@@ -68,31 +71,43 @@ Functional annotation is the next core implementation milestone.
 ## Commands
 
 ~~~text
-metaquest check
-metaquest validate
-metaquest analyze
-metaquest compare
-metaquest setup-db
-metaquest init-config
+metaquest check       # verify tools and databases
+metaquest validate    # validate FASTQ input
+metaquest run         # run the analysis pipeline
+metaquest databases   # inspect or install reference data
+metaquest init-config # create a configuration file
 ~~~
 
-Global output controls must appear before the command:
+The previous `analyze` and `setup-db` names remain available as aliases for
+backward compatibility.
+
+Global output controls may appear before or after the command:
 
 ~~~bash
-metaquest --verbose analyze --single reads.fastq.gz --output results/
-metaquest --no-color setup-db --list
+metaquest run --verbose --single reads.fastq.gz --output results/
+metaquest databases --no-color --list
 metaquest --quiet check
 ~~~
 
-## Database storage
-
-Reference databases are not stored in Git. A repository-local `databases`
-path may be linked to a larger disk:
+For systems that cannot load the Kraken2 database fully into RAM, enable
+Kraken2 memory mapping with `--low-memory`:
 
 ~~~bash
-mkdir -p /mnt/e/metaquest/databases
-ln -s /mnt/e/metaquest/databases databases
-metaquest setup-db --database taxonomy
+metaquest run --low-memory --single reads.fastq.gz --output results/
+~~~
+
+Currently this flag only adds Kraken2's `--memory-mapping` option. It does not
+change resource settings for Bracken, MEGAHIT, or gene prediction.
+
+## Database storage
+
+Reference databases are not stored in Git. From the repository root, install
+them directly into the default `databases/` directory:
+
+~~~bash
+metaquest databases --database taxonomy
+metaquest databases --database functional
+metaquest check
 ~~~
 
 The database path resolution order is:

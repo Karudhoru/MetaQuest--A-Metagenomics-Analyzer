@@ -1,9 +1,4 @@
-"""
-MetaQuest Professional Output Formatter v5.0.0
-==============================================
-
-Enhanced formatting with better verbosity control and cleaner output.
-"""
+"""Terminal presentation for the MetaQuest command-line interface."""
 
 import sys
 import time
@@ -347,19 +342,13 @@ class OutputFormatter:
     # ========================================================================
     
     def banner(self, title: str, version: str, tagline: str):
-        """Print application banner"""
+        """Print a compact application header."""
         if self.verbosity >= self.STANDARD:
-            banner = f"""
-{Colors.BOLD}{Colors.CYAN}╔{'═' * 73}╗
-║  {title} v{version}{' ' * (69 - len(title) - len(version))}║
-║  {tagline}{' ' * (71 - len(tagline))}║
-║  MetaQuest Development Team{' ' * 45}║
-╚{'═' * 73}╝{Colors.END}
-"""
-            print(banner)
-            # Log banner summary with timestamp
+            self._print(
+                f"{Colors.BOLD}{Colors.CYAN}{title}{Colors.END} "
+                f"{Colors.DIM}{version} · {tagline}{Colors.END}"
+            )
             self._log(f"{title} v{version} - {tagline}")
-            self._log(f"  {tagline}")
 
     def step_header(self, step_num: int, total_steps: int, title: str):
         """Print major pipeline step header"""
@@ -380,13 +369,11 @@ class OutputFormatter:
             print(header)
 
     def section_header(self, title: str):
-        """Print subsection header"""
+        """Print a restrained subsection label."""
         if self.verbosity >= self.STANDARD:
-            # Log clean timestamp-prefixed version to log file
-            self._log(f"")
-            self._log(f"  🔹 {title}")
-            # Print decorated version to terminal only
-            print(f"\n  {Colors.BOLD}{Colors.CYAN}🔹 {title}{Colors.END}")
+            self._log("")
+            self._log(title)
+            self._print(f"\n{Colors.BOLD}{title.title()}{Colors.END}")
 
     def format_step_start(self, title: str) -> str:
         """Format a step start string - used by validation engine"""
@@ -404,7 +391,7 @@ class OutputFormatter:
         """Print operation - use sparingly, prefer spinner for long operations"""
         min_level = self.STANDARD if show_in_standard else self.VERBOSE
         if self.verbosity >= min_level:
-            self._print(f"     → {message}")
+            self._print(f"  {Colors.CYAN}·{Colors.END} {message}")
         op_id = len(self._operation_stack)
         self._operation_stack.append(message)
         return op_id
@@ -419,18 +406,18 @@ class OutputFormatter:
         if self.verbosity >= self.STANDARD:
             if style == 'bold':
                 message = f"{Colors.BOLD}{message}{Colors.END}"
-            self._print(f"     {Colors.GREEN}✓{Colors.END} {message}")
+            self._print(f"  {Colors.GREEN}✓{Colors.END} {message}")
 
     def info(self, message: str, indent: int = 1):
         """Print info message"""
         if self.verbosity >= self.STANDARD:
-            prefix = "     " if indent == 1 else "        "
-            self._print(f"{prefix}→ {message}")
+            prefix = "  " if indent == 1 else "    "
+            self._print(f"{prefix}{Colors.DIM}·{Colors.END} {message}")
 
     def warning(self, message: str):
         """Print warning message"""
         if self.verbosity >= self.STANDARD:
-            self._print(f"     {Colors.YELLOW}⚠{Colors.END}  {message}")
+            self._print(f"  {Colors.YELLOW}!{Colors.END} {message}")
 
     def error(self, message: str, solutions: Optional[List[str]] = None, doc_link: Optional[str] = None):
         """Print error message with solutions"""
@@ -862,11 +849,14 @@ class OutputFormatter:
         self._log(f"[{tag}:{operation_name}] --- end ---")
 
     def result(self, metrics: Dict[str, Any], indent: int = 1):
-        """Display result metrics"""
+        """Display aligned key/value metrics."""
         if self.verbosity >= self.STANDARD:
-            prefix = "        " if indent == 2 else "     "
+            prefix = "    " if indent == 2 else "  "
+            width = max((len(str(key)) for key in metrics), default=0)
             for key, value in metrics.items():
-                self._print(f"{prefix}→ {key}: {value}")
+                self._print(
+                    f"{prefix}{Colors.DIM}{str(key).ljust(width)}{Colors.END}  {value}"
+                )
 
 
 # ========================================================================

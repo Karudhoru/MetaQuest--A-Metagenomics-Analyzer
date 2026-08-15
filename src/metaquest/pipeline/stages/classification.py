@@ -45,6 +45,7 @@ def run_classification_stage(ctx: PipelineContext) -> PipelineContext:
             reads, output_dir,
             threads=config.threads,
             min_hit_groups=config.min_hit_groups,
+            memory_mapping=ctx.low_memory,
         )
     except Exception as e:
         raise ClassificationError(
