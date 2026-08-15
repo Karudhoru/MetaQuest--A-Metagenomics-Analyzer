@@ -21,8 +21,8 @@ claims are validated.
 ### Changed
 
 - Reset the stable runtime to a research-use-only, validation-first surface.
-- Preserved the existing `check`, `validate`, `analyze`, `compare`, `setup-db`,
-  and `init-config` command structure.
+- Introduced `run` and `databases` as the primary command names while retaining
+  `analyze` and `setup-db` as compatibility aliases.
 - Excluded custom pathogen scoring, ML prediction, HMM, ESM, pathogenicity
   islands, Bayesian integration, and clinical-risk reporting from the default
   pipeline pending independent validation.
@@ -32,7 +32,8 @@ claims are validated.
   different schema.
 - Removed global `pkill` and automatic `tbl2asn` process termination.
 - Made dependency checks conditional on the selected workflow.
-- Reclassified the current Prokka/DIAMOND functional path as provisional.
+- Replaced the provisional annotation path with Pyrodigal gene prediction;
+  eggNOG-mapper integration remains planned.
 
 ### Added
 
