@@ -43,7 +43,7 @@ class PipelineRunner:
         total = len(self._stages)
         formatter = get_formatter()
         logger.info("Pipeline starting with %d stage(s)", total)
-        formatter.section_header("PIPELINE PROGRESS")
+        formatter.section_header("Pipeline")
 
         for i, (name, stage_fn) in enumerate(self._stages, 1):
             logger.info("[%d/%d] %s", i, total, name)
@@ -55,7 +55,7 @@ class PipelineRunner:
                 ctx.completed_stages.append(name)
                 elapsed = time.monotonic() - started
                 formatter.success(
-                    f"{name} completed in {formatter._format_time(elapsed)}"
+                    f"{name.ljust(28)} {formatter._format_time(elapsed)}"
                 )
             except PipelineStageError:
                 raise
