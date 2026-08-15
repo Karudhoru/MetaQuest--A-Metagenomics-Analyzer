@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 from metaquest.core import taxonomic_analysis
+from metaquest.io import utils
 from metaquest.exceptions import ClassificationError
 from metaquest.pipeline.runner import build_default_pipeline
 from metaquest.reporting.stable_reporter import generate_stable_reports
@@ -105,6 +106,33 @@ def test_low_memory_adds_kraken_memory_mapping(tmp_path, monkeypatch):
     )
 
     assert "--memory-mapping" in commands[0]
+
+
+def test_current_pipeline_check_does_not_require_future_functional_tools(
+    tmp_path, monkeypatch
+):
+    checked = []
+    config = load_config(db_dir=tmp_path)
+    config.databases.kraken_db.mkdir(parents=True)
+    (config.databases.kraken_db / "hash.k2d").write_text("index\n")
+
+    monkeypatch.setattr(
+        utils,
+        "_check_command",
+        lambda name, _version=None: checked.append(name) or True,
+    )
+
+    formatter = SimpleNamespace(
+        info=lambda *_args, **_kwargs: None,
+        substep=lambda *_args, **_kwargs: None,
+        warning=lambda *_args, **_kwargs: None,
+        error=lambda *_args, **_kwargs: None,
+    )
+    utils.run_system_check(formatter, config=config)
+
+    assert "megahit" in checked
+    assert "diamond" not in checked
+    assert "emapper.py" not in checked
 
 
 def test_stable_report_contains_no_risk_output(tmp_path):
