@@ -12,7 +12,7 @@ databases:
   kraken_db_version: "Standard-8 (2026-06-26)"
 
 assembly:
-  assembler: megahit        # megahit | spades
+  assembler: megahit
   threads: 8
   min_contig_length: 500
   memory_limit_gb: 8

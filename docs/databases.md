@@ -23,7 +23,7 @@ DIAMOND data only; it excludes Pfam, MMseqs, HMM, and novel-family data.
 ## Inspect status
 
 ~~~bash
-metaquest setup-db --db-dir /data/metaquest-db --list
+metaquest databases --db-dir /data/metaquest-db --list
 ~~~
 
 Example:
@@ -38,7 +38,7 @@ virulence: planned | pending | not finalized
 ## Install taxonomy
 
 ~~~bash
-metaquest setup-db \
+metaquest databases \
   --db-dir /data/metaquest-db \
   --database taxonomy
 ~~~
@@ -64,7 +64,7 @@ silently overwritten; replacement requires `--force`.
 ## Install functional data
 
 ~~~bash
-metaquest setup-db \
+metaquest databases \
   --db-dir /data/metaquest-db \
   --database functional
 ~~~
@@ -76,8 +76,8 @@ DIAMOND database before publishing the installation. Partial files are retained
 after a failure and removed only after a successful install.
 
 This checkpoint makes eggNOG 5.0.2 installation reproducible. The current
-pipeline is not yet integrated with eggNOG-mapper and continues to use its
-provisional plain-DIAMOND functional-analysis path.
+pipeline is not yet integrated with eggNOG-mapper and stops after Pyrodigal
+gene prediction.
 
 ## Directory layout
 
@@ -133,7 +133,7 @@ The taxonomy index defaults to `ROOT/taxonomy`.
 ~~~bash
 mkdir -p /mnt/e/metaquest/databases
 ln -s /mnt/e/metaquest/databases databases
-metaquest setup-db --database taxonomy
+metaquest databases --database taxonomy
 ~~~
 
 The repository ignores `/databases`, including this symlink.

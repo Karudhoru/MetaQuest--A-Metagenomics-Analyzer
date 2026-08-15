@@ -14,8 +14,6 @@ import sys
 import time
 from pathlib import Path
 from textwrap import dedent
-from datetime import datetime
-
 from .exceptions import MetaQuestError
 from .io.output_formatter import Colors, OutputFormatter, set_formatter
 from .config import __version__
@@ -448,10 +446,6 @@ def create_parser():
         ),
         formatter_class=CustomHelpFormatter,
     )
-    parser_compare.add_argument('-i', '--inputs', nargs='+', required=True)
-    parser_compare.add_argument('-m', '--metadata', required=True)
-    parser_compare.add_argument('-o', '--output', default='comparison_results')
-
     # ========================================================================
     # SETUP-DB COMMAND
     # ========================================================================
@@ -467,7 +461,7 @@ def create_parser():
             Use --list to inspect availability and size before downloading.
 
             Example:
-                metaquest setup-db --db-dir /data/metaquest --database taxonomy
+                metaquest databases --db-dir /data/metaquest --database taxonomy
         """),
         formatter_class=CustomHelpFormatter
     )
@@ -589,6 +583,7 @@ def main():
                     Path(args.config) if args.config else None,
                     db_dir=args.db_dir,
                 ),
+                require_functional=True,
             )
             
             formatter.success("System check completed successfully")

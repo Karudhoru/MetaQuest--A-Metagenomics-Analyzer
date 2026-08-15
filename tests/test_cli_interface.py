@@ -17,6 +17,10 @@ def test_database_command_and_legacy_alias_match():
     assert parser.parse_args(['setup-db', '--list']).command == 'databases'
 
 
+def test_compare_stub_does_not_require_legacy_inputs():
+    assert create_parser().parse_args(['compare']).command == 'compare'
+
+
 def test_global_output_options_can_follow_command():
     normalized = _normalize_global_options(
         ['run', '--quiet', '--single', 'reads.fastq.gz', '--no-color']

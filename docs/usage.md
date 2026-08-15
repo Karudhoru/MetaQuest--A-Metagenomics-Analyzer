@@ -4,15 +4,15 @@ Run `metaquest COMMAND --help` for the authoritative option list.
 
 ## Global options
 
-Global options appear before the command:
+Global options may appear before or after the command:
 
 ~~~bash
 metaquest --version
-metaquest --config metaquest.yaml analyze ...
-metaquest --verbose analyze ...
-metaquest --debug analyze ...
+metaquest run --config metaquest.yaml ...
+metaquest run --verbose ...
+metaquest run --debug ...
 metaquest --quiet check
-metaquest --no-color setup-db --list
+metaquest databases --no-color --list
 ~~~
 
 | Option | Meaning |
@@ -22,6 +22,7 @@ metaquest --no-color setup-db --list
 | `--debug` | commands and diagnostic output |
 | `--quiet` | errors only |
 | `--no-color` | disable ANSI colors and animation |
+| `--low-memory` | use Kraken2 database memory mapping |
 
 ## Check
 
@@ -54,12 +55,12 @@ Optional thresholds:
 Validation does not currently trim reads. fastp integration is planned for the
 Snakemake workflow.
 
-## Analyze
+## Run
 
 ### Taxonomy-only
 
 ~~~bash
-metaquest analyze \
+metaquest run \
   --db-dir /data/metaquest-db \
   --paired sample_R1.fastq.gz sample_R2.fastq.gz \
   --skip-annotation \
@@ -71,7 +72,7 @@ This runs validation, Kraken2, Bracken, and descriptive reporting.
 ### Assembly and gene prediction
 
 ~~~bash
-metaquest analyze \
+metaquest run \
   --db-dir /data/metaquest-db \
   --single reads.fastq.gz \
   --output results/sample
@@ -99,8 +100,8 @@ until a validated comparative workflow is built.
 ## Setup databases
 
 ~~~bash
-metaquest setup-db --db-dir /data/metaquest-db --list
-metaquest setup-db --db-dir /data/metaquest-db --database taxonomy
+metaquest databases --db-dir /data/metaquest-db --list
+metaquest databases --db-dir /data/metaquest-db --database taxonomy
 ~~~
 
 Use `--force` only when deliberately replacing an existing invalid or older

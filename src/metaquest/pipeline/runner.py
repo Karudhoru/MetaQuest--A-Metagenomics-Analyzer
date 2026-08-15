@@ -9,7 +9,6 @@ import json
 import logging
 import time
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 from metaquest.exceptions import MetaQuestError, PipelineStageError
@@ -72,8 +71,6 @@ class PipelineRunner:
 
     def _save_metadata(self, ctx: PipelineContext) -> None:
         """Save pipeline metadata for reproducibility."""
-        from metaquest.settings import get_config
-
         metadata = {
             "timestamp": datetime.now().isoformat(),
             "metaquest_version": _get_version(),

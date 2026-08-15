@@ -2,9 +2,7 @@
 Taxonomic Analysis Module — Kraken2/Bracken
 """
 
-import subprocess
 import time
-import pandas as pd
 from pathlib import Path
 
 from ..exceptions import ClassificationError
