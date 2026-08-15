@@ -7,14 +7,8 @@ Progress parsing removed - using spinners instead.
 """
 
 import subprocess
-import os
 from pathlib import Path
-import gc
-import re
 import importlib
-from .output_formatter import get_formatter
-
-formatter = get_formatter()
 
 def _check_command(name, version_cmd="--version"):
     """Helper to check for a single command-line tool."""
@@ -35,6 +29,7 @@ def run_system_check(
     config=None,
     taxonomy_only: bool = False,
     require_interleaved: bool = False,
+    require_functional: bool = False,
 ):
     """
     Runs a comprehensive check of all dependencies using the formatter for output.
@@ -48,11 +43,9 @@ def run_system_check(
     formatter.substep("Checking command-line tools...")
     tools = {'kraken2': '--version', 'bracken': '--version'}
     if not taxonomy_only:
-        tools.update({
-            'megahit': '--version',
-            'diamond': 'version',
-            'emapper.py': '--version',
-        })
+        tools['megahit'] = '--version'
+    if require_functional:
+        tools.update({'diamond': 'version', 'emapper.py': '--version'})
     if require_interleaved:
         tools['reformat.sh'] = None
     for tool, cmd in tools.items():
@@ -65,10 +58,9 @@ def run_system_check(
         'Bio': 'biopython',
         'pandas': 'pandas',
         'numpy': 'numpy',
-        'plotly': 'plotly',
-        'matplotlib': 'matplotlib',
-        'pyrodigal': 'pyrodigal',
     }
+    if not taxonomy_only:
+        packages['pyrodigal'] = 'pyrodigal'
     for pkg, install_name in packages.items():
         try:
             importlib.import_module(pkg)
@@ -81,7 +73,7 @@ def run_system_check(
         from metaquest.settings import get_config
         config = get_config()
     required_dbs = {"Kraken2 DB": config.databases.kraken_db / "hash.k2d"}
-    if not taxonomy_only:
+    if require_functional:
         required_dbs.update({
             "eggNOG annotation DB": config.databases.functional_dir / "eggnog.db",
             "eggNOG taxonomy DB": config.databases.functional_dir / "eggnog.taxa.db",
@@ -103,39 +95,6 @@ def run_system_check(
         )
         raise SystemExit(1)
 
-def get_tool_version(tool_name: str) -> str:
-    """
-    Dynamically gets the version of a command-line tool.
-    
-    Args:
-        tool_name: The name of the tool (e.g., 'kraken2', 'diamond').
-        
-    Returns:
-        The version string or 'N/A' if not found.
-    """
-    version_commands = {
-        'kraken2': ['kraken2', '--version'],
-        'diamond': ['diamond', '--version'],
-        'spades': ['spades.py', '--version'],
-        'megahit': ['megahit', '--version']
-    }
-    
-    cmd = version_commands.get(tool_name.lower())
-    if not cmd:
-        return "N/A"
-        
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=10)
-        output = result.stdout + result.stderr
-        
-        match = re.search(r'(\d+\.\d+(\.\d+)?)', output)
-        if match:
-            return match.group(1)
-        return "Unknown"
-    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        return "Not Found"
-
-
 def split_interleaved(interleaved_fastq: str, output_dir: Path, formatter) -> list:
     """
     Splits an interleaved FASTQ into two files using reformat.sh.
@@ -148,7 +107,9 @@ def split_interleaved(interleaved_fastq: str, output_dir: Path, formatter) -> li
         f"out1={r1}", f"out2={r2}", "overwrite=true",
     ]
     
-    returncode, _, stderr = formatter.run_subprocess(cmd, "Splitting interleaved file", show_command=True)
+    returncode, _, stderr = formatter.run_subprocess(
+        cmd, "Splitting interleaved file", show_command=True
+    )
 
     if returncode != 0:
         formatter.error(
@@ -158,10 +119,3 @@ def split_interleaved(interleaved_fastq: str, output_dir: Path, formatter) -> li
         raise RuntimeError(f"reformat.sh failed. Stderr: {stderr}")
     
     return [str(r1), str(r2)]
-
-def explicit_cleanup(*objects):
-    """Explicitly delete objects and force garbage collection."""
-    for obj in objects:
-        if obj is not None:
-            del obj
-    gc.collect()
