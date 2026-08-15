@@ -4,13 +4,11 @@ import sys
 import time
 import subprocess
 import threading
-import os
 import re
 from pathlib import Path
 from datetime import datetime
 from contextlib import contextmanager
-from typing import Optional, Dict, List, Any, Tuple, Callable
-import shutil
+from typing import Optional, Dict, List, Any, Tuple
 
 class Colors:
     """ANSI color codes for terminal output"""
@@ -105,60 +103,6 @@ class Spinner:
         except (ValueError, AttributeError, OSError):
             pass
 
-class ProgressBar:
-    """Enhanced progress bar with visual bars"""
-    def __init__(self, total: int, desc: str = "", unit: str = "it", width: int = 30):
-        self.total = total if total > 0 else 1
-        self.current = 0
-        self.desc = desc
-        self.unit = unit
-        self.width = width
-        self.start_time = time.time()
-        self.last_update_time = 0
-
-    def update(self, n: int = 1):
-        """Update progress by n steps"""
-        self.current = min(self.current + n, self.total)
-        now = time.time()
-        if now - self.last_update_time > 0.1 or self.current == self.total:
-            self._display()
-            self.last_update_time = now
-            
-    def update_to(self, value: int):
-        """Update progress to an absolute value"""
-        self.update(value - self.current)
-
-    def _display(self):
-        """Display the progress bar with visual elements"""
-        percent = self.current / self.total
-        filled = int(self.width * percent)
-        bar = '█' * filled + '░' * (self.width - filled)
-
-        elapsed = time.time() - self.start_time
-        rate = self.current / elapsed if elapsed > 0 else 0
-        remaining_s = (self.total - self.current) / rate if rate > 0 else 0
-        remaining_str = self._format_time(remaining_s) if self.current < self.total else "done"
-
-        status = (f"\r          {self.desc} {bar} {percent:3.0%}"
-                  f" | {self.current:,}/{self.total:,} {self.unit}"
-                  f" | ~{remaining_str} remaining")
-        
-        sys.stdout.write(status)
-        sys.stdout.flush()
-        if self.current >= self.total:
-            print()
-
-    def _format_time(self, seconds: float) -> str:
-        if seconds < 60: return f"{seconds:.0f}s"
-        if seconds < 3600: return f"{int(seconds // 60)}m {int(seconds % 60)}s"
-        return f"{int(seconds // 3600)}h {int((seconds % 3600) // 60)}m"
-
-    def __enter__(self): return self
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.current < self.total:
-            self.update_to(self.total)
-
-
 class TableFormatter:
     """Beautiful table formatting with box-drawing characters"""
     
@@ -247,11 +191,6 @@ class OutputFormatter:
         self.colors_enabled = sys.stdout.isatty()
         self.log_file = log_file
         self.start_time = time.time()
-        self.stage_times = {}
-        self.current_stage = None
-        self._operation_stack = []
-        self.is_spinning = False
-        self._suppressed = False
         self._active_spinner = None  # Track current spinner for debug output pausing
         
         if not self.colors_enabled:
@@ -277,65 +216,9 @@ class OutputFormatter:
 
     def _print(self, message: str, min_verbosity: int = STANDARD):
         """Internal print with verbosity check"""
-        # In DEBUG mode, never suppress _print so debug messages from sub-functions
-        # called inside suppressed_output() context managers are still visible
-        is_suppressed = self._suppressed and self.verbosity < self.DEBUG
-        if not is_suppressed and self.verbosity >= min_verbosity:
+        if self.verbosity >= min_verbosity:
             print(message)
         self._log(message)
-
-    # ========================================================================
-    # NEW: Context manager for suppressing output from external functions
-    # ========================================================================
-    
-    @contextmanager
-    def suppressed_output(self):
-        """
-        Context manager to suppress ALL output from external functions.
-        Thread-safe version that properly handles cleanup.
-        """
-        old_suppressed = self._suppressed
-        self._suppressed = True
-        
-        # Store original stdout/stderr
-        old_stdout = sys.stdout
-        old_stderr = sys.stderr
-        
-        devnull_out = None
-        devnull_err = None
-        
-        # Redirect to devnull only if not in debug mode
-        if self.verbosity < self.DEBUG:
-            try:
-                devnull_out = open(os.devnull, 'w')
-                devnull_err = open(os.devnull, 'w')
-                sys.stdout = devnull_out
-                sys.stderr = devnull_err
-            except Exception:
-                # If redirection fails, restore and continue
-                sys.stdout = old_stdout
-                sys.stderr = old_stderr
-        
-        try:
-            yield
-        finally:
-            # Restore stdout/stderr first
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
-            
-            # Then close devnull files
-            if devnull_out:
-                try:
-                    devnull_out.close()
-                except Exception:
-                    pass
-            if devnull_err:
-                try:
-                    devnull_err.close()
-                except Exception:
-                    pass
-            
-            self._suppressed = old_suppressed
 
     # ========================================================================
     # SECTION HEADERS
@@ -350,24 +233,6 @@ class OutputFormatter:
             )
             self._log(f"{title} v{version} - {tagline}")
 
-    def step_header(self, step_num: int, total_steps: int, title: str):
-        """Print major pipeline step header"""
-        self.current_stage = title
-        self.stage_times[title] = time.time()
-        if self.verbosity >= self.STANDARD:
-            step_text = f"STEP {step_num}/{total_steps}: {title}"
-            padding = 71 - len(step_text)
-            # Log the step header as a clean one-liner with timestamp
-            self._log(f"{'=' * 73}")
-            self._log(f"  {step_text}")
-            self._log(f"{'=' * 73}")
-            # Print the decorated version to the terminal
-            header = f"""
-╔{'═' * 73}╗
-║  {Colors.BOLD}{step_text}{Colors.END}{' ' * padding}║
-╚{'═' * 73}╝"""
-            print(header)
-
     def section_header(self, title: str):
         """Print a restrained subsection label."""
         if self.verbosity >= self.STANDARD:
@@ -375,27 +240,10 @@ class OutputFormatter:
             self._log(title)
             self._print(f"\n{Colors.BOLD}{title.title()}{Colors.END}")
 
-    def format_step_start(self, title: str) -> str:
-        """Format a step start string - used by validation engine"""
-        return f"{Colors.BOLD}{Colors.CYAN}▶ {title}...{Colors.END}"
-
-    def format_step_complete(self, title: str) -> str:
-        """Format a step complete string - used by validation engine"""
-        return f"{Colors.GREEN}✓ {title} validated successfully{Colors.END}"
-
     # ========================================================================
     # STATUS MESSAGES - Simplified tree structure
     # ========================================================================
     
-    def operation(self, message: str, show_in_standard: bool = True):
-        """Print operation - use sparingly, prefer spinner for long operations"""
-        min_level = self.STANDARD if show_in_standard else self.VERBOSE
-        if self.verbosity >= min_level:
-            self._print(f"  {Colors.CYAN}·{Colors.END} {message}")
-        op_id = len(self._operation_stack)
-        self._operation_stack.append(message)
-        return op_id
-
     def substep(self, message: str):
         """Print sub-step with deeper tree level"""
         if self.verbosity >= self.VERBOSE:
@@ -444,60 +292,6 @@ class OutputFormatter:
             print()
 
     # ========================================================================
-    # TABLE FORMATTING
-    # ========================================================================
-    
-    def display_stats_table(self, title: str, sections: List[Dict[str, Any]], filter_empty: bool = True):
-        """
-        Display statistics in a beautiful table format
-        
-        Args:
-            filter_empty: If True, skip rows with None or "0/100" values
-        """
-        if self.verbosity >= self.STANDARD:
-            # Filter empty rows if requested
-            if filter_empty:
-                sections = self._filter_empty_rows(sections)
-            
-            table = TableFormatter.format_table(title, sections)
-            self._print(f"\n{table}")
-    
-    def _filter_empty_rows(self, sections: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Remove empty or meaningless rows from sections"""
-        filtered_sections = []
-        for section in sections:
-            filtered_rows = {}
-            for key, value in section.get('rows', {}).items():
-                # Keep non-empty meaningful values
-                if value is not None and value != "0/100" and value != "N/A":
-                    filtered_rows[key] = value
-            
-            if filtered_rows:  # Only add section if it has rows
-                filtered_sections.append({
-                    'header': section.get('header', ''),
-                    'rows': filtered_rows
-                })
-        
-        return filtered_sections
-    
-    def display_quality_metrics(self, metrics: Dict[str, float]):
-        """Display quality metrics with visual bars"""
-        if self.verbosity >= self.STANDARD:
-            self._print("\n     📈 Quality Visualization:")
-            for metric, value in metrics.items():
-                metric_display = f"        {metric}"
-                dots = '.' * (40 - len(metric))
-                bar = TableFormatter.format_visual_bar(value, width=10, label=self._get_quality_label(value))
-                self._print(f"{metric_display}{dots} {bar}")
-    
-    def _get_quality_label(self, percentage: float) -> str:
-        """Get quality label based on percentage"""
-        if percentage >= 90: return "Excellent"
-        elif percentage >= 70: return "Good"
-        elif percentage >= 50: return "Fair"
-        else: return "Poor"
-
-    # ========================================================================
     # PROGRESS TRACKING
     # ========================================================================
     
@@ -507,31 +301,17 @@ class OutputFormatter:
         if self.verbosity >= self.STANDARD and self.colors_enabled:
             spinner = Spinner(message)
             self._active_spinner = spinner
-            self.is_spinning = True
             spinner.start()
             try:
                 yield
             finally:
                 spinner.stop()
-                self.is_spinning = False
                 self._active_spinner = None
         else:
             # In silent mode, just log without printing
             if self.verbosity >= self.VERBOSE:
-                self.operation(message)
+                self.info(message)
             yield
-
-    def progress_bar(self, total: int, desc: str, unit: str = "it") -> ProgressBar:
-        """Create a progress bar"""
-        if self.verbosity >= self.STANDARD:
-            return ProgressBar(total, desc, unit)
-        else:
-            class NoOpProgressBar:
-                def update(self, n=1): pass
-                def update_to(self, v): pass
-                def __enter__(self): return self
-                def __exit__(self, *args): pass
-            return NoOpProgressBar()
 
     # ========================================================================
     # SUBPROCESS EXECUTION with better output control
@@ -646,136 +426,6 @@ class OutputFormatter:
                 self._log(f"[STDERR:{operation_name}] --- end ---")
             return result.returncode, stdout_str, stderr_str
             
-    def run_subprocess_with_progress(
-        self,
-        cmd: List[str],
-        operation_name: str,
-        total: int,
-        unit: str = "items",
-        parser_func: Optional[Callable[[str], Optional[int]]] = None,
-        show_command: bool = False
-    ) -> int:
-        """
-        Run subprocess with real-time progress tracking.
-        In debug mode: shows structured tool output block instead of progress bar.
-        """
-        if show_command or self.verbosity >= self.DEBUG:
-            self.debug(f"Command: {' '.join(cmd)}")
-        
-        # In debug mode, show structured output instead of a progress bar
-        if self.verbosity >= self.DEBUG:
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                bufsize=1,
-                encoding='utf-8',
-                errors='replace'
-            )
-            
-            stdout_lines = []
-            stderr_lines = []
-
-            def collect_stream(stream, line_list):
-                for line in stream:
-                    line_list.append(line)
-
-            t1 = threading.Thread(target=collect_stream, args=(process.stdout, stdout_lines), daemon=True)
-            t2 = threading.Thread(target=collect_stream, args=(process.stderr, stderr_lines), daemon=True)
-            t1.start()
-            t2.start()
-            return_code = process.wait()
-            t1.join(timeout=2)
-            t2.join(timeout=2)
-
-            stdout_str = "".join(stdout_lines)
-            stderr_str = "".join(stderr_lines)
-
-            if stdout_str.strip():
-                self._debug_block_header(operation_name, "STDOUT")
-                for line in stdout_str.splitlines():
-                    self._debug_tool_line(line, f"STDOUT:{operation_name}")
-                self._debug_block_footer(operation_name, "STDOUT")
-            else:
-                if stdout_str:
-                    self._log(f"[STDOUT:{operation_name}] --- begin ---")
-                    for line in stdout_str.splitlines():
-                        self._log(f"[STDOUT:{operation_name}] {line}")
-                    self._log(f"[STDOUT:{operation_name}] --- end ---")
-
-            if stderr_str.strip():
-                self._debug_block_header(operation_name, "STDERR")
-                for line in stderr_str.splitlines():
-                    self._debug_tool_line(line, f"STDERR:{operation_name}")
-                self._debug_block_footer(operation_name, "STDERR")
-            else:
-                if stderr_str:
-                    self._log(f"[STDERR:{operation_name}] --- begin ---")
-                    for line in stderr_str.splitlines():
-                        self._log(f"[STDERR:{operation_name}] {line}")
-                    self._log(f"[STDERR:{operation_name}] --- end ---")
-
-            return return_code
-
-        # Standard/verbose mode: use progress bar as before
-        progress = None
-        if self.verbosity >= self.STANDARD:
-            progress = ProgressBar(total, operation_name, unit)
-        
-        # Start subprocess with pipes
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            bufsize=1,
-            encoding='utf-8',
-            errors='replace'
-        )
-        
-        # Read output in real-time and update progress
-        stdout_lines = []
-        stderr_lines = []
-        
-        def read_stream(stream, line_list, is_stderr=False):
-            """Read stream line by line and update progress"""
-            tag = "STDERR" if is_stderr else "STDOUT"
-            try:
-                for line in stream:
-                    line_list.append(line)
-                    # Log with timestamp only — no terminal print in standard mode
-                    self._log(f"[{tag}:{operation_name}] {line.rstrip()}")
-                    # Parse progress if parser provided and progress bar exists
-                    if parser_func and progress:
-                        try:
-                            parsed_value = parser_func(line)
-                            if parsed_value is not None:
-                                progress.update_to(parsed_value)
-                        except Exception as e:
-                            self.debug(f"Progress parsing error: {e}")
-            except Exception as e:
-                self.debug(f"Stream reading error: {e}")
-        
-        stdout_thread = threading.Thread(
-            target=read_stream, args=(process.stdout, stdout_lines, False), daemon=True
-        )
-        stderr_thread = threading.Thread(
-            target=read_stream, args=(process.stderr, stderr_lines, True), daemon=True
-        )
-        
-        stdout_thread.start()
-        stderr_thread.start()
-        
-        return_code = process.wait()
-        stdout_thread.join(timeout=2)
-        stderr_thread.join(timeout=2)
-        
-        if progress and return_code == 0:
-            progress.update_to(total)
-        
-        return return_code
-
     # ========================================================================
     # UTILITY FUNCTIONS
     # ========================================================================
@@ -792,21 +442,6 @@ class OutputFormatter:
             hours = int(seconds // 3600)
             minutes = int((seconds % 3600) // 60)
             return f"{hours}h {minutes}m"
-
-    def stage_complete(self, title: Optional[str] = None):
-        """Display stage completion message"""
-        stage = title or self.current_stage
-        if stage and stage in self.stage_times:
-            elapsed = time.time() - self.stage_times[stage]
-            if self.verbosity >= self.STANDARD:
-                self._print(f"\n     {Colors.GREEN}✓ {stage} complete{Colors.END} ({self._format_time(elapsed)})")
-
-    def file_list(self, title: str, files: List[str]):
-        """Display file list"""
-        if self.verbosity >= self.VERBOSE:
-            self._print(f"\n{title}:")
-            for file in files:
-                self._print(f"     • {file}")
 
     def debug(self, message: str):
         """Print debug message"""

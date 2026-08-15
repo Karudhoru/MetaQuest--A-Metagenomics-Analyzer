@@ -15,24 +15,6 @@ class ConfigError(MetaQuestError):
     """Configuration loading or validation error."""
 
 
-class DatabaseNotFoundError(ConfigError):
-    """Required database file not found."""
-
-    def __init__(self, db_name: str, path: str):
-        super().__init__(
-            f"Database '{db_name}' not found at: {path}",
-            suggestions=[
-                "Run 'metaquest setup-db' to download and configure databases",
-                "Set METAQUEST_DB_DIR environment variable to your database directory",
-                "Check databases.base_dir in your config YAML",
-            ],
-        )
-
-
-class InputValidationError(MetaQuestError):
-    """Invalid input file or parameters."""
-
-
 class PipelineStageError(MetaQuestError):
     """Error during a specific pipeline stage."""
 
