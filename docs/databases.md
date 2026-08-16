@@ -75,9 +75,8 @@ local SHA-256 for each artifact, and validates both SQLite files plus the
 DIAMOND database before publishing the installation. Partial files are retained
 after a failure and removed only after a successful install.
 
-This checkpoint makes eggNOG 5.0.2 installation reproducible. The current
-pipeline is not yet integrated with eggNOG-mapper and stops after Pyrodigal
-gene prediction.
+This checkpoint makes eggNOG 5.0.2 installation reproducible. The full pipeline
+uses these files immediately after Pyrodigal gene prediction.
 
 ## Directory layout
 

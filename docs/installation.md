@@ -1,6 +1,6 @@
 # Installation
 
-This guide covers the maintained MetaQuest `2.0.0-alpha.1` runtime.
+This guide covers the maintained MetaQuest `2.0.0a1` runtime.
 
 ## Supported environment
 
@@ -46,7 +46,7 @@ The minimal environment contains:
 | Bracken | abundance re-estimation |
 | MEGAHIT | metagenomic assembly |
 | Pyrodigal | metagenomic gene prediction |
-| eggNOG-mapper and DIAMOND | installed for the next functional milestone |
+| eggNOG-mapper and DIAMOND | orthology-based functional annotation |
 | BBMap | interleaved FASTQ splitting compatibility |
 
 Pyrodigal is a Python dependency and does not require a separate Prodigal or
@@ -91,7 +91,7 @@ Global options may appear before or after the command:
 ~~~bash
 metaquest run --config metaquest.yaml \
   --single reads.fastq.gz \
-  --skip-annotation \
+  --taxonomy-only \
   --output results/
 ~~~
 
@@ -138,7 +138,8 @@ metaquest databases \
   --force
 ~~~
 
-### Functional annotation is not present in analysis output
+### Functional annotation fails preflight
 
-The legacy SwissProt/DIAMOND path has been removed. The installed eggNOG 5.0.2
-database will be connected to the pipeline in the next functional milestone.
+The maintained functional stage requires eggNOG-mapper 2.1.15, DIAMOND, and all
+three eggNOG 5.0.2 database files. Run `metaquest check` for exact missing
+components.
