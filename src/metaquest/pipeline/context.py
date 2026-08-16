@@ -34,8 +34,10 @@ class AnnotationResult:
     gene_prediction_dir: Path
     protein_file: Path | None = None
     functional_annotations: Path | None = None
+    functional_category_summary: Path | None = None
     gene_count: int = 0
     annotated_count: int = 0
+    functional_reused: bool = False
 
 
 @dataclass
@@ -47,6 +49,7 @@ class PipelineContext:
     output_dir: Path
     read_mode: str = "paired"  # paired | single | interleaved
     skip_annotation: bool = False
+    skip_functional: bool = False
     low_memory: bool = False
 
     # Filled by stages
