@@ -56,18 +56,33 @@ class PipelineRunner:
                 formatter.success(
                     f"{name.ljust(28)} {formatter._format_time(elapsed)}"
                 )
-            except PipelineStageError:
+            except PipelineStageError as exc:
+                self._record_failure(ctx, name, exc)
                 raise
-            except MetaQuestError:
+            except MetaQuestError as exc:
+                self._record_failure(ctx, name, exc)
                 raise
             except Exception as e:
+                self._record_failure(ctx, name, e)
                 raise PipelineStageError(name, str(e), cause=e) from e
             finally:
                 gc.collect()
 
+        ctx.metadata["status"] = "completed"
         self._save_metadata(ctx)
         logger.info("Pipeline complete: %d stage(s) finished", len(ctx.completed_stages))
         return ctx
+
+    def _record_failure(self, ctx: PipelineContext, stage: str, exc: Exception) -> None:
+        """Persist completed stages and failure provenance before propagating."""
+        ctx.metadata.update(
+            {
+                "status": "failed",
+                "failed_stage": stage,
+                "failure_reason": str(exc),
+            }
+        )
+        self._save_metadata(ctx)
 
     def _save_metadata(self, ctx: PipelineContext) -> None:
         """Save pipeline metadata for reproducibility."""
@@ -97,7 +112,11 @@ def _get_version() -> str:
         return "unknown"
 
 
-def build_default_pipeline(config: MetaQuestConfig, skip_annotation: bool = False) -> PipelineRunner:
+def build_default_pipeline(
+    config: MetaQuestConfig,
+    skip_annotation: bool = False,
+    skip_functional: bool = False,
+) -> PipelineRunner:
     """
     Build the standard MetaQuest analysis pipeline.
 
@@ -105,7 +124,8 @@ def build_default_pipeline(config: MetaQuestConfig, skip_annotation: bool = Fals
       1. Taxonomic classification (Kraken2 + Bracken)
       2. Metagenomic assembly (MEGAHIT) [full workflow only]
       3. Gene prediction (Pyrodigal)
-      4. Stable reporting
+      4. Functional annotation (eggNOG-mapper) [unless skipped]
+      5. Stable reporting
 
     Custom pathogen detection, ML, HMM, ESM, island detection, and risk
     scoring are intentionally excluded until independently validated.
@@ -118,10 +138,15 @@ def build_default_pipeline(config: MetaQuestConfig, skip_annotation: bool = Fals
 
     if not skip_annotation:
         from metaquest.pipeline.stages.assembly import run_assembly_stage
-        from metaquest.pipeline.stages.annotation import run_annotation_stage
+        from metaquest.pipeline.stages.annotation import (
+            run_annotation_stage,
+            run_functional_annotation_stage,
+        )
 
         runner.add_stage("Metagenomic Assembly", run_assembly_stage)
         runner.add_stage("Gene Prediction", run_annotation_stage)
+        if not skip_functional:
+            runner.add_stage("Functional Annotation", run_functional_annotation_stage)
 
     runner.add_stage("Reporting", run_reporting_stage)
     return runner

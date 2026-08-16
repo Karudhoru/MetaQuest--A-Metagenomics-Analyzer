@@ -52,7 +52,7 @@ Thumbs.db
 desktop.ini
 
 # ── MetaQuest Databases (large binary files) ──────────────────────────────────
-/databases/
+/databases
 *.partial
 
 

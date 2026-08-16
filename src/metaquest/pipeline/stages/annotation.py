@@ -40,3 +40,47 @@ def run_annotation_stage(ctx: PipelineContext) -> PipelineContext:
     )
     logger.info("Gene prediction complete: %d genes", gene_count)
     return ctx
+
+
+def run_functional_annotation_stage(ctx: PipelineContext) -> PipelineContext:
+    """Annotate predicted proteins with eggNOG-mapper and eggNOG v5."""
+    from metaquest.core.functional_analysis import run_functional_annotation
+    from metaquest.io.output_formatter import get_formatter
+
+    if ctx.annotation is None or ctx.annotation.protein_file is None:
+        raise AnnotationError("Gene prediction must complete before functional annotation")
+
+    config = ctx.config.annotation
+    logger.info("Running eggNOG-mapper functional annotation")
+    try:
+        table, categories, annotated_count, reused = run_functional_annotation(
+            ctx.annotation.protein_file,
+            ctx.output_dir,
+            ctx.config.databases.functional_dir,
+            threads=config.threads,
+            evalue=config.evalue,
+            diamond_block_size=config.diamond_block_size,
+            tax_scope=config.tax_scope,
+            expected_version=config.eggnog_version,
+            database_release=config.eggnog_database_release,
+        )
+    except AnnotationError:
+        raise
+    except Exception as exc:
+        raise AnnotationError(f"eggNOG functional annotation failed: {exc}", cause=exc) from exc
+
+    ctx.annotation.functional_annotations = Path(table)
+    ctx.annotation.functional_category_summary = Path(categories)
+    ctx.annotation.annotated_count = annotated_count
+    ctx.annotation.functional_reused = reused
+    if annotated_count == 0:
+        get_formatter().warning(
+            "eggNOG-mapper completed but assigned no annotations; all genes remain reported"
+        )
+    logger.info(
+        "Functional annotation complete: %d/%d genes annotated%s",
+        annotated_count,
+        ctx.annotation.gene_count,
+        " (reused)" if reused else "",
+    )
+    return ctx

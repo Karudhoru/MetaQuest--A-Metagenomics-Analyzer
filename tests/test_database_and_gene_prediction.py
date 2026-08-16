@@ -7,8 +7,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from metaquest.core.functional_analysis import run_gene_prediction
+from metaquest.core import functional_analysis
+from metaquest.core.functional_analysis import run_functional_annotation, run_gene_prediction
 from metaquest.database_manager import (
+    DATABASES,
     DatabaseSetupError,
     _extract_functional_artifact,
     _expected_md5,
@@ -26,6 +28,14 @@ def test_database_catalog_distinguishes_available_and_planned(tmp_path):
     assert rows["functional"]["Release"] == "5.0.2"
     assert rows["amr"]["Status"] == "planned"
     assert rows["virulence"]["Status"] == "planned"
+
+
+def test_available_databases_record_upstream_provenance():
+    for key in ("taxonomy", "functional"):
+        spec = DATABASES[key]
+        assert spec.release != "pending"
+        assert spec.url
+        assert spec.provenance_url
 
 
 def test_safe_extract_rejects_path_traversal(tmp_path):
@@ -138,3 +148,59 @@ def test_pyrodigal_outputs_are_streamed_per_contig(tmp_path, monkeypatch):
     assert (output_dir / "genes.fna").exists()
     assert (output_dir / "genes.gff3").read_text().startswith("##gff-version 3")
     assert (output_dir / "summary.json").exists()
+
+
+def test_eggnog_outputs_include_every_gene_and_are_restart_safe(tmp_path, monkeypatch):
+    proteins = tmp_path / "genes.faa"
+    proteins.write_text(
+        ">gene_1\nMPEPTIDE\n>gene_2\nMSECOND\n>gene_3\nMTHIRD\n",
+        encoding="utf-8",
+    )
+    database = tmp_path / "database"
+    database.mkdir()
+    for name in ("eggnog.db", "eggnog.taxa.db", "eggnog_proteins.dmnd"):
+        (database / name).write_text("fixture\n", encoding="utf-8")
+
+    emapper_runs = []
+
+    def fake_run(command, **_kwargs):
+        if command[-1] == "--version":
+            return SimpleNamespace(returncode=0, stdout="emapper-2.1.15", stderr="")
+        emapper_runs.append(command)
+        raw = tmp_path / "results" / "functional_annotation" / "metaquest.emapper.annotations"
+        raw.write_text(
+            "#query\tseed_ortholog\tevalue\tscore\tmax_annot_lvl\tCOG_category\tDescription\tPreferred_name\tGOs\tEC\tKEGG_ko\tPFAMs\n"
+            "gene_1\t1.A\t1e-20\t100\tBacteria\tJ\tRibosomal protein\trplA\tGO:1,GO:2\t1.1.1.1\tko:K00001\tPF001\n"
+            "gene_2\t2.B\t1e-10\t80\tBacteria\tK,L\tRegulator\tregA\t-\t-\tko:K00002\t-\n",
+            encoding="utf-8",
+        )
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(functional_analysis.subprocess, "run", fake_run)
+
+    table, categories, annotated, reused = run_functional_annotation(
+        proteins,
+        tmp_path / "results",
+        database,
+        threads=2,
+    )
+
+    rows = table.read_text(encoding="utf-8").splitlines()
+    assert len(rows) == 4
+    assert "gene_3\tunannotated" in rows[3]
+    assert annotated == 2
+    assert reused is False
+    assert "COG\tJ\t1" in categories.read_text(encoding="utf-8")
+    assert "KO\tko:K00001\t1" in categories.read_text(encoding="utf-8")
+    assert len(emapper_runs) == 1
+
+    _, _, annotated_again, reused = run_functional_annotation(
+        proteins,
+        tmp_path / "results",
+        database,
+        threads=2,
+    )
+
+    assert annotated_again == 2
+    assert reused is True
+    assert len(emapper_runs) == 1

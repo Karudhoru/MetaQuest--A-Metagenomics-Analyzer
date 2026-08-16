@@ -44,3 +44,19 @@ def test_low_memory_flag_can_precede_or_follow_run_command():
 
     assert before.low_memory is True
     assert after.low_memory is True
+
+
+def test_functional_workflow_controls_are_explicit():
+    parser = create_parser()
+
+    default = parser.parse_args(["run", "--single", "reads.fastq.gz"])
+    taxonomy = parser.parse_args(
+        ["run", "--taxonomy-only", "--single", "reads.fastq.gz"]
+    )
+    genes_only = parser.parse_args(
+        ["run", "--skip-functional", "--single", "reads.fastq.gz"]
+    )
+
+    assert default.taxonomy_only is False and default.skip_functional is False
+    assert taxonomy.taxonomy_only is True
+    assert genes_only.skip_functional is True

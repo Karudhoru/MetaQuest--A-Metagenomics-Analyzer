@@ -16,7 +16,7 @@ claims are validated.
 
 ---
 
-## [2.0.0-alpha.1] — 2026-08-14
+## [2.0.0a1] — 2026-08-15
 
 ### Changed
 
@@ -32,14 +32,24 @@ claims are validated.
   different schema.
 - Removed global `pkill` and automatic `tbl2asn` process termination.
 - Made dependency checks conditional on the selected workflow.
-- Replaced the provisional annotation path with Pyrodigal gene prediction;
-  eggNOG-mapper integration remains planned.
+- Replaced the provisional annotation path with Pyrodigal gene prediction and
+  pinned eggNOG-mapper 2.1.15 functional annotation against eggNOG 5.0.2.
+- Added complete per-gene annotation tables, explicit unannotated genes, COG,
+  KO, EC, and GO summaries, and checksum-based restart-safe reuse.
+- Added `--skip-functional` and `--taxonomy-only`; retained
+  `--skip-annotation` as a deprecated taxonomy-only alias.
 
 ### Added
 
 - Stable-runtime boundary tests.
 - Explicit experimental-feature quarantine documentation.
 - Clear research-use-only and non-clinical interpretation statements.
+- Linux CI for Python 3.10-3.12, a complete Bioconda environment check, and
+  wheel/source-distribution verification.
+- TestPyPI and PyPI Trusted Publishing workflows with protected GitHub
+  environments and release-tag/version validation.
+- GPL-3.0-or-later licensing, third-party provenance, and a direct Python
+  dependency license gate.
 
 ### Removed
 

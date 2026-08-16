@@ -378,9 +378,11 @@ def create_parser():
                 1. Taxonomic Classification (Kraken2 + Bracken)
                 2. Metagenomic Assembly (MEGAHIT)
                 3. Gene Prediction (Pyrodigal metagenomic mode)
-                4. Descriptive Report Generation
+                4. Functional Annotation (eggNOG-mapper)
+                5. Descriptive Report Generation
             
-            Use --skip-annotation for rapid taxonomic classification only.
+            Use --taxonomy-only for rapid taxonomic classification, or
+            --skip-functional to stop after gene prediction.
         """),
         formatter_class=CustomHelpFormatter
     )
@@ -407,9 +409,19 @@ def create_parser():
         help="Skip input file validation (not recommended for production use)"
     )
     parser_analyze.add_argument(
+        '--taxonomy-only',
+        action='store_true',
+        help="Run only Kraken2/Bracken taxonomy and descriptive reporting"
+    )
+    parser_analyze.add_argument(
         '--skip-annotation',
         action='store_true',
-        help="Skip annotation and functional analysis for faster taxonomic-only results"
+        help="Deprecated alias for --taxonomy-only"
+    )
+    parser_analyze.add_argument(
+        '--skip-functional',
+        action='store_true',
+        help="Run assembly and Pyrodigal but skip eggNOG functional annotation"
     )
     
     # Add argument groups
@@ -437,7 +449,7 @@ def create_parser():
     # ========================================================================
     # COMPARE COMMAND
     # ========================================================================
-    parser_compare = subparsers.add_parser(
+    subparsers.add_parser(
         'compare',
         help='Reserved for a future validated comparative workflow',
         description=(
@@ -640,6 +652,11 @@ def main():
             from .io.utils import run_system_check
 
             formatter.section_header("Preflight")
+            taxonomy_only = bool(args.taxonomy_only or args.skip_annotation)
+            if args.skip_annotation:
+                formatter.warning("--skip-annotation is deprecated; use --taxonomy-only")
+            if taxonomy_only and args.skip_functional:
+                formatter.warning("--skip-functional has no effect with --taxonomy-only")
 
             # System check
             with formatter.spinner("Verifying required tools and databases"):
@@ -651,8 +668,9 @@ def main():
                 run_system_check(
                     formatter,
                     config=check_config,
-                    taxonomy_only=args.skip_annotation,
+                    taxonomy_only=taxonomy_only,
                     require_interleaved=bool(args.interleaved),
+                    require_functional=not taxonomy_only and not args.skip_functional,
                 )
             formatter.success("Tools and databases are ready")
 
@@ -679,7 +697,13 @@ def main():
                 'Input': ', '.join(file_paths),
                 'Read type': 'Single-end' if args.single else 'Paired-end' if args.paired else 'Interleaved',
                 'Database': str(check_config.databases.base_dir),
-                'Workflow': 'Taxonomy only' if args.skip_annotation else 'Taxonomy + assembly + gene prediction',
+                'Workflow': (
+                    'Taxonomy only'
+                    if taxonomy_only
+                    else 'Taxonomy + assembly + gene prediction'
+                    if args.skip_functional
+                    else 'Taxonomy + assembly + gene prediction + eggNOG'
+                ),
                 'Memory mode': 'Low memory' if args.low_memory else 'Default',
                 'Threads': str(args.annotation_threads),
                 'Output': args.output,
@@ -702,6 +726,7 @@ def main():
                 metrics['Assembly N50'] = f"{assembly.get('n50', 0):,} bp"
             if annotation:
                 metrics['Predicted genes'] = f"{annotation.get('predicted_genes', 0):,}"
+                metrics['eggNOG annotated genes'] = f"{annotation.get('annotated_genes', 0):,}"
             formatter.section_header("Results")
             formatter.result(metrics)
             formatter.success(f"Completed in {formatter._format_time(elapsed)}")

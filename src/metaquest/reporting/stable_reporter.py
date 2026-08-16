@@ -93,10 +93,47 @@ def generate_stable_reports(ctx) -> None:
         }
 
     if ctx.annotation:
-        summary["annotation"] = {
+        annotation_summary = {
             "predicted_genes": ctx.annotation.gene_count,
             "annotated_genes": ctx.annotation.annotated_count,
+            "unannotated_genes": ctx.annotation.gene_count - ctx.annotation.annotated_count,
         }
+        if ctx.annotation.functional_annotations:
+            functional_dir = ctx.annotation.functional_annotations.parent
+            eggnog_summary_path = functional_dir / "summary.json"
+            eggnog_summary = json.loads(eggnog_summary_path.read_text(encoding="utf-8"))
+            annotation_summary.update(
+                {
+                    "functional_annotations": str(ctx.annotation.functional_annotations),
+                    "functional_category_summary": str(
+                        ctx.annotation.functional_category_summary
+                    ),
+                    "functional_reused": ctx.annotation.functional_reused,
+                    "eggnog_mapper_version": eggnog_summary["tool_version"],
+                    "eggnog_database_release": eggnog_summary["database_release"],
+                    "tax_scope": eggnog_summary["tax_scope"],
+                }
+            )
+            lines = [
+                "METAQUEST FUNCTIONAL ANNOTATION",
+                "===============================",
+                "",
+                f"Predicted genes: {ctx.annotation.gene_count}",
+                f"eggNOG-annotated genes: {ctx.annotation.annotated_count}",
+                f"Unannotated genes: {ctx.annotation.gene_count - ctx.annotation.annotated_count}",
+                f"eggNOG-mapper: {eggnog_summary['tool_version']}",
+                f"eggNOG database: {eggnog_summary['database_release']}",
+                f"Taxonomic scope: {eggnog_summary['tax_scope']}",
+                "",
+                "Interpretation note",
+                "-------------------",
+                "Annotations are computational orthology-based assignments for research use.",
+                "They do not establish gene expression, phenotype, or clinical significance.",
+            ]
+            (output_dir / "03_functional_report.txt").write_text(
+                "\n".join(lines) + "\n", encoding="utf-8"
+            )
+        summary["annotation"] = annotation_summary
     (output_dir / "analysis_summary.json").write_text(
         json.dumps(summary, indent=2, default=_native) + "\n",
         encoding="utf-8",

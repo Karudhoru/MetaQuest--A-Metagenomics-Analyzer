@@ -1,7 +1,7 @@
 # MetaQuest
 
 MetaQuest is a research-use command-line pipeline for short-read metagenomic
-FASTQ analysis. Version `2.0.0-alpha.1` is a stabilization release: the
+FASTQ analysis. Version `2.0.0a1` is a stabilization release: the
 maintained runtime is intentionally smaller than earlier prototypes and does
 not make clinical or pathogen-risk claims.
 
@@ -13,6 +13,8 @@ not make clinical or pathogen-risk claims.
 - optional taxonomy-only execution
 - MEGAHIT metagenomic assembly
 - Pyrodigal metagenomic gene prediction
+- eggNOG-mapper orthology-based functional annotation
+- per-gene annotations and aggregated COG, KO, EC, and GO counts
 - descriptive text and JSON reporting
 - versioned taxonomy and eggNOG database installation
 
@@ -27,6 +29,7 @@ FASTQ
   ├── Kraken2 → Bracken
   ├── MEGAHIT
   ├── Pyrodigal
+  ├── eggNOG-mapper → COG / KO / EC / GO
   └── descriptive reporting
 ~~~
 
@@ -61,12 +64,13 @@ Run taxonomic profiling:
 ~~~bash
 metaquest run \
   --paired sample_R1.fastq.gz sample_R2.fastq.gz \
-  --skip-annotation \
   --output results/sample
 ~~~
 
-The installed eggNOG database is not yet connected to the analysis pipeline.
-Functional annotation is the next core implementation milestone.
+Use `--skip-functional` to stop after Pyrodigal, or `--taxonomy-only` to skip
+assembly, gene prediction, and functional annotation. The former
+`--skip-annotation` spelling remains as a deprecated alias for
+`--taxonomy-only`.
 
 ## Commands
 
@@ -123,6 +127,7 @@ The database path resolution order is:
 - [Database management](docs/databases.md)
 - [Usage](docs/usage.md)
 - [Gene prediction and functional annotation](docs/annotation.md)
+- [Release process](docs/releasing.md)
 - [Changelog](CHANGELOG.md)
 
 ## Development status
@@ -130,10 +135,12 @@ The database path resolution order is:
 MetaQuest is alpha software intended for reproducible method development. Before
 a stable release, the workflow requires end-to-end Snakemake execution,
 functional and pathogen-associated method validation, resource benchmarks,
-comparison-method validation, continuous integration, and publication datasets.
+comparison-method validation, and publication datasets.
 
 ## License
 
-MetaQuest is distributed under the MIT license. Some runtime dependencies use
-other licenses; users and redistributors must comply with each dependency's
-terms. Pyrodigal is distributed under GPL-3.0-or-later.
+MetaQuest is distributed under the GNU General Public License v3.0 or later.
+Copyright (c) 2026 Dev Patel. External programs and reference databases are not
+included in the Python distribution and remain subject to their own terms. See
+[Third-party licenses](THIRD_PARTY_LICENSES.md) for the maintained dependency
+and provenance inventory.

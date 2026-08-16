@@ -61,7 +61,11 @@ def run_analysis(input_file, output_dir, cli_args=None):
     else:
         input_files = [Path(input_file)]
 
-    skip_annotation = getattr(cli_args, "skip_annotation", False)
+    skip_annotation = bool(
+        getattr(cli_args, "taxonomy_only", False)
+        or getattr(cli_args, "skip_annotation", False)
+    )
+    skip_functional = getattr(cli_args, "skip_functional", False)
 
     # Build and run pipeline
     ctx = PipelineContext(
@@ -70,9 +74,14 @@ def run_analysis(input_file, output_dir, cli_args=None):
         output_dir=output_dir_path,
         read_mode=read_mode,
         skip_annotation=skip_annotation,
+        skip_functional=skip_functional,
         low_memory=getattr(cli_args, "low_memory", False),
     )
 
-    pipeline = build_default_pipeline(config, skip_annotation=skip_annotation)
+    pipeline = build_default_pipeline(
+        config,
+        skip_annotation=skip_annotation,
+        skip_functional=skip_functional,
+    )
 
     ctx = pipeline.run(ctx)

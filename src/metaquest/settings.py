@@ -54,9 +54,14 @@ class ClassificationConfig:
 @dataclass(frozen=True)
 class AnnotationConfig:
     tool: str = "pyrodigal"
+    functional_tool: str = "eggnog-mapper"
     threads: int = 8
     evalue: float = 1e-6
-    mode: str = "metagenome"
+    diamond_block_size: float = 0.5
+    functional_method: str = "diamond"
+    tax_scope: str = "auto"
+    eggnog_version: str = "2.1.15"
+    eggnog_database_release: str = "5.0.2"
     min_contig_length: int = 200
 
 
@@ -239,6 +244,12 @@ def validate_config(config: MetaQuestConfig | None = None) -> tuple[bool, list[s
         errors.append("assembly.memory_limit_gb should be >= 4")
     if cfg.assembly.threads < 1:
         errors.append("assembly.threads must be >= 1")
+    if cfg.annotation.threads < 1:
+        errors.append("annotation.threads must be >= 1")
+    if cfg.annotation.diamond_block_size <= 0:
+        errors.append("annotation.diamond_block_size must be > 0")
+    if cfg.annotation.tax_scope != "auto":
+        errors.append("annotation.tax_scope currently supports only 'auto'")
     for fmt in cfg.reporting.formats:
         if fmt not in ("txt", "json", "html", "csv"):
             errors.append(f"reporting.formats: unknown format '{fmt}'")
