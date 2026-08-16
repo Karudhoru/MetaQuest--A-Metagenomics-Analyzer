@@ -240,8 +240,6 @@ class FileValidator:
        
     def _display_statistics(self, stats):
         """Display statistics using beautiful tables"""
-        from .output_formatter import TableFormatter, get_formatter
-        fmt = get_formatter()
         self._display_fastq_stats_table(stats)
     
     def _display_fastq_stats_table(self, stats):
@@ -292,13 +290,13 @@ class FileValidator:
             fmt._print(f"        {metric:.<30} {bar}")
         
         # Contamination info
-        fmt._print(f"\n     \U0001f52c Contamination Analysis:")
+        fmt._print("\n     \U0001f52c Contamination Analysis:")
         fmt._print(f"        Adapter Content: {stats['adapter_content_percent']:.2f}% (sampled {min(self.sample_size, stats['total_sequences'])} reads)")
         
         if stats['overrepresented_sequences']:
             fmt._print(f"        \u26a0\ufe0f  Overrepresented Sequences: {len(stats['overrepresented_sequences'])} detected (\u2265{self.overrep_threshold:.1%})")
         else:
-            fmt._print(f"        \u2713 No overrepresented sequences detected")
+            fmt._print("        \u2713 No overrepresented sequences detected")
     
     def _get_validation_status(self, stats):
         """Check for critical errors"""
