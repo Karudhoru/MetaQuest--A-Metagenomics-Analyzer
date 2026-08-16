@@ -63,13 +63,13 @@ Snakemake workflow.
 metaquest run \
   --db-dir /data/metaquest-db \
   --paired sample_R1.fastq.gz sample_R2.fastq.gz \
-  --skip-annotation \
+  --taxonomy-only \
   --output results/sample
 ~~~
 
 This runs validation, Kraken2, Bracken, and descriptive reporting.
 
-### Assembly and gene prediction
+### Assembly, gene prediction, and functional annotation
 
 ~~~bash
 metaquest run \
@@ -78,8 +78,8 @@ metaquest run \
   --output results/sample
 ~~~
 
-This additionally runs MEGAHIT and Pyrodigal. Functional annotation with the
-installed eggNOG database is the next core implementation milestone.
+This additionally runs MEGAHIT, Pyrodigal, and eggNOG-mapper. Use
+`--skip-functional` when only the predicted gene catalog is required.
 
 Useful options:
 
@@ -88,8 +88,10 @@ Useful options:
 | `--output DIR` | result directory |
 | `--db-dir DIR` | database root override |
 | `--skip-validation` | bypass input validation |
-| `--skip-annotation` | taxonomy-only execution |
-| `--annotation-threads N` | reserved for the eggNOG integration |
+| `--taxonomy-only` | taxonomy-only execution |
+| `--skip-annotation` | deprecated alias for `--taxonomy-only` |
+| `--skip-functional` | stop after Pyrodigal gene prediction |
+| `--annotation-threads N` | eggNOG-mapper worker threads |
 
 ## Compare
 
