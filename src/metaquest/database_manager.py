@@ -33,6 +33,8 @@ class DatabaseSpec:
     installed_gb: float | None
     url: str | None = None
     checksum_url: str | None = None
+    provenance_url: str | None = None
+    terms_url: str | None = None
 
 
 DATABASES = {
@@ -51,6 +53,8 @@ DATABASES = {
             "https://genome-idx.s3.amazonaws.com/kraken/"
             "standard_08_GB_20260626/standard_08_GB.md5"
         ),
+        provenance_url="https://benlangmead.github.io/aws-indexes/k2",
+        terms_url="https://www.ncbi.nlm.nih.gov/home/about/policies/",
     ),
     "functional": DatabaseSpec(
         key="functional",
@@ -60,6 +64,7 @@ DATABASES = {
         download_gb=11.3,
         installed_gb=53.0,
         url="http://eggnog5.embl.de/download/emapperdb-5.0.2",
+        provenance_url="http://eggnog5.embl.de/",
     ),
     "amr": DatabaseSpec(
         "amr", "AMRFinderPlus database", "pending", "planned", None, None,
@@ -315,7 +320,7 @@ def _install_functional(
             **asdict(spec),
             "installed_at": datetime.now(timezone.utc).isoformat(),
             "artifacts": provenance,
-            "source": "eggNOG v5 official download server",
+            "source": spec.provenance_url,
         }
         (extracted / "metaquest-db.json").write_text(
             json.dumps(manifest, indent=2) + "\n",
@@ -444,7 +449,7 @@ def install_database(
             **asdict(spec),
             "installed_at": datetime.now(timezone.utc).isoformat(),
             "archive_md5": observed,
-            "source": "https://benlangmead.github.io/aws-indexes/k2",
+            "source": spec.provenance_url,
         }
         (extracted / "metaquest-db.json").write_text(
             json.dumps(manifest, indent=2) + "\n",
