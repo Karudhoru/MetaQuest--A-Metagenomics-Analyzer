@@ -29,9 +29,14 @@ classification:
 
 annotation:
   tool: pyrodigal
+  functional_tool: eggnog-mapper
   threads: 8
   evalue: 1.0e-6
-  mode: metagenome
+  diamond_block_size: 0.5  # lower-memory DIAMOND search for 8-16 GB systems
+  functional_method: diamond
+  tax_scope: auto
+  eggnog_version: "2.1.15"
+  eggnog_database_release: "5.0.2"
   min_contig_length: 200
 
 memory:
