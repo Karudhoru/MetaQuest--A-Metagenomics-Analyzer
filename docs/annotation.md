@@ -12,6 +12,7 @@ Pyrodigal metagenomic gene prediction
   ├── genes.faa
   ├── genes.fna
   ├── genes.gff3
+  ├── contig_id_map.tsv
   └── summary.json
   ↓
 eggNOG-mapper 2.1.15 + eggNOG 5.0.2
@@ -40,8 +41,10 @@ Contigs shorter than `annotation.min_contig_length` are skipped. The default is
 | `gene_prediction/genes.gff3` | CDS coordinates and translation-table metadata |
 | `gene_prediction/summary.json` | tool version, mode, contig counts, and gene count |
 
-Sequence identifiers derive from input contig identifiers. Input contig IDs
-therefore need to be unique.
+Stable contig identifiers derive from sequence hashes, making equivalent
+assemblies independent of contig ordering. `contig_id_map.tsv` maps each
+stable identifier back to the original assembler identifier and full sequence
+checksum.
 
 ## eggNOG functional annotation
 
@@ -64,9 +67,11 @@ the functional summary and can be changed in YAML as
 | `summary.json` | tool/database versions, parameters, and annotation counts |
 | `completion.json` | input checksum and parameters used for restart-safe reuse |
 
-If the protein checksum, mapper version, database release, taxonomic scope, and
-E-value match a completed run, MetaQuest reuses it. Partial or incompatible
-outputs are replaced through eggNOG-mapper's explicit override mode.
+If the canonical protein-content checksum, mapper version, database release,
+taxonomic scope, and E-value match a completed run, MetaQuest reuses it.
+Record ordering does not invalidate the cache. Mapper temporary files remain
+inside the functional output directory and are removed after success or
+failure. Python output is unbuffered so `eggnog_mapper.log` can be monitored.
 
 These outputs describe gene presence, not abundance. Publication-ready
 quantitative functional abundance still requires a validated read-mapping and

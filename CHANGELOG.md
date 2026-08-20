@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Infer read length and select the closest installed Bracken model.
+- Report classified and unclassified denominators explicitly.
+- Add safe `--resume` and recoverable `--force` output modes.
+- Validate complete FASTQ structure and synchronized paired reads.
+- Treat quality findings as warnings unless `--strict-validation` is used.
+- Stabilize gene identifiers and functional-cache keys across record ordering.
+- Keep eggNOG temporary files inside the selected result directory.
+- Add assembly reporting and expanded reproducibility metadata.
+- Remove configuration options not implemented by the stable alpha runtime.
+
 All notable changes to MetaQuest are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
