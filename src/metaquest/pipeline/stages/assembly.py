@@ -31,13 +31,18 @@ def run_assembly_stage(ctx: PipelineContext) -> PipelineContext:
 
     logger.info("Assembling with %s (threads=%d)", config.assembler, config.threads)
 
-    try:
-        contigs_fasta = assemble_reads_to_fasta(
-            reads, ctx.output_dir, fmt,
-            threads=config.threads,
-        )
-    except Exception as e:
-        raise AssemblyError(f"Assembly failed: {e}", cause=e) from e
+    existing_contigs = ctx.output_dir / "megahit_assembly" / "final.contigs.fa"
+    if ctx.resume and existing_contigs.is_file() and existing_contigs.stat().st_size:
+        contigs_fasta = existing_contigs
+        fmt.info("Reusing completed MEGAHIT assembly")
+    else:
+        try:
+            contigs_fasta = assemble_reads_to_fasta(
+                reads, ctx.output_dir, fmt,
+                threads=config.threads,
+            )
+        except Exception as e:
+            raise AssemblyError(f"Assembly failed: {e}", cause=e) from e
 
     # Compute stats (streaming, memory-efficient)
     stats = _compute_assembly_stats(contigs_fasta)

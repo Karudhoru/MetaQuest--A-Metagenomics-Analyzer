@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import json
 from pathlib import Path
 
 from metaquest.exceptions import AnnotationError
@@ -20,17 +21,33 @@ def run_annotation_stage(ctx: PipelineContext) -> PipelineContext:
 
     config = ctx.config.annotation
     logger.info("Running Pyrodigal in metagenomic mode")
-    try:
-        prediction_dir, gene_count = run_gene_prediction(
-            ctx.assembly.contigs_fasta,
-            ctx.output_dir,
-            min_contig_length=config.min_contig_length,
+    existing_dir = ctx.output_dir / "gene_prediction"
+    existing_summary = existing_dir / "summary.json"
+    if (
+        ctx.resume
+        and existing_summary.is_file()
+        and (existing_dir / "genes.faa").is_file()
+        and (existing_dir / "genes.fna").is_file()
+        and (existing_dir / "genes.gff3").is_file()
+    ):
+        prediction_dir = existing_dir
+        gene_count = int(
+            json.loads(existing_summary.read_text(encoding="utf-8"))["genes_predicted"]
         )
-    except Exception as exc:
-        raise AnnotationError(
-            f"Pyrodigal gene prediction failed: {exc}",
-            cause=exc,
-        ) from exc
+        from metaquest.io.output_formatter import get_formatter
+        get_formatter().info("Reusing completed Pyrodigal gene prediction")
+    else:
+        try:
+            prediction_dir, gene_count = run_gene_prediction(
+                ctx.assembly.contigs_fasta,
+                ctx.output_dir,
+                min_contig_length=config.min_contig_length,
+            )
+        except Exception as exc:
+            raise AnnotationError(
+                f"Pyrodigal gene prediction failed: {exc}",
+                cause=exc,
+            ) from exc
 
     prediction_dir = Path(prediction_dir)
     ctx.annotation = AnnotationResult(

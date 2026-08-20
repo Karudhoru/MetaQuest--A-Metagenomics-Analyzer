@@ -5,12 +5,55 @@ Delegates to pipeline.runner for actual orchestration.
 This module provides backward-compatible entry points.
 """
 
+import hashlib
+import json
 from pathlib import Path
-from dataclasses import replace
+from dataclasses import asdict, replace
 
+from ..exceptions import ConfigError
 from ..settings import get_config, load_config
 from ..pipeline.runner import build_default_pipeline
 from ..pipeline.context import PipelineContext
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _jsonable(value):
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, dict):
+        return {key: _jsonable(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_jsonable(item) for item in value]
+    return value
+
+
+def _validate_resume(output_dir, input_files, config, workflow):
+    metadata_path = output_dir / "analysis_metadata.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    recorded_inputs = metadata.get("input_files", [])
+    current_inputs = [
+        {
+            "path": str(path.resolve()),
+            "size_bytes": path.stat().st_size,
+            "sha256": _sha256(path),
+        }
+        for path in input_files
+    ]
+    if recorded_inputs != current_inputs:
+        raise ConfigError("--resume input files do not match the recorded run")
+    if metadata.get("effective_config") != _jsonable(asdict(config)):
+        raise ConfigError("--resume configuration does not match the recorded run")
+    recorded_workflow = metadata.get("workflow", {})
+    for key, value in workflow.items():
+        if recorded_workflow.get(key) != value:
+            raise ConfigError(f"--resume workflow option does not match: {key}")
 
 
 def run_analysis(input_file, output_dir, cli_args=None):
@@ -66,6 +109,20 @@ def run_analysis(input_file, output_dir, cli_args=None):
         or getattr(cli_args, "skip_annotation", False)
     )
     skip_functional = getattr(cli_args, "skip_functional", False)
+    resume = getattr(cli_args, "resume", False)
+
+    if resume:
+        _validate_resume(
+            output_dir_path,
+            input_files,
+            config,
+            {
+                "read_mode": read_mode,
+                "taxonomy_only": skip_annotation,
+                "skip_functional": skip_functional,
+                "low_memory": bool(getattr(cli_args, "low_memory", False)),
+            },
+        )
 
     # Build and run pipeline
     ctx = PipelineContext(
@@ -76,7 +133,13 @@ def run_analysis(input_file, output_dir, cli_args=None):
         skip_annotation=skip_annotation,
         skip_functional=skip_functional,
         low_memory=getattr(cli_args, "low_memory", False),
+        resume=resume,
     )
+    ctx.metadata["validation"] = {
+        "status": getattr(cli_args, "validation_status", "not_run"),
+        "strict": bool(getattr(cli_args, "strict_validation", False)),
+        "bypassed": bool(getattr(cli_args, "skip_validation", False)),
+    }
 
     pipeline = build_default_pipeline(
         config,

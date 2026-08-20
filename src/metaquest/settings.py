@@ -12,7 +12,7 @@ Resolution order for database path:
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 import yaml
 
@@ -35,17 +35,11 @@ class DatabasesConfig:
 class AssemblyConfig:
     assembler: str = "megahit"
     threads: int = 8
-    min_contig_length: int = 500
-    memory_limit_gb: int = 8
-    kmer_min: int = 21
-    kmer_max: int = 141
-    kmer_step: int = 12
 
 
 @dataclass(frozen=True)
 class ClassificationConfig:
     threads: int = 8
-    read_length: int = 150
     taxonomic_level: str = "S"
     min_hit_groups: int = 2
     bracken_threshold: int = 10
@@ -58,7 +52,6 @@ class AnnotationConfig:
     threads: int = 8
     evalue: float = 1e-6
     diamond_block_size: float = 0.5
-    functional_method: str = "diamond"
     tax_scope: str = "auto"
     eggnog_version: str = "2.1.15"
     eggnog_database_release: str = "5.0.2"
@@ -66,51 +59,11 @@ class AnnotationConfig:
 
 
 @dataclass(frozen=True)
-class MemoryConfig:
-    max_sequences_in_memory: int = 10000
-    chunk_size: int = 1000
-    streaming_enabled: bool = True
-
-
-@dataclass(frozen=True)
-class QCConfig:
-    min_read_quality: int = 20
-    min_read_length: int = 50
-    min_classification_rate: float = 0.5
-    min_species_level_rate: float = 0.3
-    max_unclassified_rate: float = 0.5
-    min_contig_coverage: float = 2.0
-
-
-@dataclass(frozen=True)
-class ReportingConfig:
-    formats: list[str] = field(default_factory=lambda: ["txt", "json", "html"])
-    detail_level: str = "full"
-    include_plots: bool = True
-    include_tables: bool = True
-    confidence_warnings: bool = True
-    max_table_rows: int = 100
-    decimal_precision: int = 2
-
-
-@dataclass(frozen=True)
-class LoggingConfig:
-    level: str = "INFO"
-    log_to_file: bool = True
-    log_to_console: bool = True
-    format: str = "%(asctime)s [%(levelname)s] %(message)s"
-
-
-@dataclass(frozen=True)
 class MetaQuestConfig:
     databases: DatabasesConfig
-    assembly: AssemblyConfig = field(default_factory=AssemblyConfig)
-    classification: ClassificationConfig = field(default_factory=ClassificationConfig)
-    annotation: AnnotationConfig = field(default_factory=AnnotationConfig)
-    memory: MemoryConfig = field(default_factory=MemoryConfig)
-    qc: QCConfig = field(default_factory=QCConfig)
-    reporting: ReportingConfig = field(default_factory=ReportingConfig)
-    logging: LoggingConfig = field(default_factory=LoggingConfig)
+    assembly: AssemblyConfig = AssemblyConfig()
+    classification: ClassificationConfig = ClassificationConfig()
+    annotation: AnnotationConfig = AnnotationConfig()
 
 
 # ---------------------------------------------------------------------------
@@ -205,10 +158,6 @@ def load_config(
         assembly=_build_section(AssemblyConfig, raw, "assembly"),
         classification=_build_section(ClassificationConfig, raw, "classification"),
         annotation=_build_section(AnnotationConfig, raw, "annotation"),
-        memory=_build_section(MemoryConfig, raw, "memory"),
-        qc=_build_section(QCConfig, raw, "qc"),
-        reporting=_build_section(ReportingConfig, raw, "reporting"),
-        logging=_build_section(LoggingConfig, raw, "logging"),
     )
 
     _cached_config = config
@@ -238,10 +187,6 @@ def validate_config(config: MetaQuestConfig | None = None) -> tuple[bool, list[s
     cfg = config or get_config()
     errors: list[str] = []
 
-    if cfg.memory.max_sequences_in_memory < 1000:
-        errors.append("memory.max_sequences_in_memory must be >= 1000")
-    if cfg.assembly.memory_limit_gb < 4:
-        errors.append("assembly.memory_limit_gb should be >= 4")
     if cfg.assembly.threads < 1:
         errors.append("assembly.threads must be >= 1")
     if cfg.annotation.threads < 1:
@@ -250,8 +195,4 @@ def validate_config(config: MetaQuestConfig | None = None) -> tuple[bool, list[s
         errors.append("annotation.diamond_block_size must be > 0")
     if cfg.annotation.tax_scope != "auto":
         errors.append("annotation.tax_scope currently supports only 'auto'")
-    for fmt in cfg.reporting.formats:
-        if fmt not in ("txt", "json", "html", "csv"):
-            errors.append(f"reporting.formats: unknown format '{fmt}'")
-
     return len(errors) == 0, errors

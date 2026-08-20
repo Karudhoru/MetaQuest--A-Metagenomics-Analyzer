@@ -104,7 +104,7 @@ def split_interleaved(interleaved_fastq: str, output_dir: Path, formatter) -> li
 
     cmd = [
         "reformat.sh", f"in={interleaved_fastq}",
-        f"out1={r1}", f"out2={r2}", "overwrite=true",
+        f"out1={r1}", f"out2={r2}", "qin=33", "qout=33", "overwrite=true",
     ]
     
     returncode, _, stderr = formatter.run_subprocess(

@@ -2,11 +2,75 @@
 Taxonomic Analysis Module — Kraken2/Bracken
 """
 
+import gzip
+import re
 import time
+from collections import Counter
 from pathlib import Path
 
 from ..exceptions import ClassificationError
 from ..io.output_formatter import get_formatter
+
+
+def infer_read_length(input_files, *, sample_reads: int = 10_000) -> int:
+    """Return the modal read length from a bounded FASTQ sample."""
+    lengths: Counter[int] = Counter()
+    remaining = sample_reads
+    for input_file in input_files:
+        opener = gzip.open if str(input_file).endswith(".gz") else open
+        with opener(input_file, "rt", encoding="utf-8") as handle:
+            while remaining:
+                header = handle.readline()
+                if not header:
+                    break
+                sequence = handle.readline().rstrip("\r\n")
+                plus = handle.readline()
+                quality = handle.readline().rstrip("\r\n")
+                if (
+                    not header.startswith("@")
+                    or not plus.startswith("+")
+                    or len(sequence) != len(quality)
+                ):
+                    raise ClassificationError(
+                        f"Invalid FASTQ record while inferring read length: {input_file}"
+                    )
+                lengths[len(sequence)] += 1
+                remaining -= 1
+            if remaining == 0:
+                break
+    if not lengths:
+        raise ClassificationError("Cannot infer read length from empty FASTQ input")
+    return lengths.most_common(1)[0][0]
+
+
+def select_bracken_read_length(db_path: Path, observed: int) -> int:
+    """Select the closest installed Bracken k-mer distribution model."""
+    available = []
+    for path in Path(db_path).glob("database*mers.kmer_distrib"):
+        match = re.fullmatch(r"database(\d+)mers\.kmer_distrib", path.name)
+        if match:
+            available.append(int(match.group(1)))
+    if not available:
+        raise ClassificationError(f"No Bracken read-length models found in {db_path}")
+    return min(available, key=lambda value: (abs(value - observed), value))
+
+
+def parse_kraken_read_counts(report_path: Path) -> tuple[int, int, int]:
+    """Return total, classified, and unclassified reads from a Kraken report."""
+    unclassified = 0
+    root_reads = 0
+    with Path(report_path).open(encoding="utf-8") as handle:
+        for line in handle:
+            fields = line.rstrip("\n").split("\t")
+            if len(fields) < 6:
+                continue
+            rank = fields[3].strip()
+            if rank == "U":
+                unclassified = int(fields[1])
+            elif rank == "R":
+                root_reads = int(fields[1])
+    total = root_reads + unclassified
+    return total, root_reads, unclassified
 
 
 def run_kraken(

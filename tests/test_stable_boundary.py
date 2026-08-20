@@ -1,4 +1,5 @@
 import json
+from dataclasses import asdict
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -6,8 +7,10 @@ import pandas as pd
 import pytest
 
 from metaquest.core import taxonomic_analysis
+from metaquest.core.analysis import _jsonable, _sha256, _validate_resume
 from metaquest.io import utils
-from metaquest.exceptions import AnnotationError, ClassificationError
+from metaquest.io.file_validator import FileValidator
+from metaquest.exceptions import AnnotationError, ClassificationError, ConfigError
 from metaquest.pipeline.context import PipelineContext
 from metaquest.pipeline.runner import PipelineRunner, build_default_pipeline
 from metaquest.reporting.stable_reporter import generate_stable_reports
@@ -212,7 +215,15 @@ def test_stable_report_contains_no_risk_output(tmp_path):
     context = SimpleNamespace(
         output_dir=tmp_path,
         completed_stages=["Taxonomic Classification"],
-        classification=SimpleNamespace(bracken_file=bracken_file),
+        classification=SimpleNamespace(
+            bracken_file=bracken_file,
+            species_assigned_reads=100,
+            total_reads=200,
+            kraken_classified_reads=120,
+            unclassified_reads=80,
+            observed_read_length=75,
+            bracken_read_length=75,
+        ),
         assembly=None,
         annotation=None,
     )
@@ -225,6 +236,68 @@ def test_stable_report_contains_no_risk_output(tmp_path):
     assert "risk_score" not in summary
     assert "clinical recommendation" not in report.lower()
     assert "do not establish pathogenicity or clinical risk" in report
+    parsed = json.loads(summary)
+    assert parsed["taxonomy"]["classification_rate"] == 0.6
+    assert parsed["taxonomy"]["top_taxa"][0]["fraction_all_input_reads"] == 0.4
+    assert "fraction_total_reads" not in parsed["taxonomy"]["top_taxa"][0]
+    assert parsed["completed_stages"][-1] == "Reporting"
+
+
+def test_bracken_model_selection_uses_exact_or_closest_installed_length(tmp_path):
+    for length in (75, 100, 150):
+        (tmp_path / f"database{length}mers.kmer_distrib").write_text("fixture")
+
+    assert taxonomic_analysis.select_bracken_read_length(tmp_path, 75) == 75
+    assert taxonomic_analysis.select_bracken_read_length(tmp_path, 124) == 100
+    assert taxonomic_analysis.select_bracken_read_length(tmp_path, 140) == 150
+
+
+def test_paired_validation_rejects_mismatched_identifiers(tmp_path):
+    forward = tmp_path / "R1.fastq"
+    reverse = tmp_path / "R2.fastq"
+    forward.write_text("@read1/1\nACGT\n+\nIIII\n", encoding="utf-8")
+    reverse.write_text("@other/2\nACGT\n+\nIIII\n", encoding="utf-8")
+
+    valid, message = FileValidator.validate_pair(forward, reverse)
+
+    assert valid is False
+    assert "identifiers differ" in message
+
+
+def test_resume_rejects_changed_workflow(tmp_path):
+    reads = tmp_path / "reads.fastq"
+    reads.write_text("@read\nACGT\n+\nIIII\n")
+    config = load_config(db_dir=tmp_path / "databases")
+    metadata = {
+        "input_files": [
+            {
+                "path": str(reads.resolve()),
+                "size_bytes": reads.stat().st_size,
+                "sha256": _sha256(reads),
+            }
+        ],
+        "effective_config": _jsonable(asdict(config)),
+        "workflow": {
+            "read_mode": "single",
+            "taxonomy_only": True,
+            "skip_functional": False,
+            "low_memory": False,
+        },
+    }
+    (tmp_path / "analysis_metadata.json").write_text(json.dumps(metadata))
+
+    with pytest.raises(ConfigError, match="taxonomy_only"):
+        _validate_resume(
+            tmp_path,
+            [reads],
+            config,
+            {
+                "read_mode": "single",
+                "taxonomy_only": False,
+                "skip_functional": False,
+                "low_memory": False,
+            },
+        )
 
 
 def test_stable_report_includes_eggnog_provenance(tmp_path):

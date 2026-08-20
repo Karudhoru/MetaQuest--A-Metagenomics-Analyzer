@@ -11,6 +11,7 @@ from pathlib import Path
 from Bio import SeqIO
 import gzip
 import hashlib
+from itertools import zip_longest
 import numpy as np
 from collections import Counter
 from datetime import datetime
@@ -26,6 +27,7 @@ class FileValidator:
         self.q30_threshold = 80.0
         self.sample_size = 10000
         self.MAX_READS_TO_ANALYZE = 1000_000
+        self.strict = False
         self.common_adapters = [
             "AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC",
             "AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT",
@@ -74,7 +76,8 @@ class FileValidator:
         
         self._display_statistics(stats)
         
-        has_errors, error_messages = self._get_validation_status(stats)
+        error_messages, warning_messages = self._get_validation_status(stats)
+        has_errors = bool(error_messages)
         
         # Validation result box
         fmt._print("\n\u250c" + _h + "\u2510")
@@ -89,6 +92,8 @@ class FileValidator:
             fmt._print("\n" + _h73 + "\n")
             return False, stats
         else:
+            for message in warning_messages:
+                fmt.warning(message)
             fmt._print("\u2502 \u2705 VALIDATION STATUS: PASSED" + (' ' * 42) + "\u2502")
             fmt._print("\u2514" + _h + "\u2518")
             fmt._print("\n\u2713 All quality criteria met - file is ready for analysis")
@@ -162,7 +167,8 @@ class FileValidator:
                 stats['total_sequences'] += 1
                 
                 # Performance optimization: Stop after 1M reads
-                if stats['total_sequences'] >= self.MAX_READS_TO_ANALYZE:
+                if stats['total_sequences'] > self.MAX_READS_TO_ANALYZE:
+                    stats['total_sequences'] -= 1
                     hit_sample_limit = True
                     break
                 
@@ -218,11 +224,8 @@ class FileValidator:
             stats['gc_content'] = (gc_count / stats['total_bases']) * 100
             stats['mean_quality'] = total_quality_sum / stats['total_bases']
         
-        # Quality encoding detection
-        if stats['min_quality'] >= 0 and stats['max_quality'] <= 74:
-            stats['quality_encoding'] = "Phred+33 (Sanger/Illumina 1.8+)"
-        else:
-            stats['quality_encoding'] = "Phred+64 (Illumina 1.3-1.5)"
+        # Bio.SeqIO's "fastq" parser interprets qualities as Phred+33.
+        stats['quality_encoding'] = "Phred+33 parser"
         
         # Adapter contamination percentage
         if sampled_sequences > 0:
@@ -260,7 +263,7 @@ class FileValidator:
             {
                 'header': 'Sequence Quality',
                 'rows': {
-                    'Total Sequences': f"{stats['total_sequences']:,} sequences",
+                    'Reads analyzed': f"{stats['total_sequences']:,} reads",
                     'Total Bases': f"{stats['total_bases'] / 1_000_000:.1f} Mbp (mean: {stats['mean_length']:.0f} bp)",
                     'Length Range': f"{stats['min_length']}-{stats['max_length']} bp (median: {stats['median_length']:.0f} bp)",
                     'N50': f"{stats['n50_length']:.0f} bp",
@@ -299,30 +302,68 @@ class FileValidator:
             fmt._print("        \u2713 No overrepresented sequences detected")
     
     def _get_validation_status(self, stats):
-        """Check for critical errors"""
+        """Return fatal structural errors and nonfatal quality warnings."""
         errors = []
+        warnings = []
 
         if stats['total_sequences'] < self.min_sequences:
             errors.append(f"Insufficient sequences: {stats['total_sequences']} < {self.min_sequences} required")
             
         if stats['mean_quality'] < self.quality_threshold:
-            errors.append(f"Low quality score: Q{stats['mean_quality']:.1f} < Q{self.quality_threshold} required")
+            warnings.append(
+                f"Low quality score: Q{stats['mean_quality']:.1f} "
+                f"< Q{self.quality_threshold} recommended"
+            )
             
         q30_pct = (stats.get('q30_bases', 0) / stats.get('total_bases', 1) * 100)
         if q30_pct < self.q30_threshold:
-            errors.append(f"Low Q30 content: {q30_pct:.1f}% < {self.q30_threshold}% required")
+            warnings.append(
+                f"Low Q30 content: {q30_pct:.1f}% < {self.q30_threshold}% recommended"
+            )
             
         if stats.get('adapter_content_percent', 0) > self.adapter_threshold:
-            errors.append(f"High adapter contamination: {stats['adapter_content_percent']:.2f}% > {self.adapter_threshold}% threshold")
+            warnings.append(
+                f"High adapter contamination: {stats['adapter_content_percent']:.2f}% "
+                f"> {self.adapter_threshold}% threshold"
+            )
             
         if stats.get('overrepresented_sequences'):
             max_overrep = max(pct for _, _, pct in stats['overrepresented_sequences'])
-            errors.append(f"Overrepresented sequences: {len(stats['overrepresented_sequences'])} detected (max {max_overrep:.1f}%)")
+            warnings.append(
+                f"Overrepresented sequences: {len(stats['overrepresented_sequences'])} "
+                f"detected (max {max_overrep:.1f}%)"
+            )
         
         if stats['total_sequences'] == 0:
             errors.append("No valid sequences found")
 
-        return len(errors) > 0, errors
+        if self.strict:
+            errors.extend(warnings)
+            warnings = []
+        return errors, warnings
+
+    @staticmethod
+    def validate_pair(forward, reverse) -> tuple[bool, str]:
+        """Fully verify paired FASTQ counts, ordering, and read identifiers."""
+        def records(path):
+            opener = gzip.open if str(path).endswith(".gz") else open
+            with opener(path, "rt", encoding="utf-8") as handle:
+                yield from SeqIO.parse(handle, "fastq")
+
+        def normalized(identifier):
+            return identifier.split()[0].removesuffix("/1").removesuffix("/2")
+
+        for index, (left, right) in enumerate(
+            zip_longest(records(forward), records(reverse)), 1
+        ):
+            if left is None or right is None:
+                return False, f"Paired FASTQ files have different read counts at pair {index}"
+            if normalized(left.id) != normalized(right.id):
+                return False, (
+                    f"Paired FASTQ identifiers differ at pair {index}: "
+                    f"{left.id!r} != {right.id!r}"
+                )
+        return True, ""
     
     def _print_recommendations(self, stats, error_messages):
         """Print recommendations for quality improvement"""
@@ -366,12 +407,14 @@ class FileValidator:
         return True
     
     def _validate_format(self, filepath, expected_type):
-        """Validate FASTQ file format"""
+        """Validate every FASTQ record, not only the sampled QC prefix."""
         from .output_formatter import Colors
         try:
-            handle = gzip.open(filepath, 'rt') if str(filepath).endswith('.gz') else open(filepath, 'r')
-            next(SeqIO.parse(handle, 'fastq'))
-            handle.close()
+            opener = gzip.open if str(filepath).endswith('.gz') else open
+            with opener(filepath, 'rt') as handle:
+                records = sum(1 for _ in SeqIO.parse(handle, 'fastq'))
+            if records == 0:
+                raise StopIteration
             return True
             
         except StopIteration:
