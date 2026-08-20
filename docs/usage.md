@@ -50,10 +50,14 @@ Optional thresholds:
 --min-quality SCORE
 --min-sequences NUM
 --overrep-threshold FRACTION
+--strict-validation
 ~~~
 
-Validation does not currently trim reads. fastp integration is planned for the
-Snakemake workflow.
+FASTQ structure is checked across the complete input. Quality statistics are
+sampled. Low mean quality, low Q30 content, adapters, and overrepresented
+sequences are warnings by default; `--strict-validation` makes them fatal.
+Paired files must have equal counts and synchronized read identifiers.
+Validation does not currently trim reads.
 
 ## Run
 
@@ -92,6 +96,10 @@ Useful options:
 | `--skip-annotation` | deprecated alias for `--taxonomy-only` |
 | `--skip-functional` | stop after Pyrodigal gene prediction |
 | `--annotation-threads N` | eggNOG-mapper worker threads |
+| `--resume` | reuse stages only when inputs and effective configuration match |
+| `--force` | preserve the existing output as a timestamped backup and start fresh |
+
+Without `--resume` or `--force`, a nonempty output directory is rejected.
 
 ## Compare
 
@@ -138,14 +146,28 @@ results/sample/
 │   ├── genes.faa
 │   ├── genes.fna
 │   ├── genes.gff3
+│   ├── contig_id_map.tsv
 │   └── summary.json
+├── functional_annotation/
+│   ├── functional_annotations.tsv
+│   ├── functional_category_summary.tsv
+│   ├── eggnog_mapper.log
+│   ├── summary.json
+│   └── completion.json
 ├── 01_taxonomic_report.txt
+├── 02_assembly_report.txt
+├── 03_functional_report.txt
 ├── analysis_summary.json
 ├── analysis_metadata.json
 └── metaquest.log
 ~~~
 
 Taxonomy-only runs omit assembly and annotation outputs.
+
+Taxonomy JSON reports both the fraction of species-assigned reads and the
+fraction of all input reads. It also records Kraken-classified reads,
+unclassified reads, classification rate, observed read length, and the
+Bracken model length selected from the installed database.
 
 ## Exit behavior
 

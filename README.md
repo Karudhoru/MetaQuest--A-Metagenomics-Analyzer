@@ -7,7 +7,8 @@ not make clinical or pathogen-risk claims.
 
 ## Current capabilities
 
-- FASTQ format and basic quality validation
+- full FASTQ structural validation and sampled quality warnings
+- synchronized paired-read identifier and count validation
 - Kraken2 taxonomic classification
 - Bracken abundance re-estimation
 - optional taxonomy-only execution
@@ -16,6 +17,7 @@ not make clinical or pathogen-risk claims.
 - eggNOG-mapper orthology-based functional annotation
 - per-gene annotations and aggregated COG, KO, EC, and GO counts
 - descriptive text and JSON reporting
+- explicit classified/unclassified denominators and reproducibility metadata
 - versioned taxonomy and eggNOG database installation
 
 MetaQuest does not currently perform read trimming, host-read removal, validated
@@ -71,6 +73,10 @@ Use `--skip-functional` to stop after Pyrodigal, or `--taxonomy-only` to skip
 assembly, gene prediction, and functional annotation. The former
 `--skip-annotation` spelling remains as a deprecated alias for
 `--taxonomy-only`.
+
+Each fresh run requires a new or empty output directory. Use `--resume` only
+to reuse a matching MetaQuest run, or `--force` to move an existing output
+directory to a timestamped backup before starting fresh.
 
 ## Commands
 
