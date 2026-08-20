@@ -14,15 +14,9 @@ databases:
 assembly:
   assembler: megahit
   threads: 8
-  min_contig_length: 500
-  memory_limit_gb: 8
-  kmer_min: 21
-  kmer_max: 141
-  kmer_step: 12
 
 classification:
   threads: 8
-  read_length: 150
   taxonomic_level: S        # S=Species, G=Genus, F=Family
   min_hit_groups: 2
   bracken_threshold: 10
@@ -33,39 +27,7 @@ annotation:
   threads: 8
   evalue: 1.0e-6
   diamond_block_size: 0.5  # lower-memory DIAMOND search for 8-16 GB systems
-  functional_method: diamond
   tax_scope: auto
   eggnog_version: "2.1.15"
   eggnog_database_release: "5.0.2"
   min_contig_length: 200
-
-memory:
-  max_sequences_in_memory: 10000
-  chunk_size: 1000
-  streaming_enabled: true
-
-qc:
-  min_read_quality: 20
-  min_read_length: 50
-  min_classification_rate: 0.5
-  min_species_level_rate: 0.3
-  max_unclassified_rate: 0.5
-  min_contig_coverage: 2.0
-
-reporting:
-  formats:
-    - txt
-    - json
-    - html
-  detail_level: full        # full | summary
-  include_plots: true
-  include_tables: true
-  confidence_warnings: true
-  max_table_rows: 100
-  decimal_precision: 2
-
-logging:
-  level: INFO               # DEBUG | INFO | WARNING | ERROR
-  log_to_file: true
-  log_to_console: true
-  format: "%(asctime)s [%(levelname)s] %(message)s"
