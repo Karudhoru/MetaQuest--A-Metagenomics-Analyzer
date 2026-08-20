@@ -59,11 +59,29 @@ class AnnotationConfig:
 
 
 @dataclass(frozen=True)
+class PreprocessingConfig:
+    enabled: bool = True
+    qualified_quality_phred: int = 20
+    length_required: int = 50
+
+
+@dataclass(frozen=True)
+class ReportingConfig:
+    top_taxa: int = 20
+    top_functional_terms: int = 20
+    plot_formats: tuple[str, ...] = ("svg", "png")
+    plot_dpi: int = 300
+    color_palette: str = "colorblind"
+
+
+@dataclass(frozen=True)
 class MetaQuestConfig:
     databases: DatabasesConfig
     assembly: AssemblyConfig = AssemblyConfig()
     classification: ClassificationConfig = ClassificationConfig()
     annotation: AnnotationConfig = AnnotationConfig()
+    preprocessing: PreprocessingConfig = PreprocessingConfig()
+    reporting: ReportingConfig = ReportingConfig()
 
 
 # ---------------------------------------------------------------------------
@@ -106,6 +124,8 @@ def _build_section(cls, raw: dict, key: str):
     section = raw.get(key, {}) or {}
     valid_fields = {f.name for f in cls.__dataclass_fields__.values()}
     filtered = {k: v for k, v in section.items() if k in valid_fields}
+    if cls is ReportingConfig and "plot_formats" in filtered:
+        filtered["plot_formats"] = tuple(filtered["plot_formats"])
     # Convert Path fields
     for fname, fobj in cls.__dataclass_fields__.items():
         if fname in filtered and filtered[fname] is not None:
@@ -158,6 +178,8 @@ def load_config(
         assembly=_build_section(AssemblyConfig, raw, "assembly"),
         classification=_build_section(ClassificationConfig, raw, "classification"),
         annotation=_build_section(AnnotationConfig, raw, "annotation"),
+        preprocessing=_build_section(PreprocessingConfig, raw, "preprocessing"),
+        reporting=_build_section(ReportingConfig, raw, "reporting"),
     )
 
     _cached_config = config
@@ -195,4 +217,15 @@ def validate_config(config: MetaQuestConfig | None = None) -> tuple[bool, list[s
         errors.append("annotation.diamond_block_size must be > 0")
     if cfg.annotation.tax_scope != "auto":
         errors.append("annotation.tax_scope currently supports only 'auto'")
+    if cfg.preprocessing.qualified_quality_phred < 0:
+        errors.append("preprocessing.qualified_quality_phred must be >= 0")
+    if cfg.preprocessing.length_required < 1:
+        errors.append("preprocessing.length_required must be >= 1")
+    if cfg.reporting.top_taxa < 1 or cfg.reporting.top_functional_terms < 1:
+        errors.append("reporting top limits must be >= 1")
+    if cfg.reporting.plot_dpi < 72:
+        errors.append("reporting.plot_dpi must be >= 72")
+    unsupported = set(cfg.reporting.plot_formats) - {"svg", "png", "pdf"}
+    if unsupported:
+        errors.append(f"unsupported reporting.plot_formats: {', '.join(sorted(unsupported))}")
     return len(errors) == 0, errors

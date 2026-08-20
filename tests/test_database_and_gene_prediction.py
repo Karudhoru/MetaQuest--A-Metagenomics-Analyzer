@@ -148,6 +148,7 @@ def test_pyrodigal_outputs_are_streamed_per_contig(tmp_path, monkeypatch):
     assert "short_contig" not in (output_dir / "genes.faa").read_text()
     assert (output_dir / "genes.fna").exists()
     assert (output_dir / "genes.gff3").read_text().startswith("##gff-version 3")
+    assert (output_dir / "contigs.stable.fasta").is_file()
     assert (output_dir / "summary.json").exists()
     assert "\tlong_contig\t" in (output_dir / "contig_id_map.tsv").read_text()
 

@@ -30,10 +30,10 @@ def run_classification_stage(ctx: PipelineContext) -> PipelineContext:
 
     config = ctx.config.classification
     output_dir = ctx.output_dir
-    reads = ctx.input_files
+    reads = ctx.analysis_input_files or ctx.input_files
 
     # Handle interleaved reads
-    if ctx.read_mode == "interleaved":
+    if ctx.read_mode == "interleaved" and not ctx.analysis_input_files:
         fmt = get_formatter()
         existing_split = [
             output_dir / "split_R1.fastq.gz",

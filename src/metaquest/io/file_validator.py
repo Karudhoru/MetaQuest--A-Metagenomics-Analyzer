@@ -282,8 +282,8 @@ class FileValidator:
         mean_q = stats['mean_quality']
         
         fmt._print("\n     \U0001f4c8 Quality Visualization:")
+        fmt._print(f"        {'Mean quality score':.<30} Q{mean_q:.1f}")
         quality_metrics = {
-            'Mean Quality Score': (mean_q / 40 * 100, f"Q{mean_q:.1f}"),
             'Bases \u2265 Q20': (q20_pct, ""),
             'Bases \u2265 Q30': (q30_pct, "")
         }

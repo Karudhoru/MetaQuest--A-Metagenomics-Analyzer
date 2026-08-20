@@ -31,3 +31,17 @@ annotation:
   eggnog_version: "2.1.15"
   eggnog_database_release: "5.0.2"
   min_contig_length: 200
+
+preprocessing:
+  enabled: true
+  qualified_quality_phred: 20
+  length_required: 50
+
+reporting:
+  top_taxa: 20
+  top_functional_terms: 20
+  plot_formats:
+    - svg
+    - png
+  plot_dpi: 300
+  color_palette: colorblind

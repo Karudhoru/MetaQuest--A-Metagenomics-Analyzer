@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add fastp preprocessing before classification and assembly.
+- Add resumable start metadata, full validation records, and stage timings.
+- Add stable-ID contig FASTA aligned with the gene-prediction GFF3.
+- Add N50/L50, N90/L90, GC, and contig-threshold assembly metrics.
+- Add Matplotlib/Seaborn figures, plotted-data TSVs, and offline HTML reporting.
+- Correct mean Phred quality display and paired-end fragment terminology.
 - Infer read length and select the closest installed Bracken model.
 - Report classified and unclassified denominators explicitly.
 - Add safe `--resume` and recoverable `--force` output modes.

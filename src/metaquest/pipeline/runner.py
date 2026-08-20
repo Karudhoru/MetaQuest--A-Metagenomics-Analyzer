@@ -35,8 +35,10 @@ def _jsonable(value):
         return str(value)
     if isinstance(value, dict):
         return {key: _jsonable(item) for key, item in value.items()}
-    if isinstance(value, list):
+    if isinstance(value, (list, tuple)):
         return [_jsonable(item) for item in value]
+    if hasattr(value, "item"):
+        return value.item()
     return value
 
 
@@ -84,6 +86,9 @@ class PipelineRunner:
         logger.info("Pipeline starting with %d stage(s)", total)
         formatter.section_header("Pipeline")
 
+        ctx.metadata.update({"status": "running", "started_at": datetime.now().isoformat()})
+        self._save_metadata(ctx)
+
         for i, (name, stage_fn) in enumerate(self._stages, 1):
             logger.info("[%d/%d] %s", i, total, name)
             formatter.info(f"[{i}/{total}] {name}")
@@ -93,6 +98,8 @@ class PipelineRunner:
                     ctx = stage_fn(ctx)
                 ctx.completed_stages.append(name)
                 elapsed = time.monotonic() - started
+                ctx.metadata.setdefault("stage_timings_seconds", {})[name] = round(elapsed, 3)
+                self._save_metadata(ctx)
                 formatter.success(
                     f"{name.ljust(28)} {formatter._format_time(elapsed)}"
                 )
@@ -150,6 +157,7 @@ class PipelineRunner:
             "tool_provenance": {
                 "kraken2": _tool_version(["kraken2", "--version"]),
                 "bracken": _tool_version(["bracken", "-v"]),
+                "fastp": _tool_version(["fastp", "--version"]),
                 "megahit": (
                     _tool_version(["megahit", "--version"]) if ctx.assembly else "not_run"
                 ),
@@ -182,7 +190,7 @@ class PipelineRunner:
             metadata["tool_provenance"]["bracken_model_read_length"] = (
                 ctx.classification.bracken_read_length
             )
-        metadata.update(ctx.metadata)
+        metadata.update(_jsonable(ctx.metadata))
 
         metadata_file = ctx.output_dir / "analysis_metadata.json"
         temporary = metadata_file.with_suffix(".json.tmp")
@@ -219,9 +227,11 @@ def build_default_pipeline(
     scoring are intentionally excluded until independently validated.
     """
     from metaquest.pipeline.stages.classification import run_classification_stage
+    from metaquest.pipeline.stages.preprocessing import run_preprocessing_stage
     from metaquest.pipeline.stages.reporting import run_reporting_stage
 
     runner = PipelineRunner(config)
+    runner.add_stage("Read Preprocessing", run_preprocessing_stage)
     runner.add_stage("Taxonomic Classification", run_classification_stage)
 
     if not skip_annotation:

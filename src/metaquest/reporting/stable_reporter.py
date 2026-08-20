@@ -16,7 +16,7 @@ def _native(value: Any) -> Any:
     return value.item() if hasattr(value, "item") else value
 
 
-def _taxonomy_summary(classification) -> tuple[dict[str, Any], str]:
+def _taxonomy_summary(classification, *, paired: bool = False, top_limit: int = 20) -> tuple[dict[str, Any], str]:
     bracken_file = classification.bracken_file
     table = pd.read_csv(bracken_file, sep="\t")
     required = {"name", "new_est_reads"}
@@ -28,9 +28,10 @@ def _taxonomy_summary(classification) -> tuple[dict[str, Any], str]:
 
     species_assigned = classification.species_assigned_reads
     total_reads = classification.total_reads
+    denominator_label = "fragments" if paired else "reads"
     table = table.sort_values("new_est_reads", ascending=False)
     top = []
-    for _, row in table.head(20).iterrows():
+    for _, row in table.head(top_limit).iterrows():
         top.append(
             {
                 "name": str(row["name"]),
@@ -39,6 +40,9 @@ def _taxonomy_summary(classification) -> tuple[dict[str, Any], str]:
                     int(row["new_est_reads"]) / species_assigned if species_assigned else 0.0
                 ),
                 "fraction_all_input_reads": (
+                    int(row["new_est_reads"]) / total_reads if total_reads else 0.0
+                ),
+                "fraction_all_input_fragments": (
                     int(row["new_est_reads"]) / total_reads if total_reads else 0.0
                 ),
             }
@@ -56,6 +60,7 @@ def _taxonomy_summary(classification) -> tuple[dict[str, Any], str]:
         "observed_read_length": classification.observed_read_length,
         "bracken_read_length": classification.bracken_read_length,
         "top_taxa": top,
+        "primary_denominator": f"all cleaned input {denominator_label}",
     }
 
     lines = [
@@ -63,17 +68,17 @@ def _taxonomy_summary(classification) -> tuple[dict[str, Any], str]:
         "============================",
         "",
         f"Reported taxa: {summary['reported_taxa']}",
-        f"Total input reads: {summary['total_input_reads']}",
-        f"Kraken-classified reads: {summary['kraken_classified_reads']}",
-        f"Unclassified reads: {summary['unclassified_reads']}",
+        f"Total cleaned input {denominator_label}: {summary['total_input_reads']}",
+        f"Kraken-classified {denominator_label}: {summary['kraken_classified_reads']}",
+        f"Unclassified {denominator_label}: {summary['unclassified_reads']}",
         f"Classification rate: {summary['classification_rate']:.2%}",
-        f"Species-assigned reads: {summary['species_assigned_reads']}",
+        f"Species-assigned {denominator_label}: {summary['species_assigned_reads']}",
         f"Observed read length: {summary['observed_read_length']} bp",
         f"Bracken model length: {summary['bracken_read_length']} bp",
         "",
         "Top taxa",
         "--------",
-        "Taxon\tEstimated reads\tFraction species-assigned\tFraction all input",
+        f"Taxon\tEstimated {denominator_label}\tFraction species-assigned\tFraction all input",
     ]
     lines.extend(
         f"{item['name']}\t{item['estimated_reads']}\t"
@@ -103,7 +108,12 @@ def generate_stable_reports(ctx) -> None:
     }
 
     if ctx.classification:
-        taxonomy, report = _taxonomy_summary(ctx.classification)
+        reporting_config = getattr(getattr(ctx, "config", None), "reporting", None)
+        taxonomy, report = _taxonomy_summary(
+            ctx.classification,
+            paired=getattr(ctx, "read_mode", "single") != "single",
+            top_limit=getattr(reporting_config, "top_taxa", 20),
+        )
         summary["taxonomy"] = taxonomy
         (output_dir / "01_taxonomic_report.txt").write_text(report, encoding="utf-8")
 
@@ -114,6 +124,13 @@ def generate_stable_reports(ctx) -> None:
             "n50": ctx.assembly.n50,
             "max_length": ctx.assembly.max_length,
             "mean_length": ctx.assembly.mean_length,
+            "l50": ctx.assembly.l50,
+            "n90": ctx.assembly.n90,
+            "l90": ctx.assembly.l90,
+            "gc_percent": ctx.assembly.gc_percent,
+            "contigs_ge_1000": ctx.assembly.contigs_ge_1000,
+            "contigs_ge_5000": ctx.assembly.contigs_ge_5000,
+            "contigs_ge_10000": ctx.assembly.contigs_ge_10000,
         }
         assembly_lines = [
             "METAQUEST METAGENOMIC ASSEMBLY",
@@ -122,6 +139,10 @@ def generate_stable_reports(ctx) -> None:
             f"Contigs: {ctx.assembly.total_contigs}",
             f"Total bases: {ctx.assembly.total_bases}",
             f"N50: {ctx.assembly.n50} bp",
+            f"L50: {ctx.assembly.l50} contigs",
+            f"N90: {ctx.assembly.n90} bp",
+            f"L90: {ctx.assembly.l90} contigs",
+            f"GC content: {ctx.assembly.gc_percent:.2f}%",
             f"Maximum contig length: {ctx.assembly.max_length} bp",
             f"Mean contig length: {ctx.assembly.mean_length:.2f} bp",
             "",
@@ -180,6 +201,14 @@ def generate_stable_reports(ctx) -> None:
                 "\n".join(lines) + "\n", encoding="utf-8"
             )
         summary["annotation"] = annotation_summary
+    if getattr(ctx, "preprocessing", None):
+        summary["preprocessing"] = ctx.preprocessing
+    if hasattr(ctx, "config"):
+        from metaquest.reporting.plots import generate_plots
+        figures = generate_plots(ctx, summary.get("taxonomy"))
+        summary["figures"] = [str(path.relative_to(output_dir)) for path in figures]
+    else:
+        summary["figures"] = []
     summary_path = output_dir / "analysis_summary.json"
     temporary_summary = summary_path.with_suffix(".json.tmp")
     temporary_summary.write_text(
@@ -187,3 +216,22 @@ def generate_stable_reports(ctx) -> None:
         encoding="utf-8",
     )
     temporary_summary.replace(summary_path)
+    _write_html_report(output_dir, summary)
+
+
+def _write_html_report(output_dir: Path, summary: dict[str, Any]) -> None:
+    """Write a dependency-free report that embeds local SVG/PNG artifacts."""
+    import html
+    title = "MetaQuest analysis report"
+    cards = []
+    for section in ("preprocessing", "taxonomy", "assembly", "annotation"):
+        if section in summary:
+            body = html.escape(json.dumps(summary[section], indent=2, default=_native))
+            cards.append(f"<section><h2>{section.title()}</h2><pre>{body}</pre></section>")
+    images = []
+    for relative in summary.get("figures", []):
+        if relative.endswith(".svg"):
+            images.append(f'<figure><img src="{html.escape(relative)}" alt="MetaQuest figure"><figcaption>{html.escape(Path(relative).stem.replace("_", " ").title())}</figcaption></figure>')
+    document = f'''<!doctype html><html><head><meta charset="utf-8"><title>{title}</title>
+<style>body{{font-family:system-ui,sans-serif;max-width:1100px;margin:auto;padding:2rem;color:#17202a}}section,figure{{border:1px solid #d5d8dc;border-radius:.5rem;padding:1rem;margin:1rem 0}}img{{max-width:100%;height:auto}}pre{{white-space:pre-wrap;overflow-wrap:anywhere;background:#f8f9f9;padding:1rem}}.note{{background:#fff4cc;padding:1rem}}</style></head><body><h1>{title}</h1><p class="note">Research-use descriptive output. No statistical significance, pathogenicity, or clinical risk is inferred.</p>{''.join(cards)}<h2>Figures</h2>{''.join(images)}</body></html>'''
+    (output_dir / "report.html").write_text(document, encoding="utf-8")
