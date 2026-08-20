@@ -3,6 +3,7 @@ import gzip
 import sqlite3
 import sys
 import tarfile
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -143,11 +144,12 @@ def test_pyrodigal_outputs_are_streamed_per_contig(tmp_path, monkeypatch):
     )
 
     assert count == 1
-    assert ">long_contig_1" in (output_dir / "genes.faa").read_text()
+    assert ">contig_" in (output_dir / "genes.faa").read_text()
     assert "short_contig" not in (output_dir / "genes.faa").read_text()
     assert (output_dir / "genes.fna").exists()
     assert (output_dir / "genes.gff3").read_text().startswith("##gff-version 3")
     assert (output_dir / "summary.json").exists()
+    assert "\tlong_contig\t" in (output_dir / "contig_id_map.tsv").read_text()
 
 
 def test_eggnog_outputs_include_every_gene_and_are_restart_safe(tmp_path, monkeypatch):
@@ -163,10 +165,13 @@ def test_eggnog_outputs_include_every_gene_and_are_restart_safe(tmp_path, monkey
 
     emapper_runs = []
 
-    def fake_run(command, **_kwargs):
+    run_options = []
+
+    def fake_run(command, **kwargs):
         if command[-1] == "--version":
             return SimpleNamespace(returncode=0, stdout="emapper-2.1.15", stderr="")
         emapper_runs.append(command)
+        run_options.append(kwargs)
         raw = tmp_path / "results" / "functional_annotation" / "metaquest.emapper.annotations"
         raw.write_text(
             "#query\tseed_ortholog\tevalue\tscore\tmax_annot_lvl\tCOG_category\tDescription\tPreferred_name\tGOs\tEC\tKEGG_ko\tPFAMs\n"
@@ -193,6 +198,7 @@ def test_eggnog_outputs_include_every_gene_and_are_restart_safe(tmp_path, monkey
     assert "COG\tJ\t1" in categories.read_text(encoding="utf-8")
     assert "KO\tko:K00001\t1" in categories.read_text(encoding="utf-8")
     assert len(emapper_runs) == 1
+    assert Path(run_options[0]["cwd"]).parent == table.parent
 
     _, _, annotated_again, reused = run_functional_annotation(
         proteins,
@@ -204,3 +210,14 @@ def test_eggnog_outputs_include_every_gene_and_are_restart_safe(tmp_path, monkey
     assert annotated_again == 2
     assert reused is True
     assert len(emapper_runs) == 1
+
+
+def test_functional_cache_hash_ignores_fasta_record_order(tmp_path):
+    first = tmp_path / "first.faa"
+    second = tmp_path / "second.faa"
+    first.write_text(">gene_a\nMAAA\n>gene_b\nMBBB\n", encoding="utf-8")
+    second.write_text(">gene_b\nMBBB\n>gene_a\nMAAA\n", encoding="utf-8")
+
+    assert functional_analysis._canonical_fasta_sha256(
+        first
+    ) == functional_analysis._canonical_fasta_sha256(second)

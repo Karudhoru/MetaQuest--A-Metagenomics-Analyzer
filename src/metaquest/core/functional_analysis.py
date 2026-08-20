@@ -3,7 +3,11 @@
 import csv
 import hashlib
 import json
+import os
 import subprocess
+import tempfile
+import threading
+import time
 from collections import Counter
 from pathlib import Path
 
@@ -48,38 +52,51 @@ def run_gene_prediction(
     proteins_path = prediction_dir / "genes.faa"
     genes_path = prediction_dir / "genes.fna"
     gff_path = prediction_dir / "genes.gff3"
+    contig_map_path = prediction_dir / "contig_id_map.tsv"
 
     finder = pyrodigal.GeneFinder(meta=True)
     contigs_seen = 0
     contigs_processed = 0
     genes_predicted = 0
+    contig_ids: Counter[str] = Counter()
 
     try:
         with proteins_path.open("w", encoding="utf-8") as proteins_out, \
              genes_path.open("w", encoding="utf-8") as genes_out, \
-             gff_path.open("w", encoding="utf-8") as gff_out:
+             gff_path.open("w", encoding="utf-8") as gff_out, \
+             contig_map_path.open("w", encoding="utf-8") as map_out:
             gff_out.write("##gff-version 3\n")
+            map_out.write("stable_contig_id\toriginal_contig_id\tsequence_sha256\n")
             for record in SeqIO.parse(Path(fasta_path), "fasta"):
                 contigs_seen += 1
                 if len(record.seq) < min_contig_length:
                     continue
+                digest = hashlib.sha256(bytes(record.seq)).hexdigest()[:16]
+                base_id = f"contig_{digest}"
+                contig_ids[base_id] += 1
+                sequence_id = (
+                    base_id
+                    if contig_ids[base_id] == 1
+                    else f"{base_id}_{contig_ids[base_id]}"
+                )
+                map_out.write(f"{sequence_id}\t{record.id}\t{hashlib.sha256(bytes(record.seq)).hexdigest()}\n")
                 predictions = finder.find_genes(bytes(record.seq))
                 contigs_processed += 1
                 genes_predicted += len(predictions)
                 predictions.write_translations(
                     proteins_out,
-                    sequence_id=record.id,
+                    sequence_id=sequence_id,
                     include_stop=False,
                     full_id=True,
                 )
                 predictions.write_genes(
                     genes_out,
-                    sequence_id=record.id,
+                    sequence_id=sequence_id,
                     full_id=True,
                 )
                 predictions.write_gff(
                     gff_out,
-                    sequence_id=record.id,
+                    sequence_id=sequence_id,
                     header=False,
                     include_translation_table=True,
                     full_id=True,
@@ -108,6 +125,18 @@ def _sha256(path: Path) -> str:
     with path.open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _canonical_fasta_sha256(path: Path) -> str:
+    """Hash FASTA records independently of record order."""
+    digest = hashlib.sha256()
+    records = sorted((record.id, str(record.seq)) for record in SeqIO.parse(path, "fasta"))
+    for identifier, sequence in records:
+        digest.update(identifier.encode())
+        digest.update(b"\0")
+        digest.update(sequence.encode())
+        digest.update(b"\0")
     return digest.hexdigest()
 
 
@@ -232,16 +261,16 @@ def run_functional_annotation(
     database_release: str = "5.0.2",
 ) -> tuple[Path, Path, int, bool]:
     """Annotate every predicted protein with pinned eggNOG-mapper v2 data."""
-    proteins_path = Path(proteins_path)
-    output_dir = Path(output_dir) / "functional_annotation"
-    database_dir = Path(database_dir)
+    proteins_path = Path(proteins_path).resolve()
+    output_dir = (Path(output_dir) / "functional_annotation").resolve()
+    database_dir = Path(database_dir).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
     if not proteins_path.is_file():
         raise AnnotationError(f"Predicted protein file not found: {proteins_path}")
     raw_annotations = output_dir / "metaquest.emapper.annotations"
     summary_path = output_dir / "summary.json"
     completion_path = output_dir / "completion.json"
-    protein_sha256 = _sha256(proteins_path)
+    protein_sha256 = _canonical_fasta_sha256(proteins_path)
     version_output = _emapper_version(database_dir)
     if expected_version not in version_output:
         raise AnnotationError(
@@ -250,7 +279,7 @@ def run_functional_annotation(
     mapper_build = version_output.split(" / ", 1)[0].removeprefix("emapper-")
 
     expected_state = {
-        "protein_sha256": protein_sha256,
+        "protein_content_sha256": protein_sha256,
         "eggnog_mapper_version": expected_version,
         "eggnog_mapper_build": mapper_build,
         "eggnog_database_release": database_release,
@@ -335,8 +364,36 @@ def run_functional_annotation(
         "--override",
     ]
     log_path = output_dir / "eggnog_mapper.log"
-    with log_path.open("w", encoding="utf-8") as log:
-        result = subprocess.run(command, stdout=log, stderr=subprocess.STDOUT, text=True)
+    environment = os.environ.copy()
+    environment["PYTHONUNBUFFERED"] = "1"
+    with tempfile.TemporaryDirectory(prefix=".emapper-tmp-", dir=output_dir) as temp_dir:
+        with log_path.open("w", encoding="utf-8") as log:
+            stop_heartbeat = threading.Event()
+            started = time.monotonic()
+
+            def heartbeat():
+                while not stop_heartbeat.wait(30):
+                    elapsed = time.monotonic() - started
+                    log.write(
+                        f"[MetaQuest] eggNOG-mapper still running "
+                        f"({elapsed / 60:.1f} minutes elapsed)\n"
+                    )
+                    log.flush()
+
+            heartbeat_thread = threading.Thread(target=heartbeat, daemon=True)
+            heartbeat_thread.start()
+            try:
+                result = subprocess.run(
+                    command,
+                    stdout=log,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    cwd=temp_dir,
+                    env=environment,
+                )
+            finally:
+                stop_heartbeat.set()
+                heartbeat_thread.join(timeout=1)
     if result.returncode:
         tail = "\n".join(log_path.read_text(encoding="utf-8", errors="replace").splitlines()[-20:])
         raise AnnotationError(
