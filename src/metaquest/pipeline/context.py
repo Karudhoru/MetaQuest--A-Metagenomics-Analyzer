@@ -19,6 +19,14 @@ class AssemblyResult:
     n50: int = 0
     max_length: int = 0
     mean_length: float = 0.0
+    l50: int = 0
+    n90: int = 0
+    l90: int = 0
+    gc_percent: float = 0.0
+    contigs_ge_1000: int = 0
+    contigs_ge_5000: int = 0
+    contigs_ge_10000: int = 0
+    lengths: list[int] = field(default_factory=list)
 
 
 @dataclass
@@ -57,6 +65,8 @@ class PipelineContext:
     skip_functional: bool = False
     low_memory: bool = False
     resume: bool = False
+    analysis_input_files: list[Path] = field(default_factory=list)
+    preprocessing: dict[str, Any] | None = None
 
     # Filled by stages
     classification: ClassificationResult | None = None

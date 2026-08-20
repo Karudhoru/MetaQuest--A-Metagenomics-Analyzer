@@ -8,6 +8,7 @@ not make clinical or pathogen-risk claims.
 ## Current capabilities
 
 - full FASTQ structural validation and sampled quality warnings
+- fastp adapter and quality preprocessing with retained-read QC
 - synchronized paired-read identifier and count validation
 - Kraken2 taxonomic classification
 - Bracken abundance re-estimation
@@ -16,7 +17,7 @@ not make clinical or pathogen-risk claims.
 - Pyrodigal metagenomic gene prediction
 - eggNOG-mapper orthology-based functional annotation
 - per-gene annotations and aggregated COG, KO, EC, and GO counts
-- descriptive text and JSON reporting
+- descriptive text, JSON, offline HTML, and publication figure reporting
 - explicit classified/unclassified denominators and reproducibility metadata
 - versioned taxonomy and eggNOG database installation
 
@@ -28,16 +29,16 @@ AMR or virulence analysis, clinical diagnosis, or treatment recommendations.
 ~~~text
 FASTQ
   ├── validation
+  ├── fastp preprocessing
   ├── Kraken2 → Bracken
   ├── MEGAHIT
   ├── Pyrodigal
   ├── eggNOG-mapper → COG / KO / EC / GO
-  └── descriptive reporting
+  └── descriptive reporting → HTML + figures + plotted-data TSV
 ~~~
 
 The maintained pipeline currently runs directly in Python. Migration to
-Snakemake, fastp QC, and optional Bowtie2 host filtering is planned but is not
-claimed as implemented.
+Snakemake and optional Bowtie2 host filtering remain planned.
 
 ## Quick start
 

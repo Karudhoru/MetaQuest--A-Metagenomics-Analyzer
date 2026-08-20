@@ -53,6 +53,7 @@ def run_gene_prediction(
     genes_path = prediction_dir / "genes.fna"
     gff_path = prediction_dir / "genes.gff3"
     contig_map_path = prediction_dir / "contig_id_map.tsv"
+    stable_contigs_path = prediction_dir / "contigs.stable.fasta"
 
     finder = pyrodigal.GeneFinder(meta=True)
     contigs_seen = 0
@@ -64,7 +65,8 @@ def run_gene_prediction(
         with proteins_path.open("w", encoding="utf-8") as proteins_out, \
              genes_path.open("w", encoding="utf-8") as genes_out, \
              gff_path.open("w", encoding="utf-8") as gff_out, \
-             contig_map_path.open("w", encoding="utf-8") as map_out:
+             contig_map_path.open("w", encoding="utf-8") as map_out, \
+             stable_contigs_path.open("w", encoding="utf-8") as contigs_out:
             gff_out.write("##gff-version 3\n")
             map_out.write("stable_contig_id\toriginal_contig_id\tsequence_sha256\n")
             for record in SeqIO.parse(Path(fasta_path), "fasta"):
@@ -80,6 +82,7 @@ def run_gene_prediction(
                     else f"{base_id}_{contig_ids[base_id]}"
                 )
                 map_out.write(f"{sequence_id}\t{record.id}\t{hashlib.sha256(bytes(record.seq)).hexdigest()}\n")
+                contigs_out.write(f">{sequence_id}\n{record.seq}\n")
                 predictions = finder.find_genes(bytes(record.seq))
                 contigs_processed += 1
                 genes_predicted += len(predictions)

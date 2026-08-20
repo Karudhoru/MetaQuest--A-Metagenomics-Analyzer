@@ -52,6 +52,7 @@ def test_default_pipeline_excludes_experimental_stages():
     config = load_config()
 
     assert _stage_names(build_default_pipeline(config)) == [
+        "Read Preprocessing",
         "Taxonomic Classification",
         "Metagenomic Assembly",
         "Gene Prediction",
@@ -64,6 +65,7 @@ def test_taxonomy_only_pipeline_skips_assembly_and_annotation():
     config = load_config()
 
     assert _stage_names(build_default_pipeline(config, skip_annotation=True)) == [
+        "Read Preprocessing",
         "Taxonomic Classification",
         "Reporting",
     ]
@@ -73,6 +75,7 @@ def test_skip_functional_stops_after_gene_prediction():
     config = load_config()
 
     assert _stage_names(build_default_pipeline(config, skip_functional=True)) == [
+        "Read Preprocessing",
         "Taxonomic Classification",
         "Metagenomic Assembly",
         "Gene Prediction",

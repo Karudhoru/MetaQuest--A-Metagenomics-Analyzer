@@ -57,7 +57,8 @@ FASTQ structure is checked across the complete input. Quality statistics are
 sampled. Low mean quality, low Q30 content, adapters, and overrepresented
 sequences are warnings by default; `--strict-validation` makes them fatal.
 Paired files must have equal counts and synchronized read identifiers.
-Validation does not currently trim reads.
+Validation itself does not trim reads. `run` subsequently uses fastp, and its
+cleaned reads feed both Kraken2 and MEGAHIT.
 
 ## Run
 
@@ -96,6 +97,7 @@ Useful options:
 | `--skip-annotation` | deprecated alias for `--taxonomy-only` |
 | `--skip-functional` | stop after Pyrodigal gene prediction |
 | `--annotation-threads N` | eggNOG-mapper worker threads |
+| `--plot-formats svg png pdf` | override configured figure formats |
 | `--resume` | reuse stages only when inputs and effective configuration match |
 | `--force` | preserve the existing output as a timestamped backup and start fresh |
 
@@ -138,6 +140,10 @@ Database root resolution:
 
 ~~~text
 results/sample/
+├── preprocessing/
+│   ├── cleaned_R1.fastq.gz
+│   ├── fastp.json
+│   └── fastp.html
 ├── kraken_classified.txt
 ├── kraken_report.txt
 ├── bracken_report.tsv
@@ -146,6 +152,7 @@ results/sample/
 │   ├── genes.faa
 │   ├── genes.fna
 │   ├── genes.gff3
+│   ├── contigs.stable.fasta
 │   ├── contig_id_map.tsv
 │   └── summary.json
 ├── functional_annotation/
@@ -159,6 +166,9 @@ results/sample/
 ├── 03_functional_report.txt
 ├── analysis_summary.json
 ├── analysis_metadata.json
+├── report.html
+├── plots/
+│   └── plot_data/*.tsv
 └── metaquest.log
 ~~~
 

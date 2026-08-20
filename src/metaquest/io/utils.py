@@ -41,7 +41,7 @@ def run_system_check(
 
     # Command-Line Tools
     formatter.substep("Checking command-line tools...")
-    tools = {'kraken2': '--version', 'bracken': '--version'}
+    tools = {'fastp': '--version', 'kraken2': '--version', 'bracken': '--version'}
     if not taxonomy_only:
         tools['megahit'] = '--version'
     if require_functional:
@@ -58,6 +58,8 @@ def run_system_check(
         'Bio': 'biopython',
         'pandas': 'pandas',
         'numpy': 'numpy',
+        'matplotlib': 'matplotlib',
+        'seaborn': 'seaborn',
     }
     if not taxonomy_only:
         packages['pyrodigal'] = 'pyrodigal'

@@ -29,8 +29,10 @@ def _jsonable(value):
         return str(value)
     if isinstance(value, dict):
         return {key: _jsonable(item) for key, item in value.items()}
-    if isinstance(value, list):
+    if isinstance(value, (list, tuple)):
         return [_jsonable(item) for item in value]
+    if hasattr(value, "item"):
+        return value.item()
     return value
 
 
@@ -87,6 +89,12 @@ def run_analysis(input_file, output_dir, cli_args=None):
             config,
             annotation=replace(config.annotation, threads=annotation_threads),
         )
+    plot_formats = getattr(cli_args, "plot_formats", None)
+    if plot_formats:
+        config = replace(
+            config,
+            reporting=replace(config.reporting, plot_formats=tuple(plot_formats)),
+        )
 
     # Determine read mode
     read_mode = "paired"
@@ -139,6 +147,7 @@ def run_analysis(input_file, output_dir, cli_args=None):
         "status": getattr(cli_args, "validation_status", "not_run"),
         "strict": bool(getattr(cli_args, "strict_validation", False)),
         "bypassed": bool(getattr(cli_args, "skip_validation", False)),
+        "reports": _jsonable(getattr(cli_args, "validation_results", [])),
     }
 
     pipeline = build_default_pipeline(

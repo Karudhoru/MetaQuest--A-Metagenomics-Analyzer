@@ -482,6 +482,10 @@ def create_parser():
     # Add argument groups
     setup_annotation_args(parser_analyze)
     setup_fastq_validation_args(parser_analyze)
+    parser_analyze.add_argument(
+        '--plot-formats', nargs='+', choices=('svg', 'png', 'pdf'),
+        help='Figure formats (default from configuration: svg png)',
+    )
     
     fastq_mode = parser_analyze.add_mutually_exclusive_group(required=True)
     fastq_mode.add_argument(
@@ -773,8 +777,14 @@ def main():
                 metrics['Kraken classification rate'] = (
                     f"{taxonomy.get('classification_rate', 0):.2%}"
                 )
-                metrics['Species-assigned reads'] = (
+                unit = 'reads' if args.single else 'fragments'
+                metrics[f'Species-assigned {unit}'] = (
                     f"{taxonomy.get('species_assigned_reads', 0):,}"
+                )
+            preprocessing = summary.get('preprocessing', {})
+            if preprocessing.get('after'):
+                metrics['Reads retained after fastp'] = (
+                    f"{preprocessing.get('retained_fraction', 0):.2%}"
                 )
             if assembly:
                 metrics['Assembly contigs'] = f"{assembly.get('total_contigs', 0):,}"
@@ -789,6 +799,8 @@ def main():
             formatter.result(metrics)
             formatter.success(f"Completed in {formatter._format_time(elapsed)}")
             formatter.info(f"Results → {summary_path.resolve()}")
+            formatter.info(f"HTML report → {(Path(args.output) / 'report.html').resolve()}")
+            formatter.info(f"Figures → {(Path(args.output) / 'plots').resolve()}")
 
         # ====================================================================
         # COMMAND: COMPARE
