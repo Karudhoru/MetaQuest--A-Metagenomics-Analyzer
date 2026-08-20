@@ -26,7 +26,12 @@ class ClassificationResult:
     kraken_report: Path
     bracken_file: Path
     species_count: int = 0
-    classified_reads: int = 0
+    species_assigned_reads: int = 0
+    total_reads: int = 0
+    kraken_classified_reads: int = 0
+    unclassified_reads: int = 0
+    observed_read_length: int = 0
+    bracken_read_length: int = 0
 
 
 @dataclass
@@ -51,6 +56,7 @@ class PipelineContext:
     skip_annotation: bool = False
     skip_functional: bool = False
     low_memory: bool = False
+    resume: bool = False
 
     # Filled by stages
     classification: ClassificationResult | None = None
