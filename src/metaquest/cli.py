@@ -12,6 +12,7 @@ import argparse
 import json
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from textwrap import dedent
 from .exceptions import MetaQuestError
@@ -46,6 +47,30 @@ def _normalize_global_options(argv):
             command_args.append(value)
         index += 1
     return global_args + command_args
+
+
+def _prepare_output_directory(args, parser):
+    """Enforce explicit fresh, forced, or resumed output behavior."""
+    if args.command != "run":
+        return
+    output = Path(args.output)
+    if output.exists() and not output.is_dir():
+        parser.error(f"output path is not a directory: {output}")
+    exists_with_content = output.exists() and any(output.iterdir())
+    if args.resume:
+        if not exists_with_content or not (output / "analysis_metadata.json").is_file():
+            parser.error("--resume requires an existing MetaQuest output directory")
+        return
+    if exists_with_content and not args.force:
+        parser.error(
+            f"output directory is not empty: {output}. "
+            "Choose a new directory, use --resume, or use --force."
+        )
+    if exists_with_content:
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        backup = output.with_name(f"{output.name}.metaquest-backup-{stamp}")
+        output.rename(backup)
+    output.mkdir(parents=True, exist_ok=True)
 
 
 # ============================================================================
@@ -88,6 +113,11 @@ def setup_fastq_validation_args(parser):
         default=0.1,
         metavar='PCT',
         help="Fraction threshold for flagging overrepresented sequences (default: 0.1)"
+    )
+    val_group.add_argument(
+        '--strict-validation',
+        action='store_true',
+        help="Treat quality warnings as fatal validation errors",
     )
 
 def setup_annotation_args(parser):
@@ -137,6 +167,7 @@ def handle_validation(file_paths, args, formatter):
     validator.quality_threshold = args.min_quality
     validator.min_sequences = args.min_sequences
     validator.overrep_threshold = args.overrep_threshold
+    validator.strict = args.strict_validation
     
     formatter.info("Validation Configuration:")
     formatter.result({
@@ -146,6 +177,7 @@ def handle_validation(file_paths, args, formatter):
     }, indent=2)
 
     all_valid = True
+    reports = []
     total_files = len(file_paths)
     
     # Validate each file individually
@@ -156,13 +188,25 @@ def handle_validation(file_paths, args, formatter):
             formatter.info(f"Validating file: {Path(file_path).name}")
         
         is_valid, report = validator.validate_and_analyze(file_path, 'fastq')
+        if report:
+            reports.append(report)
         
         if not is_valid:
             all_valid = False
-            formatter.error(f"Validation failed: {file_path}")
+            formatter.info(f"Validation failed: {file_path}")
         else:
             formatter.success(f"Validation passed: {file_path}")
     
+    if len(file_paths) == 2:
+        paired_valid, paired_error = validator.validate_pair(*file_paths)
+        if not paired_valid:
+            all_valid = False
+            formatter.error(paired_error)
+        else:
+            formatter.success("Paired FASTQ identifiers and counts are synchronized")
+
+    args.validation_results = reports
+    args.validation_status = "passed" if all_valid else "failed"
     print()  # Add spacing
     
     if total_files > 1:
@@ -172,7 +216,7 @@ def handle_validation(file_paths, args, formatter):
         formatter.success("All files validated successfully")
         formatter.info("Files meet quality standards and are ready for analysis")
     else:
-        formatter.error("Validation failed for one or more files")
+        formatter.info("Validation failed for one or more files")
         formatter.info("Please address quality issues before proceeding")
     
     return all_valid
@@ -408,6 +452,17 @@ def create_parser():
         action='store_true',
         help="Skip input file validation (not recommended for production use)"
     )
+    output_mode = parser_analyze.add_mutually_exclusive_group()
+    output_mode.add_argument(
+        '--force',
+        action='store_true',
+        help="Move an existing output directory to a timestamped backup and start fresh",
+    )
+    output_mode.add_argument(
+        '--resume',
+        action='store_true',
+        help="Resume from an existing MetaQuest output directory",
+    )
     parser_analyze.add_argument(
         '--taxonomy-only',
         action='store_true',
@@ -551,6 +606,7 @@ def main():
     
     parser = create_parser()
     args = parser.parse_args(_normalize_global_options(sys.argv[1:]))
+    _prepare_output_directory(args, parser)
     
     # Determine verbosity level from command-line flags
     verbosity = (
@@ -576,7 +632,7 @@ def main():
     if not any(arg in sys.argv for arg in ['-v', '--version', '-h', '--help']):
         formatter.banner(__app_name__, __version__, __tagline__)
 
-    start_time = time.time()
+    start_time = time.monotonic()
 
     try:
         # ====================================================================
@@ -634,14 +690,6 @@ def main():
         # ====================================================================
         if args.command == 'validate':
             is_valid = handle_validation(file_paths, args, formatter)
-            
-            if is_valid:
-                formatter.success("All files validated successfully")
-                formatter.info("Files meet quality standards and are ready for analysis")
-            else:
-                formatter.error("Validation failed for one or more files")
-                formatter.info("Please address the quality issues before proceeding with analysis")
-            
             sys.exit(0 if is_valid else 1)
         
         # ====================================================================
@@ -689,6 +737,8 @@ def main():
                     sys.exit(1)
                 formatter.success("Input validation completed - files meet quality standards")
             else:
+                args.validation_status = "skipped"
+                args.validation_results = []
                 formatter.warning("Skipping file validation (--skip-validation flag detected)")
                 formatter.info("Proceeding with unvalidated data")
             
@@ -711,7 +761,7 @@ def main():
 
             run_analysis(file_paths, args.output, args)
 
-            elapsed = time.time() - start_time
+            elapsed = time.monotonic() - start_time
             summary_path = Path(args.output) / 'analysis_summary.json'
             summary = json.loads(summary_path.read_text(encoding='utf-8'))
             metrics = {}
@@ -720,13 +770,21 @@ def main():
             annotation = summary.get('annotation', {})
             if taxonomy:
                 metrics['Reported taxa'] = taxonomy.get('reported_taxa', 0)
-                metrics['Species-level reads'] = f"{taxonomy.get('estimated_classified_reads', 0):,}"
+                metrics['Kraken classification rate'] = (
+                    f"{taxonomy.get('classification_rate', 0):.2%}"
+                )
+                metrics['Species-assigned reads'] = (
+                    f"{taxonomy.get('species_assigned_reads', 0):,}"
+                )
             if assembly:
                 metrics['Assembly contigs'] = f"{assembly.get('total_contigs', 0):,}"
                 metrics['Assembly N50'] = f"{assembly.get('n50', 0):,} bp"
             if annotation:
                 metrics['Predicted genes'] = f"{annotation.get('predicted_genes', 0):,}"
-                metrics['eggNOG annotated genes'] = f"{annotation.get('annotated_genes', 0):,}"
+                if not args.skip_functional:
+                    metrics['eggNOG annotated genes'] = (
+                        f"{annotation.get('annotated_genes', 0):,}"
+                    )
             formatter.section_header("Results")
             formatter.result(metrics)
             formatter.success(f"Completed in {formatter._format_time(elapsed)}")

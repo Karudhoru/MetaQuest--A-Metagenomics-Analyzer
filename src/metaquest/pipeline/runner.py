@@ -5,10 +5,14 @@ Pipeline Runner — orchestrates stages in sequence.
 from __future__ import annotations
 
 import gc
+import hashlib
 import json
 import logging
+import subprocess
 import time
 from datetime import datetime
+from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 
 from metaquest.exceptions import MetaQuestError, PipelineStageError
@@ -16,6 +20,42 @@ from metaquest.settings import MetaQuestConfig
 from metaquest.pipeline.context import PipelineContext
 
 logger = logging.getLogger(__name__)
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _jsonable(value):
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, dict):
+        return {key: _jsonable(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_jsonable(item) for item in value]
+    return value
+
+
+def _tool_version(command: list[str]) -> str:
+    try:
+        result = subprocess.run(
+            command, capture_output=True, text=True, check=False, timeout=15
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return "unavailable"
+    output = f"{result.stdout}\n{result.stderr}".strip()
+    return output.splitlines()[0] if output else "unknown"
+
+
+def _read_json(path: Path) -> dict:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
 
 
 class PipelineRunner:
@@ -91,17 +131,65 @@ class PipelineRunner:
             "metaquest_version": _get_version(),
             "analysis_type": "fastq",
             "completed_stages": ctx.completed_stages,
-            "config_summary": {
-                "assembler": ctx.config.assembly.assembler,
-                "threads": ctx.config.assembly.threads,
+            "effective_config": _jsonable(asdict(ctx.config)),
+            "workflow": {
+                "read_mode": ctx.read_mode,
+                "taxonomy_only": ctx.skip_annotation,
+                "skip_functional": ctx.skip_functional,
+                "low_memory": ctx.low_memory,
+                "resume": ctx.resume,
             },
-            "input_files": [str(f) for f in ctx.input_files],
+            "input_files": [
+                {
+                    "path": str(path.resolve()),
+                    "size_bytes": path.stat().st_size,
+                    "sha256": _sha256(path),
+                }
+                for path in ctx.input_files
+            ],
+            "tool_provenance": {
+                "kraken2": _tool_version(["kraken2", "--version"]),
+                "bracken": _tool_version(["bracken", "-v"]),
+                "megahit": (
+                    _tool_version(["megahit", "--version"]) if ctx.assembly else "not_run"
+                ),
+                "pyrodigal": _read_json(
+                    ctx.output_dir / "gene_prediction" / "summary.json"
+                ).get("tool_version", "not_run"),
+                "eggnog_mapper": _read_json(
+                    ctx.output_dir / "functional_annotation" / "summary.json"
+                ).get("tool_version", "not_run"),
+                "kraken_database": {
+                    "path": str(ctx.config.databases.kraken_db.resolve()),
+                    "configured_release": ctx.config.databases.kraken_db_version,
+                    "manifest": _read_json(
+                        ctx.config.databases.kraken_db / "metaquest-db.json"
+                    ),
+                },
+                "functional_database": (
+                    {
+                        "path": str(ctx.config.databases.functional_dir.resolve()),
+                        "manifest": _read_json(
+                            ctx.config.databases.functional_dir / "metaquest-db.json"
+                        ),
+                    }
+                    if ctx.annotation and ctx.annotation.functional_annotations
+                    else "not_used"
+                ),
+            },
         }
+        if ctx.classification:
+            metadata["tool_provenance"]["bracken_model_read_length"] = (
+                ctx.classification.bracken_read_length
+            )
         metadata.update(ctx.metadata)
 
         metadata_file = ctx.output_dir / "analysis_metadata.json"
-        with open(metadata_file, "w") as f:
+        temporary = metadata_file.with_suffix(".json.tmp")
+        with open(temporary, "w") as f:
             json.dump(metadata, f, indent=2)
+            f.write("\n")
+        temporary.replace(metadata_file)
 
 
 def _get_version() -> str:
