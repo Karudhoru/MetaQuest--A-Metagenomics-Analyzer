@@ -13,8 +13,8 @@ and PyPI Trusted Publishing. No long-lived PyPI API token is stored in GitHub.
    `Direct dependency licenses`, `Build distributions`, and
    `Conda integration (Python 3.11)`.
 4. On TestPyPI, configure a trusted publisher for:
-   - owner: `Karudhoru`
-   - repository: `MetaQuest--A-Metagenomics-Analyzer`
+   - owner: `dpatel511`
+   - repository: `metaquest`
    - workflow: `testpypi.yml`
    - environment: `testpypi`
 5. On PyPI, configure a trusted publisher for the same owner and repository,

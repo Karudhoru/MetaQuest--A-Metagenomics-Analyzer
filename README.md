@@ -42,12 +42,22 @@ Snakemake and optional Bowtie2 host filtering remain planned.
 
 ## Quick start
 
-Create the environment and install MetaQuest:
+Install the Python distribution from PyPI:
+
+~~~bash
+python -m pip install metaquest-bio
+metaquest --version
+~~~
+
+The distribution is named `metaquest-bio`; the installed Python package and
+command remain `metaquest`. The PyPI distribution does not bundle Kraken2,
+Bracken, MEGAHIT, DIAMOND, or eggNOG-mapper. For the complete runtime, clone
+the repository and create its Conda environment before installing the package:
 
 ~~~bash
 conda env create -f environment/environment.yml
 conda activate metaquest
-python -m pip install -e .
+python -m pip install .
 ~~~
 
 Inspect and install the taxonomy database:

@@ -13,7 +13,21 @@ This guide covers the maintained MetaQuest `2.0.0a1` runtime.
 
 MetaQuest has not yet been validated on native Windows or macOS.
 
-## Install with conda
+## Install from PyPI
+
+The distribution is named `metaquest-bio`; it installs the `metaquest` Python
+package and CLI command:
+
+~~~bash
+python -m pip install metaquest-bio
+metaquest --version
+~~~
+
+PyPI installs the Python layer only. The external bioinformatics tools listed
+below must be installed separately. The recommended complete environment is the
+repository's Conda environment.
+
+## Install the complete Conda environment
 
 From the repository root:
 
