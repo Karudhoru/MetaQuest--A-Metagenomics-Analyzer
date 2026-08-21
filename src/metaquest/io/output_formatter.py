@@ -180,7 +180,13 @@ class OutputFormatter:
     VERBOSE = 2     # Additional details
     DEBUG = 3       # Everything including debug
 
-    def __init__(self, verbosity: str = 'standard', log_file: Optional[Path] = None):
+    def __init__(
+        self,
+        verbosity: str = 'standard',
+        log_file: Optional[Path] = None,
+        *,
+        append_log: bool = False,
+    ):
         self.verbosity_map = {
             'silent': self.SILENT,
             'standard': self.STANDARD,
@@ -198,7 +204,14 @@ class OutputFormatter:
         
         if self.log_file:
             self.log_file.parent.mkdir(parents=True, exist_ok=True)
-            self.log_handle = open(self.log_file, 'w', encoding='utf-8')
+            self.log_handle = open(
+                self.log_file,
+                'a' if append_log else 'w',
+                encoding='utf-8',
+            )
+            if append_log and self.log_file.stat().st_size:
+                self.log_handle.write("\n=== MetaQuest resumed run ===\n")
+                self.log_handle.flush()
         else:
             self.log_handle = None
 

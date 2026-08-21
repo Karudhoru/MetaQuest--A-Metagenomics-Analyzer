@@ -626,7 +626,11 @@ def main():
         log_file = Path(args.output) / 'metaquest.log'
     
     # Initialize global output formatter
-    formatter = OutputFormatter(verbosity=verbosity, log_file=log_file)
+    formatter = OutputFormatter(
+        verbosity=verbosity,
+        log_file=log_file,
+        append_log=bool(getattr(args, 'resume', False)),
+    )
     if args.no_color:
         formatter.colors_enabled = False
         Colors.disable()

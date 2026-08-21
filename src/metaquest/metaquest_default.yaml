@@ -34,6 +34,7 @@ annotation:
 
 preprocessing:
   enabled: true
+  threads: 4
   qualified_quality_phred: 20
   length_required: 50
 
