@@ -2,21 +2,6 @@
 
 ## Unreleased
 
-- Add fastp preprocessing before classification and assembly.
-- Add resumable start metadata, full validation records, and stage timings.
-- Add stable-ID contig FASTA aligned with the gene-prediction GFF3.
-- Add N50/L50, N90/L90, GC, and contig-threshold assembly metrics.
-- Add Matplotlib/Seaborn figures, plotted-data TSVs, and offline HTML reporting.
-- Correct mean Phred quality display and paired-end fragment terminology.
-- Infer read length and select the closest installed Bracken model.
-- Report classified and unclassified denominators explicitly.
-- Add safe `--resume` and recoverable `--force` output modes.
-- Validate complete FASTQ structure and synchronized paired reads.
-- Treat quality findings as warnings unless `--strict-validation` is used.
-- Stabilize gene identifiers and functional-cache keys across record ordering.
-- Keep eggNOG temporary files inside the selected result directory.
-- Add assembly reporting and expanded reproducibility metadata.
-- Remove configuration options not implemented by the stable alpha runtime.
 
 All notable changes to MetaQuest are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
@@ -34,7 +19,25 @@ claims are validated.
 
 ---
 
-## [2.0.0a1] — 2026-08-15
+## [2.0.0a1] — 2026-08-22
+
+### Release highlights
+
+- Add fastp preprocessing before classification and assembly.
+- Add resumable start metadata, full validation records, and stage timings.
+- Add stable-ID contig FASTA aligned with the gene-prediction GFF3.
+- Add N50/L50, N90/L90, GC, and contig-threshold assembly metrics.
+- Add Matplotlib/Seaborn figures, plotted-data TSVs, and offline HTML reporting.
+- Correct mean Phred quality display and paired-end fragment terminology.
+- Infer read length and select the closest installed Bracken model.
+- Report classified and unclassified denominators explicitly.
+- Add safe `--resume` and recoverable `--force` output modes.
+- Validate complete FASTQ structure and synchronized paired reads.
+- Treat quality findings as warnings unless `--strict-validation` is used.
+- Stabilize gene identifiers and functional-cache keys across record ordering.
+- Keep eggNOG temporary files inside the selected result directory.
+- Add assembly reporting and expanded reproducibility metadata.
+- Remove configuration options not implemented by the stable alpha runtime.
 
 ### Changed
 

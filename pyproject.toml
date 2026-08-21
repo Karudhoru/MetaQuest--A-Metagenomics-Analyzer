@@ -3,7 +3,7 @@ requires = ["setuptools>=77.0.3", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "metaquest"
+name = "metaquest-bio"
 dynamic = ["version", "dependencies"]
 description = "Research-use short-read metagenomics analysis pipeline"
 readme = "README.md"
@@ -64,11 +64,11 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer"
-Issues = "https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer/issues"
-Documentation = "https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer/blob/main/README.md"
-Source = "https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer"
-Changelog = "https://github.com/Karudhoru/MetaQuest--A-Metagenomics-Analyzer/releases"
+Homepage = "https://github.com/dpatel511/metaquest"
+Issues = "https://github.com/dpatel511/metaquest/issues"
+Documentation = "https://github.com/dpatel511/metaquest/blob/main/README.md"
+Source = "https://github.com/dpatel511/metaquest"
+Changelog = "https://github.com/dpatel511/metaquest/releases"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

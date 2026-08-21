@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/metaquest
+      url: https://test.pypi.org/p/metaquest-bio
     permissions:
       id-token: write
     steps:
