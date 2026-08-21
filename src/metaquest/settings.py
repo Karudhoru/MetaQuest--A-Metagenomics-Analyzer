@@ -61,6 +61,7 @@ class AnnotationConfig:
 @dataclass(frozen=True)
 class PreprocessingConfig:
     enabled: bool = True
+    threads: int = 4
     qualified_quality_phred: int = 20
     length_required: int = 50
 
@@ -221,6 +222,8 @@ def validate_config(config: MetaQuestConfig | None = None) -> tuple[bool, list[s
         errors.append("preprocessing.qualified_quality_phred must be >= 0")
     if cfg.preprocessing.length_required < 1:
         errors.append("preprocessing.length_required must be >= 1")
+    if cfg.preprocessing.threads < 1:
+        errors.append("preprocessing.threads must be >= 1")
     if cfg.reporting.top_taxa < 1 or cfg.reporting.top_functional_terms < 1:
         errors.append("reporting top limits must be >= 1")
     if cfg.reporting.plot_dpi < 72:

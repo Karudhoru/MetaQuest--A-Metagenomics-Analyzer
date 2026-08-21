@@ -36,6 +36,7 @@ def _taxonomy_summary(classification, *, paired: bool = False, top_limit: int = 
             {
                 "name": str(row["name"]),
                 "estimated_reads": int(row["new_est_reads"]),
+                "estimated_count": int(row["new_est_reads"]),
                 "fraction_species_assigned_reads": (
                     int(row["new_est_reads"]) / species_assigned if species_assigned else 0.0
                 ),
@@ -45,18 +46,28 @@ def _taxonomy_summary(classification, *, paired: bool = False, top_limit: int = 
                 "fraction_all_input_fragments": (
                     int(row["new_est_reads"]) / total_reads if total_reads else 0.0
                 ),
+                "fraction_all_input": (
+                    int(row["new_est_reads"]) / total_reads if total_reads else 0.0
+                ),
             }
         )
 
     summary = {
         "reported_taxa": int(len(table)),
+        "count_unit": denominator_label,
+        "total_input": total_reads,
         "total_input_reads": total_reads,
+        "kraken_classified": classification.kraken_classified_reads,
         "kraken_classified_reads": classification.kraken_classified_reads,
         "unclassified_reads": classification.unclassified_reads,
         "classification_rate": (
             classification.kraken_classified_reads / total_reads if total_reads else 0.0
         ),
         "species_assigned_reads": species_assigned,
+        "species_assigned": species_assigned,
+        "classified_above_species": max(
+            0, classification.kraken_classified_reads - species_assigned
+        ),
         "observed_read_length": classification.observed_read_length,
         "bracken_read_length": classification.bracken_read_length,
         "top_taxa": top,
@@ -145,6 +156,9 @@ def generate_stable_reports(ctx) -> None:
             f"GC content: {ctx.assembly.gc_percent:.2f}%",
             f"Maximum contig length: {ctx.assembly.max_length} bp",
             f"Mean contig length: {ctx.assembly.mean_length:.2f} bp",
+            f"Contigs >= 1,000 bp: {ctx.assembly.contigs_ge_1000}",
+            f"Contigs >= 5,000 bp: {ctx.assembly.contigs_ge_5000}",
+            f"Contigs >= 10,000 bp: {ctx.assembly.contigs_ge_10000}",
             "",
             "Interpretation note",
             "-------------------",
@@ -170,10 +184,10 @@ def generate_stable_reports(ctx) -> None:
             annotation_summary.update(
                 {
                     "functional_annotations": str(
-                        ctx.annotation.functional_annotations.relative_to(output_dir)
+                        ctx.annotation.functional_annotations.resolve().relative_to(output_dir)
                     ),
                     "functional_category_summary": str(
-                        ctx.annotation.functional_category_summary.relative_to(output_dir)
+                        ctx.annotation.functional_category_summary.resolve().relative_to(output_dir)
                     ),
                     "functional_reused": ctx.annotation.functional_reused,
                     "eggnog_mapper_version": eggnog_summary["tool_version"],
@@ -188,6 +202,7 @@ def generate_stable_reports(ctx) -> None:
                 f"Predicted genes: {ctx.annotation.gene_count}",
                 f"eggNOG-annotated genes: {ctx.annotation.annotated_count}",
                 f"Unannotated genes: {ctx.annotation.gene_count - ctx.annotation.annotated_count}",
+                f"Annotation rate: {ctx.annotation.annotated_count / ctx.annotation.gene_count:.2%}" if ctx.annotation.gene_count else "Annotation rate: unavailable",
                 f"eggNOG-mapper: {eggnog_summary['tool_version']}",
                 f"eggNOG database: {eggnog_summary['database_release']}",
                 f"Taxonomic scope: {eggnog_summary['tax_scope']}",
@@ -206,7 +221,9 @@ def generate_stable_reports(ctx) -> None:
     if hasattr(ctx, "config"):
         from metaquest.reporting.plots import generate_plots
         figures = generate_plots(ctx, summary.get("taxonomy"))
-        summary["figures"] = [str(path.relative_to(output_dir)) for path in figures]
+        summary["figures"] = [
+            str(path.resolve().relative_to(output_dir)) for path in figures
+        ]
     else:
         summary["figures"] = []
     summary_path = output_dir / "analysis_summary.json"
@@ -220,18 +237,119 @@ def generate_stable_reports(ctx) -> None:
 
 
 def _write_html_report(output_dir: Path, summary: dict[str, Any]) -> None:
-    """Write a dependency-free report that embeds local SVG/PNG artifacts."""
+    """Write a readable, dependency-free report with embedded SVG figures."""
+    import base64
     import html
-    title = "MetaQuest analysis report"
-    cards = []
-    for section in ("preprocessing", "taxonomy", "assembly", "annotation"):
-        if section in summary:
-            body = html.escape(json.dumps(summary[section], indent=2, default=_native))
-            cards.append(f"<section><h2>{section.title()}</h2><pre>{body}</pre></section>")
-    images = []
+
+    def metric_table(rows: list[tuple[str, Any]]) -> str:
+        rendered = "".join(
+            f"<tr><th>{html.escape(label)}</th><td>{html.escape(str(value))}</td></tr>"
+            for label, value in rows
+        )
+        return f'<table class="metrics">{rendered}</table>'
+
+    sections = []
+    preprocessing = summary.get("preprocessing")
+    if preprocessing:
+        before = preprocessing.get("before", {})
+        after = preprocessing.get("after", {})
+        before_reads = before.get("reads", 0)
+        rows = [
+            ("Tool version", preprocessing.get("fastp_version", "unknown")),
+            ("Input reads", f"{before_reads:,}"),
+            ("Retained reads", f"{after.get('reads', 0):,}"),
+            (
+                "Read retention",
+                f"{after.get('reads', 0) / before_reads:.2%}"
+                if before_reads
+                else "unavailable",
+            ),
+            ("Mean read length", f"{after.get('mean_length', 0):.1f} bp"),
+            ("Q30 bases after filtering", f"{after.get('q30_rate', 0):.2%}"),
+        ]
+        sections.append(f"<section><h2>Preprocessing</h2>{metric_table(rows)}</section>")
+
+    taxonomy = summary.get("taxonomy")
+    if taxonomy:
+        unit = taxonomy["count_unit"]
+        rows = [
+            (f"Cleaned input {unit}", f"{taxonomy['total_input']:,}"),
+            (f"Kraken-classified {unit}", f"{taxonomy['kraken_classified']:,}"),
+            ("Classification rate", f"{taxonomy['classification_rate']:.2%}"),
+            (f"Species-assigned {unit}", f"{taxonomy['species_assigned']:,}"),
+            (f"Classified above species {unit}", f"{taxonomy['classified_above_species']:,}"),
+            (f"Unclassified {unit}", f"{taxonomy['unclassified_reads']:,}"),
+        ]
+        sections.append(f"<section><h2>Taxonomy</h2>{metric_table(rows)}</section>")
+
+    assembly = summary.get("assembly")
+    if assembly:
+        rows = [
+            ("Contigs", f"{assembly['total_contigs']:,}"),
+            ("Assembly size", f"{assembly['total_bases']:,} bp"),
+            ("N50 / L50", f"{assembly['n50']:,} bp / {assembly['l50']:,} contigs"),
+            ("N90 / L90", f"{assembly['n90']:,} bp / {assembly['l90']:,} contigs"),
+            ("GC content", f"{assembly['gc_percent']:.2f}%"),
+            ("Contigs ≥1 kb", f"{assembly['contigs_ge_1000']:,}"),
+            ("Contigs ≥5 kb", f"{assembly['contigs_ge_5000']:,}"),
+            ("Contigs ≥10 kb", f"{assembly['contigs_ge_10000']:,}"),
+        ]
+        sections.append(f"<section><h2>Assembly</h2>{metric_table(rows)}</section>")
+
+    annotation = summary.get("annotation")
+    if annotation:
+        genes = annotation["predicted_genes"]
+        annotated = annotation["annotated_genes"]
+        rows = [
+            ("Predicted genes", f"{genes:,}"),
+            ("Annotated genes", f"{annotated:,}"),
+            ("Annotation rate", f"{annotated / genes:.2%}" if genes else "unavailable"),
+            ("Functional annotation", annotation["functional_status"]),
+            ("eggNOG-mapper", annotation.get("eggnog_mapper_version", "not run")),
+            ("eggNOG database", annotation.get("eggnog_database_release", "not run")),
+        ]
+        sections.append(f"<section><h2>Functional annotation</h2>{metric_table(rows)}</section>")
+
+    captions = {
+        "qc_metrics": "Base-quality rates before and after preprocessing.",
+        "qc_retention": "Individual reads retained and filtered by fastp.",
+        "qc_filtering_reasons": "Individual reads removed by fastp, grouped by reason.",
+        "taxonomy_top": "Dominant taxa and mutually exclusive classification remainder.",
+        "assembly_contig_lengths": "Assembly contig lengths on a logarithmic scale.",
+        "assembly_cumulative_length": "Cumulative assembly size with L50 and L90 markers.",
+    }
+    figures = []
     for relative in summary.get("figures", []):
-        if relative.endswith(".svg"):
-            images.append(f'<figure><img src="{html.escape(relative)}" alt="MetaQuest figure"><figcaption>{html.escape(Path(relative).stem.replace("_", " ").title())}</figcaption></figure>')
-    document = f'''<!doctype html><html><head><meta charset="utf-8"><title>{title}</title>
-<style>body{{font-family:system-ui,sans-serif;max-width:1100px;margin:auto;padding:2rem;color:#17202a}}section,figure{{border:1px solid #d5d8dc;border-radius:.5rem;padding:1rem;margin:1rem 0}}img{{max-width:100%;height:auto}}pre{{white-space:pre-wrap;overflow-wrap:anywhere;background:#f8f9f9;padding:1rem}}.note{{background:#fff4cc;padding:1rem}}</style></head><body><h1>{title}</h1><p class="note">Research-use descriptive output. No statistical significance, pathogenicity, or clinical risk is inferred.</p>{''.join(cards)}<h2>Figures</h2>{''.join(images)}</body></html>'''
+        path = output_dir / relative
+        if path.suffix.lower() != ".svg":
+            continue
+        encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+        stem = path.stem
+        caption = captions.get(
+            stem,
+            stem.replace("functional_", "Top ").replace("_", " ").title()
+            + " assignments.",
+        )
+        figures.append(
+            '<figure><img src="data:image/svg+xml;base64,'
+            f'{encoded}" alt="{html.escape(caption)}">'
+            f"<figcaption>{html.escape(caption)}</figcaption></figure>"
+        )
+
+    title = "MetaQuest analysis report"
+    document = f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{title}</title>
+<style>
+body{{font-family:system-ui,sans-serif;max-width:1100px;margin:auto;padding:2rem;color:#17202a}}
+section,figure{{border:1px solid #d5d8dc;border-radius:.5rem;padding:1rem;margin:1rem 0}}
+.metrics{{border-collapse:collapse;width:100%}}.metrics th,.metrics td{{padding:.55rem;border-bottom:1px solid #e5e7e9;text-align:left}}
+.metrics th{{width:45%;color:#34495e}}img{{display:block;max-width:100%;height:auto;margin:auto}}
+figcaption{{margin-top:.75rem;color:#566573}}.note{{background:#fff4cc;padding:1rem;border-radius:.5rem}}
+</style></head><body><h1>{title}</h1>
+<p class="note">Research-use descriptive output. No statistical significance, pathogenicity, or clinical risk is inferred.</p>
+{"".join(sections)}
+<h2>Figures</h2>{"".join(figures) if figures else "<p>No figures were generated.</p>"}
+</body></html>"""
     (output_dir / "report.html").write_text(document, encoding="utf-8")

@@ -86,7 +86,52 @@ class PipelineRunner:
         logger.info("Pipeline starting with %d stage(s)", total)
         formatter.section_header("Pipeline")
 
-        ctx.metadata.update({"status": "running", "started_at": datetime.now().isoformat()})
+        attempt_started = datetime.now().isoformat()
+        history = []
+        if ctx.resume:
+            previous = _read_json(ctx.output_dir / "analysis_metadata.json")
+            history = list(previous.get("attempt_history", []))
+            if not history and previous:
+                prior_attempt = {
+                    "started_at": previous.get("started_at"),
+                    "finished_at": previous.get("timestamp"),
+                    "status": previous.get("status", "unknown"),
+                    "stage_timings_seconds": previous.get(
+                        "stage_timings_seconds", {}
+                    ),
+                }
+                if previous.get("failed_stage"):
+                    prior_attempt["failed_stage"] = previous["failed_stage"]
+                    prior_attempt["failure_reason"] = previous.get("failure_reason")
+                history.append(prior_attempt)
+            original_started = previous.get(
+                "original_started_at", previous.get("started_at", attempt_started)
+            )
+            original_timings = previous.get(
+                "original_stage_timings_seconds",
+                previous.get("stage_timings_seconds", {}),
+            )
+        else:
+            original_started = attempt_started
+            original_timings = {}
+
+        current_attempt = {
+            "started_at": attempt_started,
+            "status": "running",
+            "stage_timings_seconds": {},
+        }
+        history.append(current_attempt)
+        ctx.metadata.update(
+            {
+                "status": "running",
+                "started_at": original_started,
+                "original_started_at": original_started,
+                "last_attempt_started_at": attempt_started,
+                "original_stage_timings_seconds": original_timings,
+                "attempt_history": history,
+                "stage_timings_seconds": original_timings,
+            }
+        )
         self._save_metadata(ctx)
 
         for i, (name, stage_fn) in enumerate(self._stages, 1):
@@ -98,7 +143,15 @@ class PipelineRunner:
                     ctx = stage_fn(ctx)
                 ctx.completed_stages.append(name)
                 elapsed = time.monotonic() - started
-                ctx.metadata.setdefault("stage_timings_seconds", {})[name] = round(elapsed, 3)
+                elapsed = round(elapsed, 3)
+                current_attempt["stage_timings_seconds"][name] = elapsed
+                if not ctx.resume:
+                    ctx.metadata.setdefault("stage_timings_seconds", {})[name] = elapsed
+                    ctx.metadata["original_stage_timings_seconds"][name] = elapsed
+                else:
+                    ctx.metadata.setdefault("resume_stage_timings_seconds", {})[
+                        name
+                    ] = elapsed
                 self._save_metadata(ctx)
                 formatter.success(
                     f"{name.ljust(28)} {formatter._format_time(elapsed)}"
@@ -116,6 +169,8 @@ class PipelineRunner:
                 gc.collect()
 
         ctx.metadata["status"] = "completed"
+        current_attempt["status"] = "completed"
+        current_attempt["finished_at"] = datetime.now().isoformat()
         self._save_metadata(ctx)
         logger.info("Pipeline complete: %d stage(s) finished", len(ctx.completed_stages))
         return ctx
@@ -129,6 +184,16 @@ class PipelineRunner:
                 "failure_reason": str(exc),
             }
         )
+        history = ctx.metadata.get("attempt_history", [])
+        if history:
+            history[-1].update(
+                {
+                    "status": "failed",
+                    "finished_at": datetime.now().isoformat(),
+                    "failed_stage": stage,
+                    "failure_reason": str(exc),
+                }
+            )
         self._save_metadata(ctx)
 
     def _save_metadata(self, ctx: PipelineContext) -> None:

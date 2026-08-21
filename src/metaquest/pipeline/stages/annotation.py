@@ -90,6 +90,8 @@ def run_functional_annotation_stage(ctx: PipelineContext) -> PipelineContext:
     ctx.annotation.functional_category_summary = Path(categories)
     ctx.annotation.annotated_count = annotated_count
     ctx.annotation.functional_reused = reused
+    if reused:
+        get_formatter().info("Reusing completed eggNOG functional annotation")
     if annotated_count == 0:
         get_formatter().warning(
             "eggNOG-mapper completed but assigned no annotations; all genes remain reported"

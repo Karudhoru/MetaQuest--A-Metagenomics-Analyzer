@@ -18,6 +18,9 @@ def _summary_metrics(payload: dict) -> dict:
 
     def metrics(values):
         total_bases = int(values.get("total_bases", 0) or 0)
+        read1_length = float(values.get("read1_mean_length", 0.0) or 0.0)
+        read2_value = values.get("read2_mean_length")
+        read2_length = float(read2_value or 0.0) if read2_value is not None else None
         return {
             "reads": int(values.get("total_reads", 0) or 0),
             "bases": total_bases,
@@ -26,7 +29,13 @@ def _summary_metrics(payload: dict) -> dict:
             "q20_rate": float(values.get("q20_rate", 0.0) or 0.0),
             "q30_rate": float(values.get("q30_rate", 0.0) or 0.0),
             "gc_content": float(values.get("gc_content", 0.0) or 0.0),
-            "mean_length": float(values.get("read1_mean_length", 0.0) or 0.0),
+            "read1_mean_length": read1_length,
+            "read2_mean_length": read2_length,
+            "mean_length": (
+                (read1_length + read2_length) / 2
+                if read2_length is not None
+                else read1_length
+            ),
         }
 
     before_metrics = metrics(before)
@@ -41,12 +50,15 @@ def _summary_metrics(payload: dict) -> dict:
             for key, value in filtering.items()
             if isinstance(value, (int, float))
         },
-        "fastp_version": payload.get("fastp_version", "unknown"),
+        "fastp_version": summary.get(
+            "fastp_version", payload.get("fastp_version", "unknown")
+        ),
     }
 
 
 def run_fastp(
-    reads: list[Path], output_dir: Path, *, paired: bool, quality: int, min_length: int
+    reads: list[Path], output_dir: Path, *, paired: bool, quality: int,
+    min_length: int, threads: int,
 ) -> tuple[list[Path], dict]:
     qc_dir = Path(output_dir) / "preprocessing"
     qc_dir.mkdir(parents=True, exist_ok=True)
@@ -57,7 +69,7 @@ def run_fastp(
         "fastp", "--in1", str(reads[0]), "--out1", str(cleaned[0]),
         "--json", str(json_path), "--html", str(html_path),
         "--qualified_quality_phred", str(quality),
-        "--length_required", str(min_length), "--thread", "4",
+        "--length_required", str(min_length), "--thread", str(threads),
     ]
     if paired:
         cleaned.append(qc_dir / "cleaned_R2.fastq.gz")

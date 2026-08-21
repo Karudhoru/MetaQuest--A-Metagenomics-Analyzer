@@ -37,6 +37,7 @@ def run_preprocessing_stage(ctx: PipelineContext) -> PipelineContext:
             source, ctx.output_dir, paired=ctx.read_mode != "single",
             quality=config.qualified_quality_phred,
             min_length=config.length_required,
+            threads=config.threads,
         )
     ctx.analysis_input_files = cleaned
     return ctx
