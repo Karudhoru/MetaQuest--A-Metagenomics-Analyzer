@@ -74,16 +74,24 @@ def run_system_check(
     if config is None:
         from metaquest.settings import get_config
         config = get_config()
-    required_dbs = {"Kraken2 DB": config.databases.kraken_db / "hash.k2d"}
+    required_dbs = {
+        "taxonomy": (config.databases.kraken_db / "hash.k2d",),
+    }
     if require_functional:
-        required_dbs.update({
-            "eggNOG annotation DB": config.databases.functional_dir / "eggnog.db",
-            "eggNOG taxonomy DB": config.databases.functional_dir / "eggnog.taxa.db",
-            "eggNOG DIAMOND DB": config.databases.functional_dir / "eggnog_proteins.dmnd",
-        })
-    for name, path in required_dbs.items():
-        if not path.exists():
-            errors.append(f"Required database not found: {name} (expected at {path}).")
+        required_dbs["functional"] = (
+            config.databases.functional_dir / "eggnog.db",
+            config.databases.functional_dir / "eggnog.taxa.db",
+            config.databases.functional_dir / "eggnog_proteins.dmnd",
+        )
+    for database, paths in required_dbs.items():
+        missing = [path for path in paths if not path.exists()]
+        if missing:
+            errors.append(
+                f"Required {database} database files are missing: "
+                f"{', '.join(str(path) for path in missing)}. Install them with "
+                f"'metaquest databases --db-dir {config.databases.base_dir} "
+                f"--database {database}'."
+            )
 
     # Final Report
     if warnings:

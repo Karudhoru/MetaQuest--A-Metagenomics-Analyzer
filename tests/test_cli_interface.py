@@ -18,6 +18,17 @@ def test_database_command_and_legacy_alias_match():
     assert parser.parse_args(['setup-db', '--list']).command == 'databases'
 
 
+def test_database_help_uses_metaquest_managed_commands():
+    help_text = create_parser()._subparsers._group_actions[0].choices[
+        "databases"
+    ].format_help()
+
+    assert "metaquest databases --db-dir /data/metaquest --database taxonomy" in help_text
+    assert "metaquest databases --db-dir /data/metaquest --database functional" in help_text
+    assert "metaquest check --db-dir /data/metaquest" in help_text
+    assert "Kraken database builders" in help_text
+
+
 def test_compare_stub_does_not_require_legacy_inputs():
     assert create_parser().parse_args(['compare']).command == 'compare'
 
