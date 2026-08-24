@@ -1,5 +1,6 @@
-import io
 import gzip
+import http.client
+import io
 import sqlite3
 import sys
 import tarfile
@@ -8,11 +9,13 @@ from types import SimpleNamespace
 
 import pytest
 
+from metaquest import database_manager
 from metaquest.core import functional_analysis
 from metaquest.core.functional_analysis import run_functional_annotation, run_gene_prediction
 from metaquest.database_manager import (
     DATABASES,
     DatabaseSetupError,
+    _download,
     _extract_functional_artifact,
     _expected_md5,
     _safe_extract,
@@ -222,3 +225,138 @@ def test_functional_cache_hash_ignores_fasta_record_order(tmp_path):
     assert functional_analysis._canonical_fasta_sha256(
         first
     ) == functional_analysis._canonical_fasta_sha256(second)
+
+
+class _FakeResponse(io.BytesIO):
+    def __init__(self, payload, *, status, headers):
+        super().__init__(payload)
+        self.status = status
+        self.headers = headers
+
+
+class _InterruptedResponse(_FakeResponse):
+    def __init__(self, payload, *, status, headers):
+        super().__init__(payload, status=status, headers=headers)
+        self._interrupted = False
+
+    def read(self, size=-1):
+        if self.tell() < len(self.getvalue()):
+            return super().read(size)
+        if not self._interrupted:
+            self._interrupted = True
+            raise http.client.IncompleteRead(b"")
+        return b""
+
+
+def test_download_continues_across_bounded_range_responses(tmp_path, monkeypatch):
+    destination = tmp_path / "database.partial"
+    responses = iter(
+        [
+            _FakeResponse(b"abc", status=200, headers={"Content-Length": "10"}),
+            _FakeResponse(
+                b"defg",
+                status=206,
+                headers={"Content-Range": "bytes 3-6/10"},
+            ),
+            _FakeResponse(
+                b"hij",
+                status=206,
+                headers={"Content-Range": "bytes 7-9/10"},
+            ),
+        ]
+    )
+    ranges = []
+
+    def fake_urlopen(request):
+        ranges.append(request.get_header("Range"))
+        return next(responses)
+
+    monkeypatch.setattr(database_manager.urllib.request, "urlopen", fake_urlopen)
+
+    _download("https://example.test/database", destination, expected_bytes=10)
+
+    assert destination.read_bytes() == b"abcdefghij"
+    assert ranges == [None, "bytes=3-9", "bytes=7-9"]
+
+
+def test_download_retries_after_interrupted_response(tmp_path, monkeypatch):
+    destination = tmp_path / "database.partial"
+    responses = iter(
+        [
+            _InterruptedResponse(
+                b"abc",
+                status=200,
+                headers={"Content-Length": "6"},
+            ),
+            _FakeResponse(
+                b"def",
+                status=206,
+                headers={"Content-Range": "bytes 3-5/6"},
+            ),
+        ]
+    )
+    monkeypatch.setattr(
+        database_manager.urllib.request,
+        "urlopen",
+        lambda _request: next(responses),
+    )
+
+    _download("https://example.test/database", destination, expected_bytes=6)
+
+    assert destination.read_bytes() == b"abcdef"
+
+
+def test_download_rejects_invalid_resume_range(tmp_path, monkeypatch):
+    destination = tmp_path / "database.partial"
+    destination.write_bytes(b"abc")
+    response = _FakeResponse(
+        b"def",
+        status=206,
+        headers={"Content-Range": "bytes 0-2/6"},
+    )
+    monkeypatch.setattr(
+        database_manager.urllib.request,
+        "urlopen",
+        lambda _request: response,
+    )
+
+    with pytest.raises(DatabaseSetupError, match="invalid byte range"):
+        _download("https://example.test/database", destination, expected_bytes=6)
+
+    assert destination.read_bytes() == b"abc"
+
+
+def test_download_rejects_oversized_partial_without_request(tmp_path, monkeypatch):
+    destination = tmp_path / "database.partial"
+    destination.write_bytes(b"abcd")
+    monkeypatch.setattr(
+        database_manager.urllib.request,
+        "urlopen",
+        lambda _request: pytest.fail("network request should not occur"),
+    )
+
+    with pytest.raises(DatabaseSetupError, match="larger than expected"):
+        _download("https://example.test/database", destination, expected_bytes=3)
+
+
+def test_download_stall_is_bounded_and_preserves_partial(tmp_path, monkeypatch):
+    destination = tmp_path / "database.partial"
+
+    def fake_urlopen(_request):
+        return _FakeResponse(
+            b"",
+            status=206,
+            headers={"Content-Range": "bytes 0-2/3"},
+        )
+
+    monkeypatch.setattr(database_manager.urllib.request, "urlopen", fake_urlopen)
+
+    with pytest.raises(DatabaseSetupError, match="did not complete after 2 requests"):
+        _download(
+            "https://example.test/database",
+            destination,
+            expected_bytes=3,
+            max_requests=2,
+        )
+
+    assert destination.read_bytes() == b""

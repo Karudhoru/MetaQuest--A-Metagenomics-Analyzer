@@ -531,8 +531,14 @@ def create_parser():
             Installs versioned reference data outside the source repository.
             Use --list to inspect availability and size before downloading.
 
-            Example:
+            Examples:
+                metaquest databases --list
                 metaquest databases --db-dir /data/metaquest --database taxonomy
+                metaquest databases --db-dir /data/metaquest --database functional
+                metaquest check --db-dir /data/metaquest
+
+            Use these commands instead of running Kraken database builders or
+            eggNOG-mapper database-download scripts directly.
         """),
         formatter_class=CustomHelpFormatter
     )
@@ -577,7 +583,7 @@ def create_parser():
         '--database',
         choices=('taxonomy', 'functional', 'amr', 'virulence'),
         metavar='NAME',
-        help='Install one database'
+        help="Install one database using MetaQuest's managed downloader"
     )
     db_options.add_argument(
         '--list',
@@ -847,8 +853,9 @@ def main():
                 formatter.error(
                     "No database selected",
                     solutions=[
-                        "Use --list to inspect available databases",
-                        "Use --database taxonomy to install Kraken2 Standard-8",
+                        "Run 'metaquest databases --list' to inspect available databases",
+                        "Run 'metaquest databases --database taxonomy' for taxonomy data",
+                        "Run 'metaquest databases --database functional' for functional data",
                     ]
                 )
                 sys.exit(1)

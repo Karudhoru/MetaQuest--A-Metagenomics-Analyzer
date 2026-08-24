@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import gzip
 import hashlib
+import http.client
 import json
+import re
 import shutil
 import sqlite3
 import subprocess
 import tarfile
 import tempfile
+import urllib.error
 import urllib.request
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -139,24 +142,110 @@ def is_installed(key: str, db_root: Path) -> bool:
     return False
 
 
-def _download(url: str, destination: Path) -> None:
-    existing = destination.stat().st_size if destination.exists() else 0
-    request = urllib.request.Request(
-        url,
-        headers={"Range": f"bytes={existing}-"} if existing else {},
-    )
-    response = urllib.request.urlopen(request)
-    resumed = existing and getattr(response, "status", None) == 206
-    if resumed:
-        content_range = response.headers.get("Content-Range", "")
-        if not content_range.startswith(f"bytes {existing}-"):
-            response.close()
+def _download(
+    url: str,
+    destination: Path,
+    *,
+    expected_bytes: int | None = None,
+    max_requests: int = 64,
+) -> None:
+    """Download a file, continuing bounded HTTP range requests until complete."""
+    target_size = expected_bytes
+    last_error: Exception | None = None
+
+    for _ in range(max_requests):
+        existing = destination.stat().st_size if destination.exists() else 0
+        if target_size is not None:
+            if existing == target_size:
+                return
+            if existing > target_size:
+                raise DatabaseSetupError(
+                    f"Partial file is larger than expected for {destination.name}: "
+                    f"expected {target_size} bytes, got {existing}"
+                )
+
+        range_end = target_size - 1 if target_size is not None else ""
+        request = urllib.request.Request(
+            url,
+            headers={"Range": f"bytes={existing}-{range_end}"} if existing else {},
+        )
+        before_request = existing
+        try:
+            response = urllib.request.urlopen(request)
+            status = getattr(response, "status", 200) or 200
+            if status == 206:
+                content_range = response.headers.get("Content-Range", "")
+                match = re.fullmatch(r"bytes (\d+)-(\d+)/(\d+)", content_range)
+                if not match:
+                    response.close()
+                    raise DatabaseSetupError(
+                        f"Upstream returned an invalid byte range for {destination.name}"
+                    )
+                start, end, total = (int(value) for value in match.groups())
+                if start != existing or end < start or end >= total:
+                    response.close()
+                    raise DatabaseSetupError(
+                        f"Upstream returned an invalid byte range for {destination.name}"
+                    )
+                if target_size is None:
+                    target_size = total
+                elif total != target_size:
+                    response.close()
+                    raise DatabaseSetupError(
+                        f"Upstream size changed for {destination.name}: "
+                        f"expected {target_size} bytes, got {total}"
+                    )
+                mode = "ab"
+            elif existing:
+                response.close()
+                raise DatabaseSetupError(
+                    f"Upstream did not honor resume request for {destination.name}"
+                )
+            elif status != 200:
+                response.close()
+                raise DatabaseSetupError(
+                    f"Upstream returned HTTP {status} for {destination.name}"
+                )
+            else:
+                mode = "wb"
+                if target_size is None:
+                    content_length = response.headers.get("Content-Length")
+                    if content_length and content_length.isdigit():
+                        target_size = int(content_length)
+
+            with response, destination.open(mode) as output:
+                shutil.copyfileobj(response, output, length=1024 * 1024)
+            last_error = None
+        except (
+            ConnectionError,
+            TimeoutError,
+            http.client.HTTPException,
+            urllib.error.URLError,
+        ) as exc:
+            last_error = exc
+
+        observed = destination.stat().st_size if destination.exists() else 0
+        if target_size is not None and observed > target_size:
             raise DatabaseSetupError(
-                f"Upstream returned an invalid byte range for {destination.name}"
+                f"Downloaded more data than expected for {destination.name}: "
+                f"expected {target_size} bytes, got {observed}"
             )
-    mode = "ab" if resumed else "wb"
-    with response, destination.open(mode) as output:
-        shutil.copyfileobj(response, output, length=1024 * 1024)
+        if target_size is None:
+            if last_error is not None:
+                continue
+            return
+        if observed == target_size:
+            return
+        if observed <= before_request and last_error is None:
+            last_error = DatabaseSetupError(
+                f"Download made no progress for {destination.name}"
+            )
+
+    detail = f": {last_error}" if last_error else ""
+    raise DatabaseSetupError(
+        f"Download did not complete after {max_requests} requests for "
+        f"{destination.name}{detail}"
+    )
 
 
 def _md5(path: Path) -> str:
@@ -278,7 +367,7 @@ def _install_functional(
                 notify(f"Downloading {archive_name}")
         expected_bytes = int(artifact["compressed_bytes"])
         if not partial.exists() or partial.stat().st_size != expected_bytes:
-            _download(url, partial)
+            _download(url, partial, expected_bytes=expected_bytes)
         if partial.stat().st_size != expected_bytes:
             raise DatabaseSetupError(
                 f"Unexpected size for {archive_name}: expected {expected_bytes} bytes, "

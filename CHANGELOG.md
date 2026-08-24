@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Continue interrupted database downloads across multiple validated HTTP range
+  responses instead of rejecting each completed chunk as an unexpected size.
+- Direct database help and missing-data diagnostics to MetaQuest's managed
+  `databases` commands.
 
 All notable changes to MetaQuest are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
